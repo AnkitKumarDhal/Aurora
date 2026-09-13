@@ -8,3 +8,5 @@ python-multipart
 google-cloud-vision
 openai
 Pillow
+python-jose[cryptography]
+passlib[bcrypt]
