@@ -4,7 +4,7 @@ from routers import auth, sessions, documents, doctor
 
 app = FastAPI(title="Aurora API")
 
-app.app_middleware(
+app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
