@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pymongo
+motor
+python-dotenv
+pydantic
+python-multipart
+google-cloud-vision
+openai
+Pillow
