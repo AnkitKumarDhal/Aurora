@@ -49,7 +49,7 @@ class ConverseRequest(BaseModel):
     input_mode: str = "text"
 
 
-@router.get("/{session_id}/converse")
+@router.post("/{session_id}/converse")
 async def converse(session_id: str, req: ConverseRequest, user: dict = Depends(require_role("patient"))):
     session = await get_owned_session(session_id, user)
     if session["status"] != "in_progress":
