@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
+import { AlertTriangle } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
-// Placeholder data — replace with GET /doctor/queue
 type Patient = {
   id: string;
   name: string;
@@ -91,22 +92,25 @@ const priorityRank: Record<Patient["priority"], number> = {
 
 const priorityStyles: Record<
   Patient["priority"],
-  { border: string; badge: string; label: string }
+  { border: string; badge: string; label: string; tint: string }
 > = {
   urgent: {
-    border: "border-t-4 border-red-500",
-    badge: "bg-red-100 text-red-700",
+    border: "border-t-4 border-destructive",
+    badge: "bg-destructive/15 text-destructive",
     label: "Urgent",
+    tint: "bg-destructive/5",
   },
   moderate: {
-    border: "border-t-4 border-amber-400",
-    badge: "bg-amber-100 text-amber-700",
+    border: "border-t-4 border-accent",
+    badge: "bg-accent/15 text-accent",
     label: "Moderate",
+    tint: "",
   },
   routine: {
-    border: "border-t-4 border-gray-300",
-    badge: "bg-gray-100 text-gray-600",
+    border: "border-t-4 border-border",
+    badge: "bg-muted text-muted-foreground",
     label: "Routine",
+    tint: "",
   },
 };
 
@@ -114,7 +118,6 @@ function sortByPriority(patients: Patient[]): Patient[] {
   return [...patients].sort((a, b) => {
     const rankDiff = priorityRank[a.priority] - priorityRank[b.priority];
     if (rankDiff !== 0) return rankDiff;
-    // within same priority tier, longer wait comes first
     return b.waitMinutes - a.waitMinutes;
   });
 }
@@ -130,20 +133,32 @@ function initials(name: string) {
 
 export default function QueuePage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const sortedPatients = useMemo(() => sortByPriority(mockPatients), []);
   const urgentCount = sortedPatients.filter(
     (p) => p.priority === "urgent",
   ).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Patient Queue</h1>
-        {urgentCount > 0 && (
-          <span className="bg-red-100 text-red-700 text-sm font-semibold px-3 py-1 rounded-full">
-            {urgentCount} urgent patient{urgentCount > 1 ? "s" : ""} waiting
-          </span>
-        )}
+        <h1 className="text-2xl font-extrabold text-primary">Patient Queue</h1>
+        <div className="flex items-center gap-3">
+          {urgentCount > 0 && (
+            <span className="bg-destructive/15 text-destructive text-sm font-bold px-3 py-1 rounded-full">
+              {urgentCount} urgent patient{urgentCount > 1 ? "s" : ""} waiting
+            </span>
+          )}
+          <button
+            className="text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -153,32 +168,37 @@ export default function QueuePage() {
             <div
               key={p.id}
               onClick={() => navigate(`/patient/${p.id}`)}
-              className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer ${style.border} overflow-hidden`}
+              className={`relative bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer ${style.border} ${style.tint} overflow-hidden`}
             >
+              {p.priority === "urgent" && (
+                <span className="absolute top-3 right-3 size-6 rounded-full bg-destructive text-white flex items-center justify-center">
+                  <AlertTriangle className="size-3.5" />
+                </span>
+              )}
               <div className="p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-600 shrink-0">
+                  <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center font-bold text-primary shrink-0">
                     {initials(p.name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold truncate">{p.name}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-bold truncate text-foreground">
+                      {p.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
                       {p.age} yrs · {p.gender}
                     </p>
                   </div>
                 </div>
-
-                <p className="text-sm text-gray-700 line-clamp-2 mb-3 min-h-[2.5rem]">
+                <p className="text-sm text-foreground/80 line-clamp-2 mb-3 min-h-[2.5rem]">
                   {p.complaint}
                 </p>
-
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${style.badge}`}
+                    className={`text-xs font-bold px-2 py-0.5 rounded-full ${style.badge}`}
                   >
                     {style.label}
                   </span>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     waiting {p.waitMinutes} min
                   </span>
                 </div>
