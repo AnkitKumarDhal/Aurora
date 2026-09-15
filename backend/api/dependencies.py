@@ -1,10 +1,15 @@
 from backend.database.repositories.clinical_session import ClinicalSessionRepository
 from backend.database.repositories.conversation import ConversationRepository
+from backend.database.repositories.document import (
+    DocumentExtractionRepository,
+    DocumentRepository,
+)
 from backend.database.repositories.patient import PatientRepository
 from backend.integrations.identity import MockIdentityProvider
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.consent import ConsentService
 from backend.services.conversation import ConversationService
+from backend.services.document import DocumentService
 from backend.services.patient import PatientService
 from backend.services.verification import VerificationService
 
@@ -43,4 +48,11 @@ def get_conversation_service() -> ConversationService:
         session_service=ClinicalSessionService(
             ClinicalSessionRepository(),
         ),
+    )
+
+
+def get_document_service() -> DocumentService:
+    return DocumentService(
+        document_repository=DocumentRepository(),
+        extraction_repository=DocumentExtractionRepository(),
     )
