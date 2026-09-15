@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import ClassVar
 from pydantic import Field
-from domain.enums import TriageStatus, UrgencyLevel
+from backend.domain.enums import TriageStatus, UrgencyLevel
 from .common import PersistenceModel
 
 

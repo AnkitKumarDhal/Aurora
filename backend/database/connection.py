@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
-from config import settings
+from backend.config import settings
 
 client = AsyncMongoClient(settings.mongo_uri)
 database = client[settings.mongo_database]

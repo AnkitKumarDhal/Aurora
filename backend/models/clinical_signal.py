@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import ClassVar
 from pydantic import Field
-from domain.enums import ClinicalSignalType
+from backend.domain.enums import ClinicalSignalType
 from .common import PersistenceModel
 
 

@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from config import settings
-from database import close_database, initialize_database
+from backend.config import settings
+from backend.database import close_database, initialize_database
 
 
 @asynccontextmanager

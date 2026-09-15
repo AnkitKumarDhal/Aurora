@@ -1,5 +1,5 @@
 from .base import BaseRepository
-from models.patient import PatientDocument
+from backend.models.patient import PatientDocument
 
 
 class PatientRepository(BaseRepository[PatientDocument]):

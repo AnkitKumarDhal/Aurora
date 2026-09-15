@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from database.repositories.queue import QueueRepository
-from domain.enums import QueueStatus, UrgencyLevel
-from models.queue import QueueEntryDocument
+from backend.database.repositories.queue import QueueRepository
+from backend.domain.enums import QueueStatus, UrgencyLevel
+from backend.models.queue import QueueEntryDocument
 
 
 @pytest.fixture

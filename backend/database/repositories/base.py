@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar
-from models.common import PersistenceModel
-from database.connection import database
+from backend.models.common import PersistenceModel
+from backend.database.connection import database
 
 
 ModelT = TypeVar("ModelT", bound=PersistenceModel)

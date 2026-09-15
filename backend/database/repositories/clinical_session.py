@@ -1,5 +1,5 @@
 from .base import BaseRepository
-from models.clinical_session import ClinicalSessionDocument
+from backend.models.clinical_session import ClinicalSessionDocument
 
 
 class ClinicalSessionRepository(BaseRepository[ClinicalSessionDocument]):

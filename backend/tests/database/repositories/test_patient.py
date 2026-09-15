@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from database.repositories.patient import PatientRepository
-from models.patient import PatientDocument
+from backend.database.repositories.patient import PatientRepository
+from backend.models.patient import PatientDocument
 
 
 @pytest.fixture

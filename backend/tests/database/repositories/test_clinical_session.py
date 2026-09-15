@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from database.repositories.clinical_session import ClinicalSessionRepository
-from domain.enums import ConsentStatus, SessionStatus, VerificationStatus
-from models.clinical_session import ClinicalSessionDocument
+from backend.database.repositories.clinical_session import ClinicalSessionRepository
+from backend.domain.enums import ConsentStatus, SessionStatus, VerificationStatus
+from backend.models.clinical_session import ClinicalSessionDocument
 
 
 @pytest.fixture

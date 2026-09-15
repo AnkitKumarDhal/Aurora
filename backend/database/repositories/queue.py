@@ -1,6 +1,6 @@
 from .base import BaseRepository
-from domain.enums import QueueStatus
-from models.queue import QueueEntryDocument
+from backend.domain.enums import QueueStatus
+from backend.models.queue import QueueEntryDocument
 
 
 class QueueRepository(BaseRepository[QueueEntryDocument]):

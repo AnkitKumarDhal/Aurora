@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import ClassVar
 from pydantic import Field
-from domain.enums import DocumentStatus, DocumentType
+from backend.domain.enums import DocumentStatus, DocumentType
 from .common import PersistenceModel
 
 
