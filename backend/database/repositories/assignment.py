@@ -1,3 +1,4 @@
+from backend.domain.enums import AssignmentStatus
 from backend.models.assignment import DoctorAssignmentDocument
 from .base import BaseRepository
 
@@ -12,13 +13,13 @@ class AssignmentRepository(BaseRepository[DoctorAssignmentDocument]):
     async def get_session_assignment(self, session_id: str,) -> DoctorAssignmentDocument | None:
         return await self.get_one({
             "session_id": session_id,
-            "status": "active",
+            "status": AssignmentStatus.ACTIVE,
         })
 
     async def get_doctor_assignments(self, doctor_id: str,) -> list[DoctorAssignmentDocument]:
         cursor = self.collection.find({
             "doctor_id": doctor_id,
-            "status": "active",
+            "status": AssignmentStatus.ACTIVE,
         })
 
         return [
