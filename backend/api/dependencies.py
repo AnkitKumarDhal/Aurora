@@ -2,6 +2,7 @@ from backend.database.repositories.clinical_session import ClinicalSessionReposi
 from backend.database.repositories.patient import PatientRepository
 from backend.integrations.identity import MockIdentityProvider
 from backend.services.clinical_session import ClinicalSessionService
+from backend.services.consent import ConsentService
 from backend.services.verification import VerificationService
 
 
@@ -16,4 +17,12 @@ def get_verification_service() -> VerificationService:
         ),
         patient_repository=PatientRepository(),
         identity_provider=MockIdentityProvider(),
+    )
+
+
+def get_consent_service() -> ConsentService:
+    return ConsentService(
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
     )
