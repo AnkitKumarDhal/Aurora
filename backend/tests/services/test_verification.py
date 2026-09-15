@@ -17,12 +17,11 @@ async def test_verify_known_identity() -> None:
 
     session = AsyncMock()
     session.status = SessionStatus.CREATED
-    session_service.get_session.side_effect = [
-        session,
-        session,
-    ]
-    session_service.transition_session.return_value = session
-    session_service.set_identity.return_value = session
+    identifying_session = AsyncMock()
+    identifying_session.status = SessionStatus.IDENTIFYING
+    session_service.get_session.return_value = session
+    session_service.transition_session.return_value = identifying_session
+    session_service.set_identity.return_value = identifying_session
 
     service = VerificationService(
         session_service=session_service,
