@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from backend.domain.clinical_session import ClinicalSession
 from backend.domain.enums import SessionStatus
 from backend.models.clinical_session import ClinicalSessionDocument
