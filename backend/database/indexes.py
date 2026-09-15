@@ -1,16 +1,17 @@
-from .connection import database
+from backend.database.connection import get_database_instance
 
 
 async def create_indexes() -> None:
+    database = get_database_instance()
     await database.patients.create_index("patient_id", unique=True,)
-    await database.patients.create_index("abha_reference", unique=True, sparse=True)
-    await database.patients.create_index("hospital_reference", unique=True, sparse=True)
+    await database.patients.create_index("abha_reference", unique=True, sparse=True,)
+    await database.patients.create_index("hospital_reference", unique=True, sparse=True,)
     await database.doctors.create_index("doctor_id", unique=True,)
     await database.departments.create_index("department_id", unique=True,)
     await database.clinical_sessions.create_index("session_id", unique=True,)
     await database.clinical_sessions.create_index("patient_id",)
     await database.clinical_sessions.create_index("department_id",)
-    await database.conversation_turns.create_index([("session_id", 1), ("created_at", 1)],)
+    await database.conversation_turns.create_index([("session_id", 1), ("created_at", 1), ],)
     await database.clinical_signals.create_index("session_id",)
     await database.documents.create_index("document_id", unique=True,)
     await database.documents.create_index("session_id",)
@@ -21,11 +22,11 @@ async def create_indexes() -> None:
     await database.triage_results.create_index("triage_result_id", unique=True,)
     await database.triage_results.create_index("session_id",)
     await database.queue_entries.create_index("queue_entry_id", unique=True,)
-    await database.queue_entries.create_index([("department_id", 1), ("status", 1), ("position", 1)],)
-    await database.queue_entries.create_index([("department_id", 1), ("status", 1), ("priority_score", -1)],)
+    await database.queue_entries.create_index([("department_id", 1), ("status", 1), ("position", 1), ],)
+    await database.queue_entries.create_index([("department_id", 1), ("status", 1), ("priority_score", -1), ],)
     await database.doctor_assignments.create_index("assignment_id", unique=True,)
     await database.doctor_assignments.create_index("session_id",)
     await database.doctor_assignments.create_index("doctor_id",)
     await database.promotion_requests.create_index("promotion_request_id", unique=True,)
     await database.promotion_requests.create_index("queue_entry_id",)
-    await database.promotion_requests.create_index([("status", 1), ("decision_deadline", 1)],)
+    await database.promotion_requests.create_index([("status", 1), ("decision_deadline", 1), ],)
