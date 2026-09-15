@@ -1,0 +1,108 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.pyre/
+.pytype/
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Node.js
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.yarn-cache/
+.yarn-debug.log*
+.yarn-error.log*
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Frontend builds
+dist/
+build/
+.next/
+.nuxt/
+.vite/
+.turbo/
+
+# Frontend environment
+!.env.example
+!**/.env.example
+
+# Test and coverage output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+mongodb/
+mongo-data/
+data/db/
+
+# Uploaded clinical files
+uploads/
+storage/
+artifacts/
+*.dcm
+*.dicom
+
+# Generated documentation
+docs/_build/
+docs/site/
+
+# Local configuration
+*.local.json
+*.local.yaml
+*.local.yml
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Backup files
+*.bak
+*.backup
+*~
