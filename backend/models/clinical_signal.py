@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 from domain.enums import ClinicalSignalType
 from .common import PersistenceModel
@@ -14,4 +15,4 @@ class ClinicalSignalDocument(PersistenceModel):
     source: str | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "clinical_signals"
+    collection_name: ClassVar[str] = "clinical_signals"

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 from domain.enums import PromotionStatus
 from .common import PersistenceModel
@@ -15,4 +16,4 @@ class PromotionRequestDocument(PersistenceModel):
     decided_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "promotion_requests"
+    collection_name: ClassVar[str] = "promotion_requests"

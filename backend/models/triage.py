@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 from domain.enums import TriageStatus, UrgencyLevel
 from .common import PersistenceModel
@@ -14,4 +15,4 @@ class TriageResultDocument(PersistenceModel):
     assessed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "triage_results"
+    collection_name: ClassVar[str] = "triage_results"

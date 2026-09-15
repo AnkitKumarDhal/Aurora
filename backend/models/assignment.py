@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 from domain.enums import AssignmentStatus
 from .common import PersistenceModel
@@ -14,4 +15,4 @@ class DoctorAssignmentDocument(PersistenceModel):
     released_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "doctor_assignments"
+    collection_name: ClassVar[str] = "doctor_assignments"

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 from domain.enums import ConversationInputType, Speaker
 from .common import PersistenceModel
@@ -14,4 +15,4 @@ class ConversationTurnDocument(PersistenceModel):
     media_reference: str | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "conversation_turns"
+    collection_name: ClassVar[str] = "conversation_turns"

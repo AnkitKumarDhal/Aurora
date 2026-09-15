@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 from domain.enums import DocumentStatus, DocumentType
 from .common import PersistenceModel
@@ -11,18 +12,20 @@ class DocumentDocument(PersistenceModel):
     filename: str
     storage_reference: str
     status: DocumentStatus = DocumentStatus.UPLOADED
-    mime_type: str | None = None
+    content_type: str
+    size_bytes: int = Field(ge=0)
     created_at: datetime
     updated_at: datetime
-    collection_name = "documents"
+    collection_name: ClassVar[str] = "documents"
 
 
 class DocumentExtractionDocument(PersistenceModel):
     extraction_id: str = Field(min_length=1)
     document_id: str = Field(min_length=1)
+    status: DocumentStatus
     extracted_text: str | None = None
-    structured_data: dict = Field(default_factory=dict)
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    structured_data: dict[str, object] | None = None
+    processed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "document_extractions"
+    collection_name: ClassVar[str] = "document_extractions"

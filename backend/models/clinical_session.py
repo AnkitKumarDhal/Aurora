@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 from domain.enums import ConsentStatus, SessionStatus, VerificationStatus
 from .common import PersistenceModel
@@ -15,4 +16,4 @@ class ClinicalSessionDocument(PersistenceModel):
     completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "clinical_sessions"
+    collection_name: ClassVar[str] = "clinical_sessions"

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import ClassVar
 from pydantic import Field
 from .common import PersistenceModel
 
@@ -12,4 +13,4 @@ class PatientDocument(PersistenceModel):
     hospital_reference: str | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name = "patients"
+    collection_name: ClassVar[str] = "patients"
