@@ -80,11 +80,13 @@ def service(
     session_service: ClinicalSessionService,
     queue_service: QueueService,
     assignment_scheduler: AssignmentSchedulerService,
+    assignment_service,
 ) -> WorkflowService:
     return WorkflowService(
         session_service,
         queue_service,
         assignment_scheduler,
+        assignment_service,
     )
 
 

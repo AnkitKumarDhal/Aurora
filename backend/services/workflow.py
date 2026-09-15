@@ -2,6 +2,7 @@ from backend.domain.enums import QueueStatus, SessionStatus
 from backend.domain.queue import QueueEntry
 from backend.domain.assignment import DoctorAssignment
 from backend.services.assignment_scheduler import AssignmentSchedulerService
+from backend.services.assignment import AssignmentService
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.queue import QueueService
 
@@ -12,10 +13,12 @@ class WorkflowService:
         session_service: ClinicalSessionService,
         queue_service: QueueService,
         assignment_scheduler: AssignmentSchedulerService,
+        assignment_service: AssignmentService,
     ) -> None:
         self.session_service = session_service
         self.queue_service = queue_service
         self.assignment_scheduler = assignment_scheduler
+        self.assignment_service = assignment_service
 
     async def queue_session(self, entry: QueueEntry) -> QueueEntry:
         session = await self.session_service.get_session(entry.session_id)
@@ -177,10 +180,18 @@ class WorkflowService:
         if entry.status != QueueStatus.IN_CONSULTATION:
             raise ValueError("Queue entry is not in consultation")
 
+        assignment = await self.assignment_service.get_session_assignment(session_id)
+        if assignment is None:
+            raise ValueError("Active doctor assignment not found")
+
         completed_entry = await self.queue_service.complete(queue_entry_id)
 
         if completed_entry is None:
             raise ValueError("Queue entry could not be completed")
+
+        released_assignment = await self.assignment_service.release_assignment(assignment.assignment_id)
+        if released_assignment is None:
+            raise ValueError("Doctor assignment could not be released")
 
         await self.session_service.transition_session(
             session_id,
