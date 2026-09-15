@@ -56,7 +56,7 @@ async def submit_turn(
         "data": ConversationTurnResponse(
             turn_id=result.turn_id,
             session_id=result.session_id,
-            speaker=result.speaker,
+            speaker=result.speaker.value.lower(),
             input_type=result.input_type,
             content=result.content,
             language=result.language,
@@ -82,7 +82,7 @@ async def get_conversation(
                 ConversationTurnResponse(
                     turn_id=turn.turn_id,
                     session_id=turn.session_id,
-                    speaker=turn.speaker,
+                    speaker=turn.speaker.value.lower(),
                     input_type=turn.input_type,
                     content=turn.content,
                     language=turn.language,

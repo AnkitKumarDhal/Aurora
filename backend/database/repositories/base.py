@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar
+from backend.database.connection import get_database_instance
 from backend.models.common import PersistenceModel
-from backend.database.connection import database
 
 
 ModelT = TypeVar("ModelT", bound=PersistenceModel)
@@ -11,6 +11,7 @@ class BaseRepository(Generic[ModelT]):
     model: type[ModelT]
 
     def __init__(self) -> None:
+        database = get_database_instance()
         self.collection = database[self.collection_name]
 
     async def get_one(self, filter_query: dict) -> ModelT | None:
@@ -21,7 +22,7 @@ class BaseRepository(Generic[ModelT]):
 
         return self.model.from_mongo(document)
 
-    async def create(self, model: ModelT,) -> ModelT:
+    async def create(self, model: ModelT) -> ModelT:
         await self.collection.insert_one(model.to_mongo())
         return model
 

@@ -1,17 +1,17 @@
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
-
 from backend.api.routes.consent import router as consent_router
 from backend.api.routes.conversation import router as conversation_router
 from backend.api.routes.sessions import router as sessions_router
 from backend.api.routes.verification import router as verification_router
 from backend.config import settings
 from backend.database import close_database, initialize_database
+from backend.database.connection import initialize_database_connection
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    await initialize_database_connection()
     await initialize_database()
     yield
     await close_database()

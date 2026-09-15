@@ -1,5 +1,5 @@
-from .connection import database
-from .indexes import create_indexes
+from backend.database.connection import get_database_instance
+from backend.database.indexes import create_indexes
 
 
 COLLECTIONS = (
@@ -20,7 +20,11 @@ COLLECTIONS = (
 
 
 async def initialize_database() -> None:
-    existing_collections = set(await database.list_collection_names())
+    database = get_database_instance()
+
+    existing_collections = set(
+        await database.list_collection_names(),
+    )
 
     missing_collections = [
         collection
