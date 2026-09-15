@@ -399,6 +399,7 @@ async def test_complete_consultation(
     service: WorkflowService,
     session_repository: ClinicalSessionRepository,
     queue_repository: QueueRepository,
+    assignment_repository: AssignmentRepository,
 ) -> None:
     session_repository.get_session.return_value = make_session_document(
         SessionStatus.IN_CONSULTATION,
@@ -409,8 +410,18 @@ async def test_complete_consultation(
     queue_repository.update_entry.return_value = make_queue_document(
         QueueStatus.COMPLETED,
     )
+    assignment_repository.get_session_assignment.return_value = (
+        make_assignment_document()
+    )
+    assignment_repository.update_assignment.return_value = (
+        make_assignment_document()
+    )
 
     result = await service.complete_consultation("session-1", "queue-1")
 
     assert result.status == QueueStatus.COMPLETED
     session_repository.update_session.assert_awaited_once()
+    assignment_repository.get_session_assignment.assert_awaited_once_with(
+        "session-1",
+    )
+    assignment_repository.update_assignment.assert_awaited_once()
