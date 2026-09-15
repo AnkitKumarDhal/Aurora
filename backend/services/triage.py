@@ -1,14 +1,17 @@
 from datetime import datetime, timezone
 
 from backend.database.repositories.triage import TriageRepository
+from backend.domain.clinical_signal import ClinicalSignal
 from backend.domain.enums import TriageStatus, UrgencyLevel
 from backend.domain.triage import TriageResult
 from backend.models.triage import TriageResultDocument
+from backend.services.triage_engine import TriageEngine
 
 
 class TriageService:
-    def __init__(self, repository: TriageRepository) -> None:
+    def __init__(self, repository: TriageRepository, engine: TriageEngine | None = None) -> None:
         self.repository = repository
+        self.engine = engine or TriageEngine()
 
     async def get_result(self, triage_id: str) -> TriageResult | None:
         document = await self.repository.get_result(triage_id)
@@ -57,6 +60,25 @@ class TriageService:
                 "red_flags_present": red_flags_present,
                 "assessed_at": datetime.now(timezone.utc),
             },
+        )
+
+    async def assess_from_signals(
+        self,
+        triage_id: str,
+        signals: list[ClinicalSignal]
+    ) -> TriageResult | None:
+        assessment = self.engine.assess([
+            {
+                "name": signal.name,
+                "value": signal.value,
+            }
+            for signal in signals
+        ])
+        return await self.assess(
+            triage_id,
+            assessment.urgency_level,
+            assessment.priority_score,
+            assessment.red_flags_present
         )
 
     async def fail(self, triage_id: str) -> TriageResult | None:
