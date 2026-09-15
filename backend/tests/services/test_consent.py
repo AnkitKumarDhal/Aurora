@@ -29,7 +29,7 @@ async def test_grant_consent() -> None:
 
     service = ConsentService(session_service)
 
-    result = await service.grant("session-1")
+    result = await service.grant("session-1", "1.0")
 
     assert result == SessionStatus.CONSENTED
     session_service.set_consent.assert_awaited_once_with(
@@ -51,7 +51,7 @@ async def test_deny_consent() -> None:
 
     service = ConsentService(session_service)
 
-    result = await service.deny("session-1")
+    result = await service.deny("session-1", "1.0")
 
     assert result == SessionStatus.IDENTIFYING
     session_service.set_consent.assert_awaited_once_with(
@@ -91,3 +91,17 @@ async def test_consent_requires_identifying_session() -> None:
         match="Session must be identifying before consent",
     ):
         await service.grant("session-1")
+
+
+@pytest.mark.asyncio
+async def test_rejects_unsupported_consent_version() -> None:
+    session_service = AsyncMock()
+    service = ConsentService(session_service)
+
+    with pytest.raises(
+        ValueError,
+        match="Unsupported consent version",
+    ):
+        await service.grant("session-1", "2.0")
+
+    session_service.get_session.assert_not_awaited()

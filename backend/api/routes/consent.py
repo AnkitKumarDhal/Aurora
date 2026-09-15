@@ -1,7 +1,13 @@
 from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
+
 from backend.api.dependencies import get_consent_service
-from backend.api.schemas.consent import ConsentRequest, ConsentResponse
+from backend.api.schemas.consent import (
+    ConsentInformationResponse,
+    ConsentRequest,
+    ConsentResponse,
+)
 from backend.domain.enums import ConsentStatus
 from backend.services.consent import ConsentService
 
@@ -24,10 +30,18 @@ async def get_consent(
             detail=str(exc),
         ) from exc
 
+    information = service.get_information()
+
+    response = ConsentInformationResponse(
+        version=information["version"],
+        status=consent_status,
+        text=information["text"],
+        audio_available=information["audio_available"],
+        supported_languages=information["supported_languages"],
+    )
+
     return {
-        "data": {
-            "consent_status": consent_status.value,
-        },
+        "data": response.model_dump(mode="json"),
     }
 
 
@@ -39,9 +53,9 @@ async def record_consent(
 ) -> dict:
     try:
         session_status = (
-            await service.grant(session_id)
+            await service.grant(session_id, request.version)
             if request.granted
-            else await service.deny(session_id)
+            else await service.deny(session_id, request.version)
         )
     except ValueError as exc:
         raise HTTPException(
@@ -56,6 +70,7 @@ async def record_consent(
     )
 
     response = ConsentResponse(
+        version=request.version,
         consent_status=consent_status,
         recorded_at=datetime.now(timezone.utc),
     )

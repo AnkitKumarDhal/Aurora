@@ -3,10 +3,16 @@ from backend.services.clinical_session import ClinicalSessionService
 
 
 class ConsentService:
+    CONSENT_VERSION = "1.0"
+    CONSENT_TEXT = "Consent text approved for the current deployment."
+    SUPPORTED_LANGUAGES = ["en", "hi", "od"]
+
     def __init__(self, session_service: ClinicalSessionService) -> None:
         self.session_service = session_service
 
-    async def grant(self, session_id: str) -> SessionStatus:
+    async def grant(self, session_id: str, version: str) -> SessionStatus:
+        self._validate_version(version)
+
         session = await self.session_service.get_session(session_id)
 
         if session is None:
@@ -38,7 +44,9 @@ class ConsentService:
 
         return updated_session.status
 
-    async def deny(self, session_id: str) -> SessionStatus:
+    async def deny(self, session_id: str, version: str) -> SessionStatus:
+        self._validate_version(version)
+
         session = await self.session_service.get_session(session_id)
 
         if session is None:
@@ -68,3 +76,17 @@ class ConsentService:
             raise ValueError("Clinical session not found")
 
         return session.consent_status
+
+    def get_information(self) -> dict:
+        return {
+            "version": self.CONSENT_VERSION,
+            "text": self.CONSENT_TEXT,
+            "audio_available": True,
+            "supported_languages": self.SUPPORTED_LANGUAGES,
+        }
+
+    def _validate_version(self, version: str) -> None:
+        if version != self.CONSENT_VERSION:
+            raise ValueError(
+                f"Unsupported consent version: {version}",
+            )
