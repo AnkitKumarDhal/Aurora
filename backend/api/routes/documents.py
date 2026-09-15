@@ -1,11 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from backend.api.dependencies import get_document_service
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+
+from backend.api.dependencies import get_document_service, get_storage
 from backend.api.schemas.documents import (
     DocumentExtractionResponse,
     DocumentListResponse,
     DocumentResponse,
 )
+from backend.domain.document import Document
+from backend.domain.enums import DocumentStatus, DocumentType
+from backend.integrations.storage import LocalStorage
 from backend.services.document import DocumentService
+
 
 router = APIRouter(
     prefix="/sessions/{session_id}/documents",
@@ -13,7 +20,7 @@ router = APIRouter(
 )
 
 
-def document_response(document) -> DocumentResponse:
+def document_response(document: Document) -> DocumentResponse:
     return DocumentResponse(
         document_id=document.document_id,
         session_id=document.session_id,
@@ -28,7 +35,9 @@ def document_response(document) -> DocumentResponse:
     )
 
 
-def extraction_response(extraction) -> DocumentExtractionResponse:
+def extraction_response(
+    extraction,
+) -> DocumentExtractionResponse:
     return DocumentExtractionResponse(
         extraction_id=extraction.extraction_id,
         document_id=extraction.document_id,
@@ -39,6 +48,57 @@ def extraction_response(extraction) -> DocumentExtractionResponse:
         created_at=extraction.created_at,
         updated_at=extraction.updated_at,
     )
+
+
+@router.post(
+    "",
+    response_model=dict[str, DocumentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_document(
+    session_id: str,
+    document_type: DocumentType,
+    file: UploadFile = File(...),
+    service: DocumentService = Depends(get_document_service),
+    storage: LocalStorage = Depends(get_storage),
+) -> dict[str, DocumentResponse]:
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file must have a filename",
+        )
+
+    size_bytes = file.size or 0
+
+    storage_reference = await storage.save(
+        session_id,
+        file,
+    )
+
+    document = Document(
+        document_id=f"doc_{uuid4().hex}",
+        session_id=session_id,
+        filename=file.filename,
+        document_type=document_type,
+        content_type=file.content_type or "application/octet-stream",
+        size_bytes=size_bytes,
+        storage_reference=storage_reference,
+        status=DocumentStatus.UPLOADED,
+    )
+
+    try:
+        result = await service.create_document(document)
+    except ValueError as exc:
+        await storage.delete(storage_reference)
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return {
+        "data": document_response(result),
+    }
 
 
 @router.get(

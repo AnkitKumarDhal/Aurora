@@ -6,6 +6,7 @@ from backend.database.repositories.document import (
 )
 from backend.database.repositories.patient import PatientRepository
 from backend.integrations.identity import MockIdentityProvider
+from backend.integrations.storage import LocalStorage
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.consent import ConsentService
 from backend.services.conversation import ConversationService
@@ -24,35 +25,32 @@ def get_patient_service() -> PatientService:
 
 def get_verification_service() -> VerificationService:
     return VerificationService(
-        session_service=ClinicalSessionService(
-            ClinicalSessionRepository(),
-        ),
-        patient_service=PatientService(
-            PatientRepository(),
-        ),
+        session_service=ClinicalSessionService(ClinicalSessionRepository()),
+        patient_service=PatientService(PatientRepository()),
         identity_provider=MockIdentityProvider(),
     )
 
 
 def get_consent_service() -> ConsentService:
     return ConsentService(
-        session_service=ClinicalSessionService(
-            ClinicalSessionRepository(),
-        ),
+        session_service=ClinicalSessionService(ClinicalSessionRepository()),
     )
 
 
 def get_conversation_service() -> ConversationService:
     return ConversationService(
         repository=ConversationRepository(),
-        session_service=ClinicalSessionService(
-            ClinicalSessionRepository(),
-        ),
+        session_service=ClinicalSessionService(ClinicalSessionRepository()),
     )
+
+
+def get_storage() -> LocalStorage:
+    return LocalStorage()
 
 
 def get_document_service() -> DocumentService:
     return DocumentService(
         document_repository=DocumentRepository(),
         extraction_repository=DocumentExtractionRepository(),
+        session_service=ClinicalSessionService(ClinicalSessionRepository()),
     )

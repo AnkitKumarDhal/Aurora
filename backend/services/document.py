@@ -5,81 +5,187 @@ from backend.database.repositories.document import (
     DocumentRepository,
 )
 from backend.domain.document import Document, DocumentExtraction
-from backend.domain.enums import DocumentStatus
+from backend.domain.enums import DocumentStatus, SessionStatus
 from backend.models.document import (
     DocumentDocument,
     DocumentExtractionDocument,
 )
+from backend.services.clinical_session import ClinicalSessionService
 
 
 class DocumentService:
-    def __init__(self, document_repository: DocumentRepository, extraction_repository: DocumentExtractionRepository,) -> None:
+    def __init__(
+        self,
+        document_repository: DocumentRepository,
+        extraction_repository: DocumentExtractionRepository,
+        session_service: ClinicalSessionService | None = None,
+    ) -> None:
         self.document_repository = document_repository
         self.extraction_repository = extraction_repository
+        self.session_service = session_service
 
-    async def get_document(self, document_id: str,) -> Document | None:
-        document = await self.document_repository.get_document(document_id)
+    async def get_document(
+        self,
+        document_id: str,
+    ) -> Document | None:
+        document = await self.document_repository.get_document(
+            document_id,
+        )
+
         if document is None:
             return None
+
         return self._document_to_domain(document)
 
-    async def get_session_documents(self, session_id: str,) -> list[Document]:
-        documents = await self.document_repository.get_session_documents(session_id,)
+    async def get_session_documents(
+        self,
+        session_id: str,
+    ) -> list[Document]:
+        documents = await self.document_repository.get_session_documents(
+            session_id,
+        )
+
         return [
             self._document_to_domain(document)
             for document in documents
         ]
 
-    async def create_document(self, document: Document,) -> Document:
+    async def create_document(
+        self,
+        document: Document,
+    ) -> Document:
+        if self.session_service is not None:
+            session = await self.session_service.get_session(
+                document.session_id,
+            )
+
+            if session is None:
+                raise ValueError("Clinical session not found")
+
+            if session.status not in {
+                SessionStatus.CONSENTED,
+                SessionStatus.HISTORY_IN_PROGRESS,
+                SessionStatus.DOCUMENT_PROCESSING,
+            }:
+                raise ValueError(
+                    "Documents cannot be added in the current session state",
+                )
+
+            if session.status != SessionStatus.DOCUMENT_PROCESSING:
+                await self.session_service.transition_session(
+                    document.session_id,
+                    SessionStatus.DOCUMENT_PROCESSING,
+                )
+
         persistence_document = self._document_to_persistence(document)
-        await self.document_repository.create_document(persistence_document,)
+
+        await self.document_repository.create_document(
+            persistence_document,
+        )
+
+        extraction = DocumentExtraction(
+            extraction_id=f"ext_{document.document_id}",
+            document_id=document.document_id,
+            status=DocumentStatus.UPLOADED,
+        )
+
+        await self.create_extraction(extraction)
+
         return document
 
-    async def update_document(self, document_id: str, updates: dict,) -> Document | None:
-        document = await self.document_repository.update_document(document_id, updates,)
+    async def update_document(
+        self,
+        document_id: str,
+        updates: dict,
+    ) -> Document | None:
+        document = await self.document_repository.update_document(
+            document_id,
+            updates,
+        )
+
         if document is None:
             return None
+
         return self._document_to_domain(document)
 
-    async def mark_processing(self, document_id: str,) -> Document | None:
-        return await self.update_document(document_id, {
-            "status": DocumentStatus.PROCESSING,
-        },
+    async def mark_processing(
+        self,
+        document_id: str,
+    ) -> Document | None:
+        return await self.update_document(
+            document_id,
+            {"status": DocumentStatus.PROCESSING},
         )
 
-    async def mark_processed(self, document_id: str,) -> Document | None:
-        return await self.update_document(document_id, {
-            "status": DocumentStatus.PROCESSED,
-        },
+    async def mark_processed(
+        self,
+        document_id: str,
+    ) -> Document | None:
+        return await self.update_document(
+            document_id,
+            {"status": DocumentStatus.PROCESSED},
         )
 
-    async def mark_failed(self, document_id: str,) -> Document | None:
-        return await self.update_document(document_id, {
-            "status": DocumentStatus.FAILED,
-        },
+    async def mark_failed(
+        self,
+        document_id: str,
+    ) -> Document | None:
+        return await self.update_document(
+            document_id,
+            {"status": DocumentStatus.FAILED},
         )
 
-    async def get_extraction(self, document_id: str,) -> DocumentExtraction | None:
-        extraction = await self.extraction_repository.get_document_extraction(document_id,)
+    async def get_extraction(
+        self,
+        document_id: str,
+    ) -> DocumentExtraction | None:
+        extraction = (
+            await self.extraction_repository.get_document_extraction(
+                document_id,
+            )
+        )
+
         if extraction is None:
             return None
+
         return self._extraction_to_domain(extraction)
 
-    async def create_extraction(self, extraction: DocumentExtraction,) -> DocumentExtraction:
-        persistence_extraction = self._extraction_to_persistence(extraction,)
-        await self.extraction_repository.create_extraction(persistence_extraction,)
+    async def create_extraction(
+        self,
+        extraction: DocumentExtraction,
+    ) -> DocumentExtraction:
+        persistence_extraction = self._extraction_to_persistence(
+            extraction,
+        )
+
+        await self.extraction_repository.create_extraction(
+            persistence_extraction,
+        )
+
         return extraction
 
-    async def update_extraction(self, extraction_id: str, updates: dict,) -> DocumentExtraction | None:
-        extraction = await self.extraction_repository.update_extraction(extraction_id, updates,)
+    async def update_extraction(
+        self,
+        extraction_id: str,
+        updates: dict,
+    ) -> DocumentExtraction | None:
+        extraction = await self.extraction_repository.update_extraction(
+            extraction_id,
+            updates,
+        )
+
         if extraction is None:
             return None
+
         return self._extraction_to_domain(extraction)
 
-    async def mark_extraction_processing(self, extraction_id: str,) -> DocumentExtraction | None:
-        return await self.update_extraction(extraction_id, {
-            "status": DocumentStatus.PROCESSING,
-        },
+    async def mark_extraction_processing(
+        self,
+        extraction_id: str,
+    ) -> DocumentExtraction | None:
+        return await self.update_extraction(
+            extraction_id,
+            {"status": DocumentStatus.PROCESSING},
         )
 
     async def complete_extraction(
@@ -88,22 +194,29 @@ class DocumentService:
         extracted_text: str | None = None,
         structured_data: dict[str, object] | None = None,
     ) -> DocumentExtraction | None:
-        return await self.update_extraction(extraction_id, {
-            "status": DocumentStatus.PROCESSED,
-            "extracted_text": extracted_text,
-            "structured_data": structured_data,
-            "processed_at": datetime.now(timezone.utc),
-        },
+        return await self.update_extraction(
+            extraction_id,
+            {
+                "status": DocumentStatus.PROCESSED,
+                "extracted_text": extracted_text,
+                "structured_data": structured_data,
+                "processed_at": datetime.now(timezone.utc),
+            },
         )
 
-    async def fail_extraction(self, extraction_id: str,) -> DocumentExtraction | None:
-        return await self.update_extraction(extraction_id, {
-            "status": DocumentStatus.FAILED,
-        },
+    async def fail_extraction(
+        self,
+        extraction_id: str,
+    ) -> DocumentExtraction | None:
+        return await self.update_extraction(
+            extraction_id,
+            {"status": DocumentStatus.FAILED},
         )
 
     @staticmethod
-    def _document_to_domain(document: DocumentDocument,) -> Document:
+    def _document_to_domain(
+        document: DocumentDocument,
+    ) -> Document:
         return Document(
             document_id=document.document_id,
             session_id=document.session_id,
@@ -118,7 +231,9 @@ class DocumentService:
         )
 
     @staticmethod
-    def _document_to_persistence(document: Document,) -> DocumentDocument:
+    def _document_to_persistence(
+        document: Document,
+    ) -> DocumentDocument:
         return DocumentDocument(
             document_id=document.document_id,
             session_id=document.session_id,
@@ -133,7 +248,9 @@ class DocumentService:
         )
 
     @staticmethod
-    def _extraction_to_domain(extraction: DocumentExtractionDocument,) -> DocumentExtraction:
+    def _extraction_to_domain(
+        extraction: DocumentExtractionDocument,
+    ) -> DocumentExtraction:
         return DocumentExtraction(
             extraction_id=extraction.extraction_id,
             document_id=extraction.document_id,
@@ -146,7 +263,9 @@ class DocumentService:
         )
 
     @staticmethod
-    def _extraction_to_persistence(extraction: DocumentExtraction,) -> DocumentExtractionDocument:
+    def _extraction_to_persistence(
+        extraction: DocumentExtraction,
+    ) -> DocumentExtractionDocument:
         return DocumentExtractionDocument(
             extraction_id=extraction.extraction_id,
             document_id=extraction.document_id,
