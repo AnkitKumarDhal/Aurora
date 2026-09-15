@@ -14,6 +14,7 @@ from backend.services.verification import VerificationService
 async def test_verify_known_identity() -> None:
     session_service = AsyncMock()
     patient_repository = AsyncMock()
+    patient_repository.get_by_abha_reference.return_value = None
 
     session = AsyncMock()
     session.status = SessionStatus.CREATED
