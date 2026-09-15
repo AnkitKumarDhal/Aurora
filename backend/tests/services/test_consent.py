@@ -74,7 +74,7 @@ async def test_consent_requires_verified_identity() -> None:
         ValueError,
         match="Patient identity must be verified before consent",
     ):
-        await service.grant("session-1")
+        await service.grant("session-1", "1.0")
 
 
 @pytest.mark.asyncio
@@ -90,7 +90,7 @@ async def test_consent_requires_identifying_session() -> None:
         ValueError,
         match="Session must be identifying before consent",
     ):
-        await service.grant("session-1")
+        await service.grant("session-1", "1.0")
 
 
 @pytest.mark.asyncio
