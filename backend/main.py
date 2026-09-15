@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from config import settings
-from database import close_database
+from database import close_database, initialize_database
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    await initialize_database()
     yield
     await close_database()
 
