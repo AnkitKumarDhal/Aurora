@@ -1,22 +1,33 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, sessions, documents, doctor
+from config import settings
+from database import close_databse
 
-app = FastAPI(title="Aurora API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await close_databse()
+
+app = FastAPI(
+    title="Aurora",
+    description="AI-assisted clinical intake platform for hospital OPDs.",
+    version="0.1.0",
+    lifespan=lifespan
 )
-
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(sessions.router, prefix="/sessions", tags=["sessions"])
-app.include_router(documents.router, prefix="/documents", tags=["documents"])
-app.include_router(doctor.router, prefix="/doctor", tags=["doctor"])
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+async def health_check() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": "aurora-backend"
+    }
+
+
+@app.get("/")
+async def root() -> dict[str, str]:
+    return {
+        "name": "Aurora",
+        "environment": settings.environment
+    }

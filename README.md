@@ -1,143 +1,425 @@
 # Aurora
 
-**AI-assisted clinical history-taking for Indian OPDs**
-Built for Smart India Hackathon — Problem Statement **SIH26047**
+Aurora is an AI-assisted clinical intake platform designed for deployment in hospital outpatient departments (OPDs).
 
-> Team: TechTonic
+The system moves structured history-taking and medical document collection to the beginning of the patient's OPD journey, allowing the patient to complete much of the information-gathering process before seeing the doctor.
 
-## The problem
+## Product Flow
 
-In busy Indian OPDs, doctors have only a few minutes per patient, yet a huge portion of that time goes into asking the same structured intake questions — chief complaint, history of present illness, past medical history, allergies, family history — instead of examining and diagnosing. Patients also often forget details, don't bring prior records in a usable form, or struggle to describe symptoms precisely.
+```text
+Patient
+   ↓
+OPD Kiosk
+   ↓
+Identity Verification
+   ↓
+Consent
+   ↓
+AI Clinical History
+   ↓
+Document Capture
+   ↓
+Structured Clinical Summary
+   ↓
+Priority Calculation
+   ↓
+Department Queue
+   ↓
+Doctor Assignment
+   ↓
+Doctor Review
+   ↓
+Consultation
+```
 
-## What Aurora does
+The patient interacts with a dedicated touchscreen kiosk.
 
-Aurora is an AI clinical history-taking assistant that a patient interacts with **before** seeing the doctor:
+The doctor uses a separate authenticated web application.
 
-1. **Adaptive conversational interview** — the AI asks one question at a time (by voice or text), and each next question is chosen based on the patient's previous answers, the way a doctor would actually interview a patient — not a static form.
-2. **Document understanding** — patients can photograph old prescriptions, lab reports, or discharge summaries; Aurora OCRs and extracts structured data (diagnoses, medications, investigations, dates) from them.
-3. **Evidence-linked summary** — Aurora generates a structured case summary (chief complaint, HPI, past history, allergies, family history, review of systems) where **every field is traceable** back to the specific conversation turn or document it came from — so the doctor can trust, verify, and quickly edit it rather than blindly accept AI output.
-4. **Doctor dashboard** — a responsive web queue view lets doctors see all waiting patients (red-flagged cases surfaced first), open a full case view, edit the AI's summary, and approve it into the patient's record — usable from a desktop station or a phone browser while moving through the ward.
+Reception/admin staff use a lightweight operational web application for queue monitoring and promotion decisions.
 
-## Why this approach
+---
 
-Standard digital intake forms don't capture nuance and are a poor fit for patients less comfortable with structured forms. A conversational, adaptive interview mirrors how a real clinical history is actually taken, and evidence-linking is what makes an AI-generated summary something a doctor can actually trust and use in a real clinical workflow, rather than another black-box tool.
+## Applications
 
-## Tech stack
+Aurora consists of three web applications and one backend.
 
-| Layer | Technology |
-|---|---|
-| Mobile app | React Native + Expo (Expo Router), TypeScript |
-| Voice input | Whisper API (speech-to-text) |
-| Voice output | Device/OS native TTS (`expo-speech`) |
-| Document OCR | Google Cloud Vision API |
-| Backend | Python, FastAPI |
-| Database | MongoDB (via Motor async driver) |
-| AI / LLM | Claude / LLM API (evaluating local Gemma small model as an alternative) |
-| Web dashboard | React + Vite, TypeScript |
-| Dashboard styling | Tailwind CSS v4 + shadcn/ui (responsive, mobile + desktop) |
-| Auth | Mock auth (MVP) — check SIH26047 problem statement for real auth requirements before final submission |
-
-## Project structure
 ```text
 Aurora/
-├── backend/                          # FastAPI service
-│   ├── main.py
-│   ├── config.py
-│   ├── db.py
-│   ├── models.py
-│   ├── routers/                      # auth, sessions, documents, doctor
-│   └── services/                     # ocr_service, llm_service, redflag_service
-├── mobile/                           # Expo app (patient-facing)
-│   └── src/app/                      # register, login, upload, conversation screens
-├── dashboard/                        # React + Vite web app (doctor-facing)
-│   └── src/pages/                    # LoginPage, QueuePage, PatientDetailPage
-└── docs/
-    └── API-Contracts.md
+├── backend/
+├── patient-web/
+├── doctor-web/
+└── admin-web/
 ```
-## Getting started
 
-### Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+### Patient Web
+
+The patient application is designed for deployment on an OPD kiosk.
+
+It provides:
+
+- language selection
+- identity verification
+- consent
+- voice interaction
+- text/touch interaction
+- clinical history intake
+- document capture
+- intake completion
+
+The patient does not use a conventional Aurora username/password account.
+
+### Doctor Web
+
+The doctor application is an authenticated clinical workspace.
+
+It provides:
+
+- doctor authentication
+- department queue
+- patient cards
+- assigned patient view
+- clinical history
+- medical documents
+- AI-generated summary
+- summary editing
+- summary confirmation
+
+### Admin Web
+
+The admin/reception application is intentionally minimal.
+
+It provides:
+
+- read-only department-wide patient-doctor queue
+- promotion requests
+- promotion approval/denial
+- promotion timeout information
+
+It is an operational interface and does not need to expose the complete clinical case.
+
+---
+
+## Backend
+
+The backend is the central application layer.
+
+It is responsible for:
+
+- APIs
+- patient records
+- clinical sessions
+- database access
+- queue management
+- triage policy
+- priority calculation
+- doctor assignment
+- promotion
+- authorization
+- external integration interfaces
+
+The backend does not directly expose the database to frontend applications.
+
+---
+
+## AI Layer
+
+AI-related functionality is isolated under:
+
+```text
+backend/ai/
 ```
-Create a `.env` file in `backend/` (never commit this — see `.env.example` for the required keys):
+
+This includes areas such as:
+
+- LLM
+- NLP
+- OCR
+- STT / ASR
+- TTS
+- clinical conversation processing
+- information extraction
+- clinical signal extraction
+- red-flag detection
+
+The specific AI models and providers are selected separately from the core backend.
+
+The core application should communicate with AI components through defined interfaces rather than depending directly on a particular AI provider.
+
+---
+
+## Queue System
+
+Aurora uses a department-wide patient queue.
+
+Patients are the queue entities.
+
+Doctors are resources assigned to queue entries.
+
+```text
+Patient
+   ↓
+Department Queue
+   ↓
+Priority / Waiting-Time Policy
+   ↓
+Assignment Scheduler
+   ↓
+Doctor
 ```
-MONGO_URI=mongodb://localhost:27017
-GOOGLE_VISION_KEY_PATH=path/to/your/service-account.json
+
+The initial clinical scope is General Medicine.
+
+The queue maintains:
+
+- clinical urgency
+- priority score
+- waiting time
+- effective queue priority
+- assigned doctor
+- queue status
+
+The doctor application renders the queue as a responsive card-based interface.
+
+The card's top accent indicates the patient's severity.
+
+---
+
+## Priority System
+
+Aurora separates clinical urgency from operational scheduling.
+
+```text
+Patient Information
+       ↓
+AI / NLP
+       ↓
+Structured Clinical Signals
+       ↓
+Triage Policy Engine
+       ↓
+Clinical Urgency
+       ↓
+Priority Score
+       ↓
+Queue Scheduler
 ```
-Run the server:
-```bash
-uvicorn main:app --reload
+
+The initial model uses:
+
+```text
+urgency_level: 1–5
+priority_score: 0–100
 ```
-API will be at `http://localhost:8000`, interactive docs at `http://localhost:8000/docs`.
 
-### Mobile app
-```bash
-cd mobile
-npm install
-npm run start
+Waiting-time aging may influence operational queue order without changing the patient's underlying clinical urgency.
+
+The AI does not directly determine arbitrary queue positions.
+
+The backend triage policy engine applies predefined rules to structured clinical signals.
+
+---
+
+## Doctor Assignment
+
+The initial MVP operates within General Medicine.
+
+The assignment scheduler considers:
+
+- department eligibility
+- doctor availability
+- doctor workload
+- patient urgency
+- queue position
+- waiting time
+
+The patient does not need to know which doctor they have been assigned to.
+
+Hospital staff call the patient when the patient is ready to enter the consultation.
+
+---
+
+## Promotion
+
+Aurora can identify situations where a patient may receive substantially earlier attention from another eligible doctor.
+
+The system can create a promotion request.
+
+```text
+Queue Scheduler
+      ↓
+Promotion Candidate
+      ↓
+Admin / Reception
+      ↓
+Allow / Deny
+      ↓
+Automatic Resolution on Timeout
 ```
-Then scan the QR code with Expo Go, or press `a`/`i` for an emulator.
 
-### Dashboard
-```bash
-cd dashboard
-npm install
-npm run dev
+The administrative decision window is initially one minute.
+
+The system remains capable of automatically resolving the request if no administrative action occurs.
+
+Emergency or clinically critical cases must not be indefinitely blocked by administrative inactivity.
+
+---
+
+## Patient Session
+
+A clinical session represents one OPD intake visit.
+
+The session connects:
+
+```text
+Patient
+   │
+   └── Clinical Session
+          ├── Conversation
+          ├── Clinical Signals
+          ├── Documents
+          ├── Document Extractions
+          ├── Clinical Summary
+          └── Queue Entry
 ```
-Runs at `http://localhost:5173` by default.
 
-## API contract
+A session progresses through states such as:
 
-The full API contract — every endpoint, request/response shapes, and status codes — lives in [`docs/API-Contracts.md`](docs/API-Contracts.md). This is the single source of truth all three apps (mobile, backend, dashboard) build against. If you change an endpoint's shape, **update this file in the same PR.**
-
-## Contributing
-
-This is a hackathon project with a hard deadline, so speed matters — but so does not breaking each other's work. Follow these rules:
-
-### Branching
-- **Never push directly to `main`.** `main` should always be in a working/demoable state.
-- Create a branch per feature/fix, off the latest `main`:
-```bash
-  git checkout main
-  git pull origin main
-  git checkout -b <type>/<short-description>
+```text
+CREATED
+IDENTIFYING
+CONSENTED
+HISTORY_IN_PROGRESS
+DOCUMENT_PROCESSING
+SUMMARY_READY
+QUEUED
+ASSIGNED
+CALLED
+IN_CONSULTATION
+COMPLETED
 ```
-  Branch name types: `feature/`, `fix/`, `docs/`, `chore/`
-  Examples: `feature/adaptive-question-llm`, `fix/auth-login-bug`, `docs/api-contract-update`
 
-### Commits
-- Keep commits small and focused — one logical change per commit.
-- Write clear messages: `<type>: <what changed>` — e.g. `fix: correct AsyncIOMotorClient typo in db.py`.
+Temporary kiosk state should be cleared after the intake session is completed.
 
-### Pull requests
-- Open a PR from your branch into `main` as soon as your piece works locally — don't wait until it's "perfect."
-- PR description should say **what changed** and **how to test it**.
-- At least one other teammate should look over the diff before merging, even a quick skim — we're a team of 4, this takes two minutes and catches a lot.
-- Resolve merge conflicts locally (`git pull origin main` into your branch, fix conflicts, push) rather than force-pushing over `main`.
-- Delete your branch after merging to keep things tidy.
+---
 
-### Environment variables
-- Never commit `.env` files. Keep an up-to-date `.env.example` with variable names (no real values) so anyone cloning the repo knows what to fill in.
-- Shared API keys (MongoDB URI, Google Vision key, LLM/Whisper keys) are distributed to the team over a private channel — not through git.
+## External Integrations
 
-### Before you start work each day
-```bash
-git checkout main
-git pull origin main
-git checkout -b your-new-branch
+Initial development uses mock implementations for:
+
+- ABHA
+- FHIR
+- HIS / EMR
+
+The integration layer is located under:
+
+```text
+backend/integrations/
 ```
-Never build on top of an old, out-of-date branch — always branch fresh off `main`.
 
-### Code contract discipline
-- If you're changing an API request/response shape, update `docs/API-Contracts.md` in the **same PR** — don't let the doc drift from reality. Everyone else is coding against this file.
-- If you hit a blocking bug in someone else's code, fix it in a `fix/` branch and PR it rather than editing on `main` directly — even under time pressure.
+The core application communicates with these systems through internal interfaces.
 
-### Timeline discipline
-- Build deadline: **Wednesday 11:59 PM**
-- Thursday: testing + presentation rehearsal
-- Friday: submission
-- Anything that isn't part of the core loop (register → converse → upload docs → summary → doctor approve) after Monday should go into a "future work" note, not into a rushed PR.
+The eventual goal is to replace the mock implementations with appropriate real integrations without restructuring the core Aurora workflow.
+
+---
+
+## Repository Structure
+
+```text
+Aurora/
+│
+├── backend/
+│   ├── ai/
+│   ├── api/
+│   ├── database/
+│   ├── domain/
+│   ├── integrations/
+│   └── models/
+│
+├── patient-web/
+│
+├── doctor-web/
+│
+├── admin-web/
+│
+├── docs/
+│   ├── architecture.md
+│   ├── api-contract.md
+│   └── tech-stack.md
+│
+└── README.md
+```
+
+The structure is expected to evolve as implementation progresses.
+
+The directories represent responsibility boundaries rather than immutable architectural requirements.
+
+---
+
+## Development Scope
+
+### Current MVP
+
+- Patient kiosk web application
+- Doctor web application
+- Admin/reception web application
+- Patient identity verification mock
+- Consent
+- Clinical session management
+- Persistent patient records
+- Clinical history
+- Document records
+- Clinical summaries
+- General Medicine queue
+- Priority system
+- Doctor assignment
+- Automatic promotion
+- Administrative promotion override
+- Backend API
+- Database
+- Mock ABHA integration
+- Mock FHIR integration
+- Mock HIS integration
+- AI integration boundaries
+
+### Future
+
+- Real ABHA integration
+- Real FHIR integration
+- Real HIS / EMR integration
+- Specialist routing recommendations
+- Biometric authentication
+- Advanced analytics
+- Mobile application
+
+---
+
+## Development Order
+
+The project is being rebuilt from the ground up.
+
+The intended implementation order is:
+
+```text
+1. Backend Foundation
+        ↓
+2. Patient Intake
+        ↓
+3. Doctor Queue and Patient Case
+        ↓
+4. Priority / Triage
+        ↓
+5. Doctor Assignment
+        ↓
+6. Promotion
+        ↓
+7. Admin / Reception
+        ↓
+8. AI Integrations
+        ↓
+9. External Healthcare Integrations
+```
+
+The architecture may change as implementation reveals better solutions.
+
+The product workflow and responsibility boundaries are the primary constraints; individual directories, files and implementation details may evolve accordingly.

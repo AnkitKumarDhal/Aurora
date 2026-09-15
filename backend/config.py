@@ -1,8 +1,34 @@
-import os
-from dotenv import load_dotenv
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-DB_NAME = "aurora"
-GOOGLE_VISION_KEY_PATH = os.getenv("GOOGLE_VISION_KEY_PATH")
+class Settings(BaseSettings):
+    environment: str = "development"
+    mongo_uri: str = "mongodb://localhost:27017"
+    mongo_database: str = "aurora"
+    cors_origins: str = (
+        "http://localhost:5173,"
+        "http://localhost:5174,"
+        "http://localhost:5175"
+    )
+    model_config = SettingsConfigDict(
+        env_files=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_origins.split(",")
+            if origin.strip()
+        ]
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()
