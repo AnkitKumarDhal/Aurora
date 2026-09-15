@@ -3,6 +3,8 @@ from .connection import database
 
 async def create_indexes() -> None:
     await database.patients.create_index("patient_id", unique=True,)
+    await database.patients.create_index("abha_reference", unique=True, sparse=True)
+    await database.patients.create_index("hospital_reference", unique=True, sparse=True)
     await database.doctors.create_index("doctor_id", unique=True,)
     await database.departments.create_index("department_id", unique=True,)
     await database.clinical_sessions.create_index("session_id", unique=True,)
