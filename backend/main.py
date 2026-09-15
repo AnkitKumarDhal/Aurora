@@ -1,13 +1,13 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from config import settings
-from database import close_databse
+from database import close_database
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     yield
-    await close_databse()
+    await close_database()
 
 app = FastAPI(
     title="Aurora",
