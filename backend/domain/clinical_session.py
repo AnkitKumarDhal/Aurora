@@ -14,7 +14,7 @@ class ClinicalSession(TimestampedModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
-    def transision_to(self, new_status: SessionStatus) -> None:
+    def transition_to(self, new_status: SessionStatus) -> None:
         allowed_transitions: dict[SessionStatus, set[SessionStatus]] = {
             SessionStatus.CREATED: {
                 SessionStatus.IDENTIFYING,
