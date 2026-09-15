@@ -1,22 +1,22 @@
-from datetime import datetime, timezone
 from uuid import uuid4
-
-from backend.database.repositories.patient import PatientRepository
 from backend.domain.enums import SessionStatus, VerificationStatus
-from backend.models.patient import PatientDocument
+from backend.integrations.identity import (
+    IdentityProvider,
+    IdentityVerificationResult,
+)
 from backend.services.clinical_session import ClinicalSessionService
-from backend.integrations.identity import IdentityProvider, IdentityVerificationResult
+from backend.services.patient import PatientService
 
 
 class VerificationService:
     def __init__(
         self,
         session_service: ClinicalSessionService,
-        patient_repository: PatientRepository,
+        patient_service: PatientService,
         identity_provider: IdentityProvider,
     ) -> None:
         self.session_service = session_service
-        self.patient_repository = patient_repository
+        self.patient_service = patient_service
         self.identity_provider = identity_provider
 
     async def verify(
@@ -38,7 +38,8 @@ class VerificationService:
 
         if session is None:
             raise ValueError(
-                "Clinical session could not enter identifying state")
+                "Clinical session could not enter identifying state",
+            )
 
         if session.status != SessionStatus.IDENTIFYING:
             raise ValueError("Session must be identifying for verification")
@@ -83,7 +84,7 @@ class VerificationService:
         existing = None
 
         if result.abha_reference is not None:
-            existing = await self.patient_repository.get_by_abha_reference(
+            existing = await self.patient_service.get_by_abha_reference(
                 result.abha_reference,
             )
 
@@ -92,12 +93,16 @@ class VerificationService:
 
         if result.patient_id is None or result.display_name is None:
             raise ValueError(
-                "Verified identity is missing patient information")
+                "Verified identity is missing patient information",
+            )
 
-        timestamp = datetime.now(timezone.utc)
+        from backend.domain.patient import Patient
+        from backend.domain.common import utc_now
 
-        await self.patient_repository.create_patient(
-            PatientDocument(
+        timestamp = utc_now()
+
+        await self.patient_service.create_patient(
+            Patient(
                 patient_id=result.patient_id,
                 display_name=result.display_name,
                 date_of_birth=result.date_of_birth,

@@ -13,8 +13,8 @@ from backend.services.verification import VerificationService
 @pytest.mark.asyncio
 async def test_verify_known_identity() -> None:
     session_service = AsyncMock()
-    patient_repository = AsyncMock()
-    patient_repository.get_by_abha_reference.return_value = None
+    patient_service = AsyncMock()
+    patient_service.get_by_abha_reference.return_value = None
 
     session = AsyncMock()
     session.status = SessionStatus.CREATED
@@ -26,7 +26,7 @@ async def test_verify_known_identity() -> None:
 
     service = VerificationService(
         session_service=session_service,
-        patient_repository=patient_repository,
+        patient_service=patient_service,
         identity_provider=MockIdentityProvider(),
     )
 
@@ -48,7 +48,7 @@ async def test_verify_known_identity() -> None:
         "patient-demo-001",
         VerificationStatus.VERIFIED,
     )
-    patient_repository.create_patient.assert_awaited_once()
+    patient_service.create_patient.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -59,11 +59,11 @@ async def test_verify_unknown_identity() -> None:
     session.status = SessionStatus.IDENTIFYING
     session_service.get_session.return_value = session
 
-    patient_repository = AsyncMock()
+    patient_service = AsyncMock()
 
     service = VerificationService(
         session_service=session_service,
-        patient_repository=patient_repository,
+        patient_service=patient_service,
         identity_provider=MockIdentityProvider(),
     )
 
@@ -77,7 +77,7 @@ async def test_verify_unknown_identity() -> None:
     assert result.status == VerificationStatus.FAILED
     assert result.patient_id is None
     session_service.set_identity.assert_not_awaited()
-    patient_repository.create_patient.assert_not_awaited()
+    patient_service.create_patient.assert_not_awaited()
 
 
 @pytest.mark.asyncio
