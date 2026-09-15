@@ -4,18 +4,21 @@ from backend.database.repositories.queue import QueueRepository
 from backend.domain.enums import QueueStatus
 from backend.domain.queue import QueueEntry
 from backend.models.queue import QueueEntryDocument
+from backend.services.queue_engine import QueueEngine
 
 
 class QueueService:
-    def __init__(self, repository: QueueRepository,) -> None:
+    def __init__(self, repository: QueueRepository, engine: QueueEngine | None = None) -> None:
         self.repository = repository
+        self.engine = engine or QueueEngine()
 
     async def get_department_queue(self, department_id: str,) -> list[QueueEntry]:
         documents = await self.repository.get_department_queue(department_id)
-        return [
+        entries = [
             self._to_domain(document)
             for document in documents
         ]
+        return self.engine.sort_entries(entries)
 
     async def get_entry(self, queue_entry_id: str,) -> QueueEntry | None:
         document = await self.repository.get_entry(queue_entry_id)

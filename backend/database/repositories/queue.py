@@ -17,12 +17,7 @@ class QueueRepository(BaseRepository[QueueEntryDocument]):
         cursor = self.collection.find({
             "department_id": department_id,
             "status": QueueStatus.WAITING,
-        },
-            sort=[
-                ("priority_score", -1),
-                ("queued_at", 1),
-        ],
-        )
+        })
 
         return [
             self.model.from_mongo(document)
