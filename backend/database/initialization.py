@@ -28,7 +28,7 @@ async def initialize_database() -> None:
         if collection not in existing_collections
     ]
 
-    if missing_collections:
-        await database.create_collections(missing_collections)
+    for collection in missing_collections:
+        await database.create_collection(collection)
 
     await create_indexes()
