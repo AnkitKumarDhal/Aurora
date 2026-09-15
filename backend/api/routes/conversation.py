@@ -30,7 +30,7 @@ async def submit_turn(
 ) -> dict[str, ConversationTurnResponse]:
     if request.content is None and request.media_reference is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="content or media_reference is required",
         )
 
