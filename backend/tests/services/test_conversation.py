@@ -5,7 +5,7 @@ import pytest
 
 from backend.database.repositories.conversation import ConversationRepository
 from backend.domain.conversation import ConversationTurn
-from backend.domain.enums import ConversationInputType, Speaker
+from backend.domain.enums import ConversationInputType, SessionStatus, Speaker
 from backend.models.conversation import ConversationTurnDocument
 from backend.services.conversation import ConversationService
 
@@ -115,3 +115,105 @@ async def test_add_turn(
     assert created_document.turn_id == "turn-1"
     assert created_document.session_id == "session-1"
     assert created_document.content == "I have a headache."
+
+
+@pytest.mark.asyncio
+async def test_submit_first_turn_moves_session_to_history() -> None:
+    repository = AsyncMock(spec=ConversationRepository)
+    session_service = AsyncMock()
+
+    session = AsyncMock()
+    session.status = SessionStatus.CONSENTED
+    session_service.get_session.return_value = session
+
+    transitioned = AsyncMock()
+    transitioned.status = SessionStatus.HISTORY_IN_PROGRESS
+    session_service.transition_session.return_value = transitioned
+
+    service = ConversationService(
+        repository=repository,
+        session_service=session_service,
+    )
+
+    turn = ConversationTurn(
+        turn_id="turn-1",
+        session_id="session-1",
+        speaker=Speaker.PATIENT,
+        input_type=ConversationInputType.TEXT,
+        content="I have a headache.",
+        language="en",
+        media_reference=None,
+    )
+
+    result = await service.submit_turn(turn)
+
+    assert result is turn
+    session_service.transition_session.assert_awaited_once_with(
+        "session-1",
+        SessionStatus.HISTORY_IN_PROGRESS,
+    )
+    repository.create_turn.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_submit_turn_in_history_does_not_transition() -> None:
+    repository = AsyncMock(spec=ConversationRepository)
+    session_service = AsyncMock()
+
+    session = AsyncMock()
+    session.status = SessionStatus.HISTORY_IN_PROGRESS
+    session_service.get_session.return_value = session
+
+    service = ConversationService(
+        repository=repository,
+        session_service=session_service,
+    )
+
+    turn = ConversationTurn(
+        turn_id="turn-1",
+        session_id="session-1",
+        speaker=Speaker.PATIENT,
+        input_type=ConversationInputType.TEXT,
+        content="Still having the headache.",
+        language="en",
+        media_reference=None,
+    )
+
+    result = await service.submit_turn(turn)
+
+    assert result is turn
+    session_service.transition_session.assert_not_awaited()
+    repository.create_turn.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_submit_turn_requires_consent() -> None:
+    repository = AsyncMock(spec=ConversationRepository)
+    session_service = AsyncMock()
+
+    session = AsyncMock()
+    session.status = SessionStatus.IDENTIFYING
+    session_service.get_session.return_value = session
+
+    service = ConversationService(
+        repository=repository,
+        session_service=session_service,
+    )
+
+    turn = ConversationTurn(
+        turn_id="turn-1",
+        session_id="session-1",
+        speaker=Speaker.PATIENT,
+        input_type=ConversationInputType.TEXT,
+        content="I have a headache.",
+        language="en",
+        media_reference=None,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Session must be consented or have history in progress",
+    ):
+        await service.submit_turn(turn)
+
+    repository.create_turn.assert_not_awaited()
