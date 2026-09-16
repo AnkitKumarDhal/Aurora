@@ -1,12 +1,10 @@
-# backend/tests/api/test_queue.py
-
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
-
 from fastapi.testclient import TestClient
-
-from backend.api.dependencies import get_queue_service
-from backend.domain.enums import QueueStatus, UrgencyLevel
+from backend.api.dependencies import get_doctor_repository, get_queue_service
+from backend.auth.dependencies import get_current_user
+from backend.domain.enums import ActorRole, QueueStatus, UrgencyLevel
+from backend.domain.user import User
 from backend.main import app
 
 
@@ -32,6 +30,42 @@ def make_entry(queue_entry_id: str = "queue-1"):
     )()
 
 
+def make_doctor():
+    return type(
+        "Doctor",
+        (),
+        {
+            "doctor_id": "doctor-1",
+            "display_name": "Dr. Test",
+            "department_ids": ["general-medicine"],
+            "available": True,
+        },
+    )()
+
+
+def make_doctor_user() -> User:
+    now = datetime.now(timezone.utc)
+
+    return User(
+        user_id="user-doctor-1",
+        username="doctor",
+        password_hash="",
+        role=ActorRole.DOCTOR,
+        actor_id="doctor-1",
+        is_active=True,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def override_doctor():
+    app.dependency_overrides[get_current_user] = make_doctor_user
+
+    doctor_repository = AsyncMock()
+    doctor_repository.get_doctor.return_value = make_doctor()
+    app.dependency_overrides[get_doctor_repository] = lambda: doctor_repository
+
+
 def test_get_department_queue():
     service = AsyncMock()
     service.get_department_queue.return_value = [
@@ -40,6 +74,7 @@ def test_get_department_queue():
     ]
 
     app.dependency_overrides[get_queue_service] = lambda: service
+    override_doctor()
 
     try:
         with TestClient(app) as client:
@@ -64,6 +99,7 @@ def test_get_empty_department_queue():
     service.get_department_queue.return_value = []
 
     app.dependency_overrides[get_queue_service] = lambda: service
+    override_doctor()
 
     try:
         with TestClient(app) as client:
@@ -82,6 +118,7 @@ def test_get_queue_entry():
     service.get_entry.return_value = make_entry()
 
     app.dependency_overrides[get_queue_service] = lambda: service
+    override_doctor()
 
     try:
         with TestClient(app) as client:
@@ -102,6 +139,7 @@ def test_get_queue_entry_not_found():
     service.get_entry.return_value = None
 
     app.dependency_overrides[get_queue_service] = lambda: service
+    override_doctor()
 
     try:
         with TestClient(app) as client:

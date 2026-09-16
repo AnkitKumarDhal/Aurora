@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
-
 from fastapi.testclient import TestClient
-
 from backend.api.dependencies import get_workflow_service
-from backend.domain.enums import AssignmentStatus, QueueStatus, UrgencyLevel
+from backend.auth.dependencies import get_current_user
+from backend.domain.enums import ActorRole, AssignmentStatus, QueueStatus, UrgencyLevel
+from backend.domain.user import User
 from backend.main import app
 
 
@@ -48,6 +48,25 @@ def make_assignment():
     )()
 
 
+def make_admin_user() -> User:
+    now = datetime.now(timezone.utc)
+
+    return User(
+        user_id="user-admin-1",
+        username="admin",
+        password_hash="",
+        role=ActorRole.ADMIN,
+        actor_id="admin-1",
+        is_active=True,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def override_admin():
+    app.dependency_overrides[get_current_user] = make_admin_user
+
+
 def test_queue_session():
     service = AsyncMock()
     service.queue_session_from_triage.return_value = make_queue_entry()
@@ -76,6 +95,7 @@ def test_assign_patient():
     service.assign_patient.return_value = make_assignment()
 
     app.dependency_overrides[get_workflow_service] = lambda: service
+    override_admin()
 
     try:
         with TestClient(app) as client:
@@ -85,6 +105,10 @@ def test_assign_patient():
 
         assert response.status_code == 200
         assert response.json()["data"]["assignment"]["doctor_id"] == "doctor-1"
+        service.assign_patient.assert_awaited_once_with(
+            "session-1",
+            "queue-1",
+        )
     finally:
         app.dependency_overrides.clear()
 
@@ -94,6 +118,7 @@ def test_assign_patient_no_doctor():
     service.assign_patient.return_value = None
 
     app.dependency_overrides[get_workflow_service] = lambda: service
+    override_admin()
 
     try:
         with TestClient(app) as client:

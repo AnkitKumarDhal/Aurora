@@ -37,6 +37,14 @@ def get_promotion_service() -> PromotionService:
     return PromotionService(PromotionRepository())
 
 
+def get_doctor_repository() -> DoctorRepository:
+    return DoctorRepository()
+
+
+def get_assignment_repository() -> AssignmentRepository:
+    return AssignmentRepository()
+
+
 def get_clinical_session_service() -> ClinicalSessionService:
     return ClinicalSessionService(ClinicalSessionRepository())
 

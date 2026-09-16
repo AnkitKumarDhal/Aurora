@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from backend.api.dependencies import get_queue_service
 from backend.api.schemas.queue import QueueEntryResponse
+from backend.auth.authorization import require_department_access, require_queue_entry_access
 from backend.domain.queue import QueueEntry
 from backend.services.queue import QueueService
 
@@ -32,13 +33,11 @@ def _to_response(entry: QueueEntry) -> QueueEntryResponse:
 )
 async def get_department_queue(
     department_id: str,
+    current_user=Depends(require_department_access),
     service: QueueService = Depends(get_queue_service),
 ) -> dict[str, list[QueueEntryResponse]]:
     entries = await service.get_department_queue(department_id)
-
-    return {
-        "data": [_to_response(entry) for entry in entries],
-    }
+    return {"data": [_to_response(entry) for entry in entries]}
 
 
 @router.get(
@@ -47,14 +46,13 @@ async def get_department_queue(
 )
 async def get_queue_entry(
     queue_entry_id: str,
+    current_user=Depends(require_queue_entry_access),
     service: QueueService = Depends(get_queue_service),
 ) -> dict[str, QueueEntryResponse]:
     entry = await service.get_entry(queue_entry_id)
 
     if entry is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Queue entry not found",
-        )
+            status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
 
     return {"data": _to_response(entry)}

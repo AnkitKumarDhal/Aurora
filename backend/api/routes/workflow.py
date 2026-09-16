@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from backend.auth.dependencies import require_roles
 from backend.api.dependencies import get_workflow_service
 from backend.api.schemas.queue import QueueEntryResponse
 from backend.api.schemas.workflow import AssignmentResponse, WorkflowAssignmentResponse, WorkflowQueueActionResponse
+from backend.auth.dependencies import require_roles
 from backend.domain.enums import ActorRole
 from backend.domain.user import User
 from backend.services.workflow import WorkflowService
@@ -61,10 +61,8 @@ async def queue_session(
             }
             else status.HTTP_400_BAD_REQUEST
         )
-        raise HTTPException(
-            status_code=response_status,
-            detail=message,
-        ) from exc
+        raise HTTPException(status_code=response_status,
+                            detail=message) from exc
 
     return {
         "data": WorkflowQueueActionResponse(
@@ -80,13 +78,11 @@ async def queue_session(
 async def assign_patient(
     session_id: str,
     queue_entry_id: str,
+    current_user: User = Depends(require_roles(ActorRole.ADMIN)),
     service: WorkflowService = Depends(get_workflow_service),
 ) -> dict[str, WorkflowAssignmentResponse]:
     try:
-        assignment = await service.assign_patient(
-            session_id,
-            queue_entry_id,
-        )
+        assignment = await service.assign_patient(session_id, queue_entry_id)
     except ValueError as exc:
         message = str(exc)
         response_status = (
@@ -97,16 +93,12 @@ async def assign_patient(
             }
             else status.HTTP_400_BAD_REQUEST
         )
-        raise HTTPException(
-            status_code=response_status,
-            detail=message,
-        ) from exc
+        raise HTTPException(status_code=response_status,
+                            detail=message) from exc
 
     if assignment is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No available doctor for assignment",
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="No available doctor for assignment")
 
     return {
         "data": WorkflowAssignmentResponse(
@@ -122,17 +114,11 @@ async def assign_patient(
 async def call_patient(
     session_id: str,
     queue_entry_id: str,
-    current_user: User = Depends(
-        require_roles(ActorRole.DOCTOR)
-    ),
+    current_user: User = Depends(require_roles(ActorRole.DOCTOR)),
     service: WorkflowService = Depends(get_workflow_service),
 ) -> dict[str, WorkflowQueueActionResponse]:
     try:
-        entry = await service.call_patient(
-            session_id,
-            queue_entry_id,
-            doctor_id=current_user.actor_id
-        )
+        entry = await service.call_patient(session_id, queue_entry_id, doctor_id=current_user.actor_id)
     except ValueError as exc:
         message = str(exc)
         response_status = (
@@ -143,10 +129,8 @@ async def call_patient(
             }
             else status.HTTP_400_BAD_REQUEST
         )
-        raise HTTPException(
-            status_code=response_status,
-            detail=message,
-        ) from exc
+        raise HTTPException(status_code=response_status,
+                            detail=message) from exc
 
     return {
         "data": WorkflowQueueActionResponse(
@@ -162,17 +146,11 @@ async def call_patient(
 async def start_consultation(
     session_id: str,
     queue_entry_id: str,
-    current_user: User = Depends(
-        require_roles(ActorRole.DOCTOR)
-    ),
+    current_user: User = Depends(require_roles(ActorRole.DOCTOR)),
     service: WorkflowService = Depends(get_workflow_service),
 ) -> dict[str, WorkflowQueueActionResponse]:
     try:
-        entry = await service.start_consultation(
-            session_id,
-            queue_entry_id,
-            doctor_id=current_user.actor_id
-        )
+        entry = await service.start_consultation(session_id, queue_entry_id, doctor_id=current_user.actor_id)
     except ValueError as exc:
         message = str(exc)
         response_status = (
@@ -183,10 +161,8 @@ async def start_consultation(
             }
             else status.HTTP_400_BAD_REQUEST
         )
-        raise HTTPException(
-            status_code=response_status,
-            detail=message,
-        ) from exc
+        raise HTTPException(status_code=response_status,
+                            detail=message) from exc
 
     return {
         "data": WorkflowQueueActionResponse(
@@ -202,17 +178,11 @@ async def start_consultation(
 async def complete_consultation(
     session_id: str,
     queue_entry_id: str,
-    current_user: User = Depends(
-        require_roles(ActorRole.DOCTOR)
-    ),
+    current_user: User = Depends(require_roles(ActorRole.DOCTOR)),
     service: WorkflowService = Depends(get_workflow_service),
 ) -> dict[str, WorkflowQueueActionResponse]:
     try:
-        entry = await service.complete_consultation(
-            session_id,
-            queue_entry_id,
-            doctor_id=current_user.actor_id
-        )
+        entry = await service.complete_consultation(session_id, queue_entry_id, doctor_id=current_user.actor_id)
     except ValueError as exc:
         message = str(exc)
         response_status = (
@@ -223,10 +193,8 @@ async def complete_consultation(
             }
             else status.HTTP_400_BAD_REQUEST
         )
-        raise HTTPException(
-            status_code=response_status,
-            detail=message,
-        ) from exc
+        raise HTTPException(status_code=response_status,
+                            detail=message) from exc
 
     return {
         "data": WorkflowQueueActionResponse(
