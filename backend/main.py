@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from backend.api.routes.auth import router as auth_router
+from backend.api.routes.assignment import router as assignment_router
 from backend.api.routes.clinical_summary import router as clinical_summary_router
 from backend.api.routes.verification import router as verification_router
 from backend.api.routes.conversation import router as conversation_router
@@ -37,6 +38,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(assignment_router, prefix="/api/v1")
 app.include_router(sessions_router, prefix="/api/v1")
 app.include_router(verification_router, prefix="/api/v1")
 app.include_router(consent_router, prefix="/api/v1")
