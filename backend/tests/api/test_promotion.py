@@ -1,162 +1,188 @@
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock
-
-from fastapi.testclient import TestClient
-
+from fastapi import APIRouter, Depends, HTTPException, status
 from backend.api.dependencies import get_promotion_service
-from backend.domain.enums import PromotionStatus
+from backend.api.schemas.promotion import PromotionCreateRequest, PromotionDecisionRequest, PromotionResponse
+from backend.auth.dependencies import require_roles
+from backend.domain.enums import ActorRole
 from backend.domain.promotion import PromotionRequest
-from backend.main import app
+from backend.domain.user import User
+from backend.services.promotion import PromotionService
 
 
-def make_request(
-    status: PromotionStatus = PromotionStatus.PENDING,
-) -> PromotionRequest:
-    timestamp = datetime.now(timezone.utc)
+router = APIRouter(
+    prefix="/promotions",
+    tags=["promotion"],
+)
 
-    return PromotionRequest(
-        promotion_request_id="promotion-1",
-        queue_entry_id="queue-1",
-        reason="Earlier available doctor",
-        status=status,
-        decision_deadline=timestamp + timedelta(seconds=60),
-        decided_by=None,
-        decision_reason=None,
-        decided_at=None,
-        created_at=timestamp,
-        updated_at=timestamp,
+
+def _to_response(
+    request: PromotionRequest,
+) -> PromotionResponse:
+    return PromotionResponse(
+        promotion_request_id=request.promotion_request_id,
+        queue_entry_id=request.queue_entry_id,
+        reason=request.reason,
+        status=request.status,
+        decision_deadline=request.decision_deadline,
+        decided_by=request.decided_by,
+        decision_reason=request.decision_reason,
+        decided_at=request.decided_at,
     )
 
 
-def make_service() -> AsyncMock:
-    return AsyncMock()
-
-
-def override_service(service: AsyncMock):
-    app.dependency_overrides[
+@router.get(
+    "/pending",
+    response_model=dict[str, list[PromotionResponse]],
+)
+async def get_pending_promotions(
+    service: PromotionService = Depends(
         get_promotion_service
-    ] = lambda: service
+    ),
+) -> dict[str, list[PromotionResponse]]:
+    requests = await service.get_pending_requests()
+
+    return {
+        "data": [
+            _to_response(request)
+            for request in requests
+        ],
+    }
 
 
-def clear_override():
-    app.dependency_overrides.pop(
-        get_promotion_service,
-        None,
+@router.get(
+    "/{promotion_request_id}",
+    response_model=dict[str, PromotionResponse],
+)
+async def get_promotion(
+    promotion_request_id: str,
+    service: PromotionService = Depends(
+        get_promotion_service
+    ),
+) -> dict[str, PromotionResponse]:
+    request = await service.get_request(
+        promotion_request_id,
     )
 
-
-def test_get_promotion():
-    service = make_service()
-    service.get_request.return_value = make_request()
-
-    override_service(service)
-
-    try:
-        with TestClient(app) as client:
-            response = client.get(
-                "/api/v1/promotions/promotion-1"
-            )
-
-        assert response.status_code == 200
-        assert (
-            response.json()["data"]["promotion_request_id"]
-            == "promotion-1"
+    if request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Promotion request not found",
         )
-    finally:
-        clear_override()
+
+    return {
+        "data": _to_response(request),
+    }
 
 
-def test_get_promotion_not_found():
-    service = make_service()
-    service.get_request.return_value = None
-
-    override_service(service)
-
+@router.post(
+    "",
+    response_model=dict[str, PromotionResponse],
+)
+async def create_promotion(
+    request: PromotionCreateRequest,
+    service: PromotionService = Depends(
+        get_promotion_service
+    ),
+) -> dict[str, PromotionResponse]:
     try:
-        with TestClient(app) as client:
-            response = client.get(
-                "/api/v1/promotions/missing"
-            )
+        result = await service.create_promotion_request(
+            request.queue_entry_id,
+            request.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
 
-        assert response.status_code == 404
-    finally:
-        clear_override()
+    return {
+        "data": _to_response(result),
+    }
 
 
-def test_create_promotion():
-    service = make_service()
-    service.create_promotion_request.return_value = (
-        make_request()
+@router.post(
+    "/{promotion_request_id}/approve",
+    response_model=dict[str, PromotionResponse],
+)
+async def approve_promotion(
+    promotion_request_id: str,
+    request: PromotionDecisionRequest,
+    current_user: User = Depends(
+        require_roles(ActorRole.ADMIN)
+    ),
+    service: PromotionService = Depends(
+        get_promotion_service
+    ),
+) -> dict[str, PromotionResponse]:
+    result = await service.approve(
+        promotion_request_id,
+        decided_by=current_user.actor_id,
+        decision_reason=request.decision_reason,
     )
 
-    override_service(service)
-
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/api/v1/promotions",
-                json={
-                    "queue_entry_id": "queue-1",
-                    "reason": "Earlier available doctor",
-                },
-            )
-
-        assert response.status_code == 200
-        assert (
-            response.json()["data"]["status"]
-            == "PENDING"
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Promotion request not found",
         )
-    finally:
-        clear_override()
+
+    return {
+        "data": _to_response(result),
+    }
 
 
-def test_approve_promotion():
-    service = make_service()
-    service.approve.return_value = make_request(
-        PromotionStatus.APPROVED
+@router.post(
+    "/{promotion_request_id}/deny",
+    response_model=dict[str, PromotionResponse],
+)
+async def deny_promotion(
+    promotion_request_id: str,
+    request: PromotionDecisionRequest,
+    current_user: User = Depends(
+        require_roles(ActorRole.ADMIN)
+    ),
+    service: PromotionService = Depends(
+        get_promotion_service
+    ),
+) -> dict[str, PromotionResponse]:
+    result = await service.deny(
+        promotion_request_id,
+        decided_by=current_user.actor_id,
+        decision_reason=request.decision_reason,
     )
 
-    override_service(service)
-
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/api/v1/promotions/promotion-1/approve",
-                json={
-                    "decision_reason": "Approved",
-                },
-            )
-
-        assert response.status_code == 200
-        assert (
-            response.json()["data"]["status"]
-            == "APPROVED"
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Promotion request not found",
         )
-    finally:
-        clear_override()
+
+    return {
+        "data": _to_response(result),
+    }
 
 
-def test_deny_promotion():
-    service = make_service()
-    service.deny.return_value = make_request(
-        PromotionStatus.DENIED
+@router.post(
+    "/{promotion_request_id}/cancel",
+    response_model=dict[str, PromotionResponse],
+)
+async def cancel_promotion(
+    promotion_request_id: str,
+    request: PromotionDecisionRequest,
+    service: PromotionService = Depends(
+        get_promotion_service
+    ),
+) -> dict[str, PromotionResponse]:
+    result = await service.cancel(
+        promotion_request_id,
+        request.decision_reason,
     )
 
-    override_service(service)
-
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/api/v1/promotions/promotion-1/deny",
-                json={
-                    "decision_reason": "Keep current assignment",
-                },
-            )
-
-        assert response.status_code == 200
-        assert (
-            response.json()["data"]["status"]
-            == "DENIED"
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Promotion request not found",
         )
-    finally:
-        clear_override()
+
+    return {
+        "data": _to_response(result),
+    }

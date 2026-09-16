@@ -6,6 +6,7 @@ COLLECTIONS = (
     "patients",
     "doctors",
     "departments",
+    "users",
     "clinical_sessions",
     "conversation_turns",
     "clinical_signals",

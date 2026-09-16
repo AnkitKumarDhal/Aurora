@@ -1,3 +1,4 @@
+from backend.auth.service import AuthenticationService
 from backend.database.repositories.assignment import AssignmentRepository
 from backend.database.repositories.doctor import DoctorRepository
 from backend.database.repositories.clinical_session import ClinicalSessionRepository
@@ -9,6 +10,7 @@ from backend.database.repositories.patient import PatientRepository
 from backend.database.repositories.triage import TriageRepository
 from backend.database.repositories.queue import QueueRepository
 from backend.database.repositories.promotion import PromotionRepository
+from backend.database.repositories.user import UserRepository
 from backend.integrations.identity import MockIdentityProvider
 from backend.integrations.storage import LocalStorage
 from backend.services.assignment import AssignmentService
@@ -25,6 +27,10 @@ from backend.services.triage import TriageService
 from backend.services.queue import QueueService
 from backend.services.workflow import WorkflowService
 from backend.services.promotion import PromotionService
+
+
+def get_authentication_service() -> AuthenticationService:
+    return AuthenticationService(UserRepository())
 
 
 def get_promotion_service() -> PromotionService:

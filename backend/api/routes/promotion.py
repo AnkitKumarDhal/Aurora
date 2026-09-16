@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from backend.auth.dependencies import require_roles
+from backend.domain.enums import ActorRole
+from backend.domain.user import User
 from backend.api.dependencies import get_promotion_service
 from backend.api.schemas.promotion import PromotionCreateRequest, PromotionDecisionRequest, PromotionResponse
 from backend.domain.promotion import PromotionRequest
@@ -103,13 +106,16 @@ async def create_promotion(
 async def approve_promotion(
     promotion_request_id: str,
     request: PromotionDecisionRequest,
+    current_user: User = Depends(
+        require_roles(ActorRole.ADMIN)
+    ),
     service: PromotionService = Depends(
         get_promotion_service
     ),
 ) -> dict[str, PromotionResponse]:
     result = await service.approve(
         promotion_request_id,
-        decided_by="admin",
+        decided_by=current_user.actor_id,
         decision_reason=request.decision_reason,
     )
 
