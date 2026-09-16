@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from backend.api.routes.clinical_summary import router as clinical_summary_router
-from backend.api.routes.consent import router as consent_router
+from backend.api.routes.verification import router as verification_router
 from backend.api.routes.conversation import router as conversation_router
 from backend.api.routes.documents import router as documents_router
 from backend.api.routes.sessions import router as sessions_router
-from backend.api.routes.verification import router as verification_router
+from backend.api.routes.consent import router as consent_router
+from backend.api.routes.triage import router as triage_router
+from backend.api.routes.intake import router as intake_router
+from backend.api.routes.queue import router as queue_router
 from backend.config import settings
 from backend.database import close_database, initialize_database
 from backend.database.connection import initialize_database_connection
@@ -31,6 +34,9 @@ app.include_router(consent_router, prefix="/api/v1")
 app.include_router(conversation_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(clinical_summary_router, prefix="/api/v1")
+app.include_router(intake_router, prefix="/api/v1")
+app.include_router(triage_router, prefix="/api/v1")
+app.include_router(queue_router, prefix="/api/v1")
 
 
 @app.get("/health")

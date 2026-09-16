@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from backend.database.repositories.triage import TriageRepository
+from backend.database.repositories.clinical_signal import ClinicalSignalRepository
 from backend.domain.clinical_signal import ClinicalSignal
 from backend.domain.enums import TriageStatus, UrgencyLevel
 from backend.domain.triage import TriageResult
@@ -9,8 +10,9 @@ from backend.services.triage_engine import TriageEngine
 
 
 class TriageService:
-    def __init__(self, repository: TriageRepository, engine: TriageEngine | None = None) -> None:
+    def __init__(self, repository: TriageRepository, signal_repository: ClinicalSignalRepository | None = None, engine: TriageEngine | None = None) -> None:
         self.repository = repository
+        self.signal_repository = signal_repository
         self.engine = engine or TriageEngine()
 
     async def get_result(self, triage_id: str) -> TriageResult | None:
@@ -28,6 +30,26 @@ class TriageService:
             return None
 
         return self._to_domain(document)
+
+    async def get_session_signals(self, session_id: str) -> list[ClinicalSignal]:
+        if self.signal_repository is None:
+            raise ValueError("Clinical signal repository is not configured")
+        documents = await self.signal_repository.get_session_signals(session_id)
+
+        return [
+            ClinicalSignal(
+                signal_id=document.signal_id,
+                session_id=document.session_id,
+                signal_type=document.signal_type,
+                name=document.name,
+                value=document.value,
+                confidence=document.confidence,
+                source=document.source,
+                created_at=document.created_at,
+                updated_at=document.updated_at,
+            )
+            for document in documents
+        ]
 
     async def create_result(self, result: TriageResult) -> TriageResult:
         document = self._to_document(result)
