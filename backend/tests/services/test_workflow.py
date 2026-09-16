@@ -368,3 +368,158 @@ async def test_complete_consultation_updates_encounter_status():
         "session-1",
         SessionStatus.COMPLETED,
     )
+
+
+@pytest.mark.asyncio
+async def test_complete_workflow_lifecycle():
+    session_service = AsyncMock()
+    queue_service = AsyncMock()
+    assignment_scheduler = AsyncMock()
+    assignment_service = AsyncMock()
+    triage_service = AsyncMock()
+    healthcare_integration_service = AsyncMock()
+
+    session = make_session(SessionStatus.SUMMARY_READY)
+    triage = make_triage()
+    queue_entry = None
+    assignment = make_assignment()
+
+    async def get_session(session_id: str):
+        assert session_id == "session-1"
+        return session
+
+    async def transition_session(
+        session_id: str,
+        status: SessionStatus,
+    ):
+        assert session_id == "session-1"
+        session.status = status
+        return session
+
+    async def enqueue(entry):
+        nonlocal queue_entry
+        queue_entry = entry
+        queue_entry.position = 1
+        queue_entry.queued_at = datetime.now(timezone.utc)
+        return queue_entry
+
+    async def get_entry(queue_entry_id: str):
+        assert queue_entry_id == "queue-1"
+        return queue_entry
+
+    async def update_entry(
+        queue_entry_id: str,
+        updates: dict,
+    ):
+        assert queue_entry_id == "queue-1"
+
+        for key, value in updates.items():
+            setattr(queue_entry, key, value)
+
+        return queue_entry
+
+    async def mark_called(queue_entry_id: str):
+        assert queue_entry_id == "queue-1"
+        queue_entry.status = QueueStatus.CALLED
+        queue_entry.called_at = datetime.now(timezone.utc)
+        return queue_entry
+
+    async def start_consultation(queue_entry_id: str):
+        assert queue_entry_id == "queue-1"
+        queue_entry.status = QueueStatus.IN_CONSULTATION
+        return queue_entry
+
+    async def complete(queue_entry_id: str):
+        assert queue_entry_id == "queue-1"
+        queue_entry.status = QueueStatus.COMPLETED
+        queue_entry.completed_at = datetime.now(timezone.utc)
+        return queue_entry
+
+    async def get_session_result(session_id: str):
+        assert session_id == "session-1"
+        return triage
+
+    async def get_session_assignment(session_id: str):
+        assert session_id == "session-1"
+        return assignment
+
+    async def create_assignment(value):
+        assert value.assignment_id == assignment.assignment_id
+        return value
+
+    async def release_assignment(assignment_id: str):
+        assert assignment_id == assignment.assignment_id
+        assignment.status = AssignmentStatus.RELEASED
+        assignment.released_at = datetime.now(timezone.utc)
+        return assignment
+
+    session_service.get_session.side_effect = get_session
+    session_service.transition_session.side_effect = transition_session
+
+    triage_service.get_session_result.side_effect = get_session_result
+
+    queue_service.enqueue.side_effect = enqueue
+    queue_service.get_entry.side_effect = get_entry
+    queue_service.update_entry.side_effect = update_entry
+    queue_service.mark_called.side_effect = mark_called
+    queue_service.start_consultation.side_effect = start_consultation
+    queue_service.complete.side_effect = complete
+
+    assignment_scheduler.assign.return_value = assignment
+    assignment_service.create_assignment.side_effect = create_assignment
+    assignment_service.get_session_assignment.side_effect = get_session_assignment
+    assignment_service.release_assignment.side_effect = release_assignment
+
+    service = WorkflowService(
+        session_service,
+        queue_service,
+        assignment_scheduler,
+        assignment_service,
+        triage_service,
+        healthcare_integration_service,
+    )
+
+    queued_entry = await service.queue_session_from_triage("session-1")
+
+    assert queued_entry.status == QueueStatus.WAITING
+    assert queued_entry.position == 1
+    assert session.status == SessionStatus.QUEUED
+
+    assigned_doctor = await service.assign_patient(
+        "session-1",
+        "queue-1",
+    )
+
+    assert assigned_doctor.doctor_id == "doctor-1"
+    assert queue_entry.doctor_id == "doctor-1"
+    assert session.status == SessionStatus.ASSIGNED
+
+    called_entry = await service.call_patient(
+        "session-1",
+        "queue-1",
+        "doctor-1",
+    )
+
+    assert called_entry.status == QueueStatus.CALLED
+    assert session.status == SessionStatus.CALLED
+
+    consultation_entry = await service.start_consultation(
+        "session-1",
+        "queue-1",
+        "doctor-1",
+    )
+
+    assert consultation_entry.status == QueueStatus.IN_CONSULTATION
+    assert session.status == SessionStatus.IN_CONSULTATION
+
+    completed_entry = await service.complete_consultation(
+        "session-1",
+        "queue-1",
+        "doctor-1",
+    )
+
+    assert completed_entry.status == QueueStatus.COMPLETED
+    assert session.status == SessionStatus.COMPLETED
+    assert assignment.status == AssignmentStatus.RELEASED
+    assert healthcare_integration_service.create_encounter.await_count == 1
+    assert healthcare_integration_service.update_encounter_status.await_count == 3
