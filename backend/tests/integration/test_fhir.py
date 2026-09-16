@@ -1,12 +1,16 @@
 import pytest
 
-from backend.integrations.fhir import FhirDocumentReference, FhirEncounter, FhirPatient, MockFhirClient
+from backend.integrations.fhir import (
+    FhirDocumentReference,
+    FhirEncounter,
+    FhirPatient,
+    MockFhirClient,
+)
 
 
 @pytest.mark.asyncio
 async def test_upsert_patient():
     client = MockFhirClient()
-
     patient = FhirPatient(
         patient_id="patient-1",
         abha_id="11-22-33-44-55-66",
@@ -23,7 +27,6 @@ async def test_upsert_patient():
 @pytest.mark.asyncio
 async def test_create_encounter():
     client = MockFhirClient()
-
     encounter = FhirEncounter(
         encounter_id="encounter-1",
         patient_id="patient-1",
@@ -40,7 +43,6 @@ async def test_create_encounter():
 @pytest.mark.asyncio
 async def test_create_document_reference():
     client = MockFhirClient()
-
     document = FhirDocumentReference(
         document_reference_id="document-reference-1",
         patient_id="patient-1",
