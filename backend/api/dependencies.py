@@ -24,6 +24,7 @@ from backend.services.healthcare_integration import HealthcareIntegrationService
 from backend.services.intake import IntakeService
 from backend.services.consent import ConsentService
 from backend.services.conversation import ConversationService
+from backend.services.doctor_case import DoctorCaseService
 from backend.services.document import DocumentService
 from backend.services.patient import PatientService
 from backend.services.verification import VerificationService
@@ -143,4 +144,34 @@ def get_document_service() -> DocumentService:
         document_repository=DocumentRepository(),
         extraction_repository=DocumentExtractionRepository(),
         session_service=ClinicalSessionService(ClinicalSessionRepository()),
+    )
+
+
+def get_doctor_case_service() -> DoctorCaseService:
+    assignment_repository = AssignmentRepository()
+
+    return DoctorCaseService(
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
+        patient_service=PatientService(
+            PatientRepository(),
+        ),
+        summary_service=ClinicalSummaryService(
+            ClinicalSummaryRepository(),
+        ),
+        document_service=DocumentService(
+            document_repository=DocumentRepository(),
+            extraction_repository=DocumentExtractionRepository(),
+            session_service=ClinicalSessionService(
+                ClinicalSessionRepository(),
+            ),
+        ),
+        triage_service=TriageService(
+            repository=TriageRepository(),
+            signal_repository=ClinicalSignalRepository(),
+        ),
+        assignment_service=AssignmentService(
+            assignment_repository,
+        ),
     )
