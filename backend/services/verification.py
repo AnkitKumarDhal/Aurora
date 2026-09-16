@@ -1,10 +1,10 @@
 from uuid import uuid4
+from backend.domain.common import utc_now
 from backend.domain.enums import SessionStatus, VerificationStatus
-from backend.integrations.identity import (
-    IdentityProvider,
-    IdentityVerificationResult,
-)
+from backend.domain.patient import Patient
+from backend.integrations.identity import IdentityProvider, IdentityVerificationResult
 from backend.services.clinical_session import ClinicalSessionService
+from backend.services.healthcare_integration import HealthcareIntegrationService
 from backend.services.patient import PatientService
 
 
@@ -14,10 +14,12 @@ class VerificationService:
         session_service: ClinicalSessionService,
         patient_service: PatientService,
         identity_provider: IdentityProvider,
+        healthcare_integration_service: HealthcareIntegrationService,
     ) -> None:
         self.session_service = session_service
         self.patient_service = patient_service
         self.identity_provider = identity_provider
+        self.healthcare_integration_service = healthcare_integration_service
 
     async def verify(
         self,
@@ -38,8 +40,7 @@ class VerificationService:
 
         if session is None:
             raise ValueError(
-                "Clinical session could not enter identifying state",
-            )
+                "Clinical session could not enter identifying state")
 
         if session.status != SessionStatus.IDENTIFYING:
             raise ValueError("Session must be identifying for verification")
@@ -89,27 +90,25 @@ class VerificationService:
             )
 
         if existing is not None:
+            await self.healthcare_integration_service.sync_patient(existing)
             return
 
         if result.patient_id is None or result.display_name is None:
             raise ValueError(
-                "Verified identity is missing patient information",
-            )
-
-        from backend.domain.patient import Patient
-        from backend.domain.common import utc_now
+                "Verified identity is missing patient information")
 
         timestamp = utc_now()
 
-        await self.patient_service.create_patient(
-            Patient(
-                patient_id=result.patient_id,
-                display_name=result.display_name,
-                date_of_birth=result.date_of_birth,
-                age=result.age,
-                abha_reference=result.abha_reference,
-                hospital_reference=result.hospital_reference,
-                created_at=timestamp,
-                updated_at=timestamp,
-            ),
+        patient = Patient(
+            patient_id=result.patient_id,
+            display_name=result.display_name,
+            date_of_birth=result.date_of_birth,
+            age=result.age,
+            abha_reference=result.abha_reference,
+            hospital_reference=result.hospital_reference,
+            created_at=timestamp,
+            updated_at=timestamp,
         )
+
+        await self.patient_service.create_patient(patient)
+        await self.healthcare_integration_service.sync_patient(patient)

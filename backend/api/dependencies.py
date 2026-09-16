@@ -11,12 +11,16 @@ from backend.database.repositories.triage import TriageRepository
 from backend.database.repositories.queue import QueueRepository
 from backend.database.repositories.promotion import PromotionRepository
 from backend.database.repositories.user import UserRepository
+from backend.integrations.abdm import MockAbdmClient
+from backend.integrations.fhir import MockFhirClient
+from backend.integrations.his import MockHisClient
 from backend.integrations.identity import MockIdentityProvider
 from backend.integrations.storage import LocalStorage
 from backend.services.assignment import AssignmentService
 from backend.services.assignment_scheduler import AssignmentSchedulerService
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_summary import ClinicalSummaryService
+from backend.services.healthcare_integration import HealthcareIntegrationService
 from backend.services.intake import IntakeService
 from backend.services.consent import ConsentService
 from backend.services.conversation import ConversationService
@@ -59,8 +63,8 @@ def get_intake_service() -> IntakeService:
         summary_service=ClinicalSummaryService(ClinicalSummaryRepository()),
         triage_service=TriageService(
             repository=TriageRepository(),
-            signal_repository=ClinicalSignalRepository()
-        )
+            signal_repository=ClinicalSignalRepository(),
+        ),
     )
 
 
@@ -99,11 +103,20 @@ def get_patient_service() -> PatientService:
     return PatientService(PatientRepository())
 
 
+def get_healthcare_integration_service() -> HealthcareIntegrationService:
+    return HealthcareIntegrationService(
+        abdm_client=MockAbdmClient(),
+        fhir_client=MockFhirClient(),
+        his_client=MockHisClient(),
+    )
+
+
 def get_verification_service() -> VerificationService:
     return VerificationService(
         session_service=ClinicalSessionService(ClinicalSessionRepository()),
         patient_service=PatientService(PatientRepository()),
         identity_provider=MockIdentityProvider(),
+        healthcare_integration_service=get_healthcare_integration_service(),
     )
 
 
