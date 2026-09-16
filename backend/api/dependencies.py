@@ -20,6 +20,7 @@ from backend.services.assignment import AssignmentService
 from backend.services.assignment_scheduler import AssignmentSchedulerService
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_summary import ClinicalSummaryService
+from backend.services.doctor_queue import DoctorQueueService
 from backend.services.healthcare_integration import HealthcareIntegrationService
 from backend.services.intake import IntakeService
 from backend.services.consent import ConsentService
@@ -119,6 +120,24 @@ def get_verification_service() -> VerificationService:
         patient_service=PatientService(PatientRepository()),
         identity_provider=MockIdentityProvider(),
         healthcare_integration_service=get_healthcare_integration_service(),
+    )
+
+
+def get_doctor_queue_service() -> DoctorQueueService:
+    return DoctorQueueService(
+        doctor_repository=DoctorRepository(),
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
+        queue_service=QueueService(
+            QueueRepository(),
+        ),
+        patient_service=PatientService(
+            PatientRepository(),
+        ),
+        summary_service=ClinicalSummaryService(
+            ClinicalSummaryRepository(),
+        ),
     )
 
 
