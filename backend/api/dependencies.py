@@ -1,3 +1,5 @@
+from backend.database.repositories.assignment import AssignmentRepository
+from backend.database.repositories.doctor import DoctorRepository
 from backend.database.repositories.clinical_session import ClinicalSessionRepository
 from backend.database.repositories.clinical_signal import ClinicalSignalRepository
 from backend.database.repositories.conversation import ConversationRepository
@@ -8,6 +10,8 @@ from backend.database.repositories.triage import TriageRepository
 from backend.database.repositories.queue import QueueRepository
 from backend.integrations.identity import MockIdentityProvider
 from backend.integrations.storage import LocalStorage
+from backend.services.assignment import AssignmentService
+from backend.services.assignment_scheduler import AssignmentSchedulerService
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_summary import ClinicalSummaryService
 from backend.services.intake import IntakeService
@@ -18,6 +22,7 @@ from backend.services.patient import PatientService
 from backend.services.verification import VerificationService
 from backend.services.triage import TriageService
 from backend.services.queue import QueueService
+from backend.services.workflow import WorkflowService
 
 
 def get_clinical_session_service() -> ClinicalSessionService:
@@ -31,7 +36,11 @@ def get_clinical_summary_service() -> ClinicalSummaryService:
 def get_intake_service() -> IntakeService:
     return IntakeService(
         session_service=ClinicalSessionService(ClinicalSessionRepository()),
-        summary_service=ClinicalSummaryService(ClinicalSummaryRepository())
+        summary_service=ClinicalSummaryService(ClinicalSummaryRepository()),
+        triage_service=TriageService(
+            repository=TriageRepository(),
+            signal_repository=ClinicalSignalRepository()
+        )
     )
 
 
@@ -43,6 +52,26 @@ def get_triage_service() -> TriageService:
     return TriageService(
         repository=TriageRepository(),
         signal_repository=ClinicalSignalRepository(),
+    )
+
+
+def get_workflow_service() -> WorkflowService:
+    assignment_repository = AssignmentRepository()
+    assignment_service = AssignmentService(assignment_repository)
+
+    return WorkflowService(
+        session_service=ClinicalSessionService(ClinicalSessionRepository()),
+        queue_service=QueueService(QueueRepository()),
+        assignment_scheduler=AssignmentSchedulerService(
+            doctor_repository=DoctorRepository(),
+            assignment_repository=assignment_repository,
+            assignment_service=assignment_service,
+        ),
+        assignment_service=assignment_service,
+        triage_service=TriageService(
+            repository=TriageRepository(),
+            signal_repository=ClinicalSignalRepository(),
+        ),
     )
 
 

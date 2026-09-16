@@ -10,7 +10,8 @@ class DoctorRepository(BaseRepository[DoctorDocument]):
         return await self.get_one({"doctor_id": doctor_id})
 
     async def get_department_doctors(self, department_id: str,) -> list[DoctorDocument]:
-        cursor = self.collection.find({
+        collection = self._get_collection()
+        cursor = collection.find({
             "department_ids": department_id,
         })
 
@@ -20,7 +21,8 @@ class DoctorRepository(BaseRepository[DoctorDocument]):
         ]
 
     async def get_available_department_doctors(self, department_id: str,) -> list[DoctorDocument]:
-        cursor = self.collection.find({
+        collection = self._get_collection()
+        cursor = collection.find({
             "department_ids": department_id,
             "is_available": True,
         })

@@ -7,6 +7,7 @@ from backend.database.repositories.assignment import AssignmentRepository
 from backend.database.repositories.clinical_session import ClinicalSessionRepository
 from backend.database.repositories.doctor import DoctorRepository
 from backend.database.repositories.queue import QueueRepository
+from backend.database.repositories.triage import TriageRepository
 from backend.domain.assignment import DoctorAssignment
 from backend.domain.clinical_session import ClinicalSession
 from backend.domain.enums import (
@@ -24,6 +25,7 @@ from backend.services.assignment import AssignmentService
 from backend.services.assignment_scheduler import AssignmentSchedulerService
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.queue import QueueService
+from backend.services.triage import TriageService
 from backend.services.workflow import WorkflowService
 
 
@@ -48,18 +50,36 @@ def doctor_repository() -> DoctorRepository:
 
 
 @pytest.fixture
-def session_service(session_repository: ClinicalSessionRepository) -> ClinicalSessionService:
+def triage_repository() -> TriageRepository:
+    return AsyncMock(spec=TriageRepository)
+
+
+@pytest.fixture
+def session_service(
+    session_repository: ClinicalSessionRepository,
+) -> ClinicalSessionService:
     return ClinicalSessionService(session_repository)
 
 
 @pytest.fixture
-def queue_service(queue_repository: QueueRepository) -> QueueService:
+def queue_service(
+    queue_repository: QueueRepository,
+) -> QueueService:
     return QueueService(queue_repository)
 
 
 @pytest.fixture
-def assignment_service(assignment_repository: AssignmentRepository) -> AssignmentService:
+def assignment_service(
+    assignment_repository: AssignmentRepository,
+) -> AssignmentService:
     return AssignmentService(assignment_repository)
+
+
+@pytest.fixture
+def triage_service(
+    triage_repository: TriageRepository,
+) -> TriageService:
+    return TriageService(triage_repository)
 
 
 @pytest.fixture
@@ -80,13 +100,15 @@ def service(
     session_service: ClinicalSessionService,
     queue_service: QueueService,
     assignment_scheduler: AssignmentSchedulerService,
-    assignment_service,
+    assignment_service: AssignmentService,
+    triage_service: TriageService,
 ) -> WorkflowService:
     return WorkflowService(
         session_service,
         queue_service,
         assignment_scheduler,
         assignment_service,
+        triage_service,
     )
 
 
@@ -220,8 +242,6 @@ async def test_assign_patient(
     service: WorkflowService,
     session_repository: ClinicalSessionRepository,
     queue_repository: QueueRepository,
-    assignment_repository: AssignmentRepository,
-    doctor_repository: DoctorRepository,
 ) -> None:
     session_repository.get_session.return_value = make_session_document(
         SessionStatus.QUEUED,
@@ -232,11 +252,10 @@ async def test_assign_patient(
     queue_repository.update_entry.return_value = make_queue_document(
         QueueStatus.WAITING,
     )
-    doctor_repository.get_department_doctors.return_value = []
-    assignment_repository.get_doctor_assignments.return_value = []
 
     service.assignment_scheduler.assign = AsyncMock(
-        return_value=make_assignment())
+        return_value=make_assignment(),
+    )
 
     result = await service.assign_patient("session-1", "queue-1")
 
@@ -280,7 +299,10 @@ async def test_assign_patient_requires_queued_session(
         SessionStatus.SUMMARY_READY,
     )
 
-    with pytest.raises(ValueError, match="Session must be queued before assignment"):
+    with pytest.raises(
+        ValueError,
+        match="Session must be queued before assignment",
+    ):
         await service.assign_patient("session-1", "queue-1")
 
 
@@ -313,7 +335,10 @@ async def test_assign_patient_rejects_wrong_session(
         updated_at=entry.updated_at,
     )
 
-    with pytest.raises(ValueError, match="Queue entry does not belong to session"):
+    with pytest.raises(
+        ValueError,
+        match="Queue entry does not belong to session",
+    ):
         await service.assign_patient("session-1", "queue-1")
 
 
@@ -368,7 +393,10 @@ async def test_call_patient_requires_assigned_doctor(
         QueueStatus.WAITING,
     )
 
-    with pytest.raises(ValueError, match="Queue entry has no assigned doctor"):
+    with pytest.raises(
+        ValueError,
+        match="Queue entry has no assigned doctor",
+    ):
         await service.call_patient("session-1", "queue-1")
 
 

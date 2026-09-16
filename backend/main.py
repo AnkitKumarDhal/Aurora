@@ -9,6 +9,7 @@ from backend.api.routes.consent import router as consent_router
 from backend.api.routes.triage import router as triage_router
 from backend.api.routes.intake import router as intake_router
 from backend.api.routes.queue import router as queue_router
+from backend.api.routes.workflow import router as workflow_router
 from backend.config import settings
 from backend.database import close_database, initialize_database
 from backend.database.connection import initialize_database_connection
@@ -37,6 +38,7 @@ app.include_router(clinical_summary_router, prefix="/api/v1")
 app.include_router(intake_router, prefix="/api/v1")
 app.include_router(triage_router, prefix="/api/v1")
 app.include_router(queue_router, prefix="/api/v1")
+app.include_router(workflow_router, prefix="/api/v1")
 
 
 @app.get("/health")

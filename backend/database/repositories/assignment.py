@@ -17,7 +17,8 @@ class AssignmentRepository(BaseRepository[DoctorAssignmentDocument]):
         })
 
     async def get_doctor_assignments(self, doctor_id: str,) -> list[DoctorAssignmentDocument]:
-        cursor = self.collection.find({
+        collection = self._get_collection()
+        cursor = collection.find({
             "doctor_id": doctor_id,
             "status": AssignmentStatus.ACTIVE,
         })

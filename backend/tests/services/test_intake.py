@@ -1,5 +1,3 @@
-# backend/tests/services/test_intake.py
-
 from unittest.mock import AsyncMock
 
 import pytest
@@ -23,16 +21,22 @@ def make_session(status: SessionStatus):
 async def test_finalize_transitions_history_session_to_summary_ready():
     session_service = AsyncMock()
     summary_service = AsyncMock()
+    triage_service = AsyncMock()
 
     session = make_session(SessionStatus.HISTORY_IN_PROGRESS)
 
     session_service.get_session.return_value = session
     summary_service.get_session_summary.return_value = object()
+    triage_service.get_session_result.return_value = object()
     session_service.transition_session.return_value = make_session(
         SessionStatus.SUMMARY_READY
     )
 
-    service = IntakeService(session_service, summary_service)
+    service = IntakeService(
+        session_service,
+        summary_service,
+        triage_service,
+    )
 
     result = await service.finalize("session-1")
 
@@ -47,16 +51,22 @@ async def test_finalize_transitions_history_session_to_summary_ready():
 async def test_finalize_transitions_document_processing_session():
     session_service = AsyncMock()
     summary_service = AsyncMock()
+    triage_service = AsyncMock()
 
     session = make_session(SessionStatus.DOCUMENT_PROCESSING)
 
     session_service.get_session.return_value = session
     summary_service.get_session_summary.return_value = object()
+    triage_service.get_session_result.return_value = object()
     session_service.transition_session.return_value = make_session(
         SessionStatus.SUMMARY_READY
     )
 
-    service = IntakeService(session_service, summary_service)
+    service = IntakeService(
+        session_service,
+        summary_service,
+        triage_service,
+    )
 
     result = await service.finalize("session-1")
 
@@ -67,15 +77,21 @@ async def test_finalize_transitions_document_processing_session():
 async def test_finalize_requires_existing_session():
     session_service = AsyncMock()
     summary_service = AsyncMock()
+    triage_service = AsyncMock()
 
     session_service.get_session.return_value = None
 
-    service = IntakeService(session_service, summary_service)
+    service = IntakeService(
+        session_service,
+        summary_service,
+        triage_service,
+    )
 
     with pytest.raises(ValueError, match="Clinical session not found"):
         await service.finalize("session-1")
 
     summary_service.get_session_summary.assert_not_awaited()
+    triage_service.get_session_result.assert_not_awaited()
     session_service.transition_session.assert_not_awaited()
 
 
@@ -83,17 +99,23 @@ async def test_finalize_requires_existing_session():
 async def test_finalize_requires_existing_summary():
     session_service = AsyncMock()
     summary_service = AsyncMock()
+    triage_service = AsyncMock()
 
     session_service.get_session.return_value = make_session(
         SessionStatus.HISTORY_IN_PROGRESS
     )
     summary_service.get_session_summary.return_value = None
 
-    service = IntakeService(session_service, summary_service)
+    service = IntakeService(
+        session_service,
+        summary_service,
+        triage_service,
+    )
 
     with pytest.raises(ValueError, match="Clinical summary not found"):
         await service.finalize("session-1")
 
+    triage_service.get_session_result.assert_not_awaited()
     session_service.transition_session.assert_not_awaited()
 
 
@@ -101,13 +123,18 @@ async def test_finalize_requires_existing_summary():
 async def test_finalize_rejects_invalid_session_state():
     session_service = AsyncMock()
     summary_service = AsyncMock()
+    triage_service = AsyncMock()
 
     session_service.get_session.return_value = make_session(
         SessionStatus.CREATED
     )
     summary_service.get_session_summary.return_value = object()
 
-    service = IntakeService(session_service, summary_service)
+    service = IntakeService(
+        session_service,
+        summary_service,
+        triage_service,
+    )
 
     with pytest.raises(
         ValueError,
@@ -115,4 +142,5 @@ async def test_finalize_rejects_invalid_session_state():
     ):
         await service.finalize("session-1")
 
+    triage_service.get_session_result.assert_not_awaited()
     session_service.transition_session.assert_not_awaited()
