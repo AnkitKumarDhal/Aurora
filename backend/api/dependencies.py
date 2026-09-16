@@ -1,5 +1,6 @@
 from backend.database.repositories.clinical_session import ClinicalSessionRepository
 from backend.database.repositories.conversation import ConversationRepository
+from backend.database.repositories.clinical_summary import ClinicalSummaryRepository
 from backend.database.repositories.document import (
     DocumentExtractionRepository,
     DocumentRepository,
@@ -8,6 +9,7 @@ from backend.database.repositories.patient import PatientRepository
 from backend.integrations.identity import MockIdentityProvider
 from backend.integrations.storage import LocalStorage
 from backend.services.clinical_session import ClinicalSessionService
+from backend.services.clinical_summary import ClinicalSummaryService
 from backend.services.consent import ConsentService
 from backend.services.conversation import ConversationService
 from backend.services.document import DocumentService
@@ -17,6 +19,10 @@ from backend.services.verification import VerificationService
 
 def get_clinical_session_service() -> ClinicalSessionService:
     return ClinicalSessionService(ClinicalSessionRepository())
+
+
+def get_clinical_summary_service() -> ClinicalSummaryService:
+    return ClinicalSummaryService(ClinicalSummaryRepository())
 
 
 def get_patient_service() -> PatientService:

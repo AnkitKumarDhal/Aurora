@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from backend.api.routes.clinical_summary import router as clinical_summary_router
 from backend.api.routes.consent import router as consent_router
 from backend.api.routes.conversation import router as conversation_router
 from backend.api.routes.documents import router as documents_router
@@ -29,6 +30,7 @@ app.include_router(verification_router, prefix="/api/v1")
 app.include_router(consent_router, prefix="/api/v1")
 app.include_router(conversation_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
+app.include_router(clinical_summary_router, prefix="/api/v1")
 
 
 @app.get("/health")
