@@ -1,15 +1,11 @@
 from uuid import uuid4
-
 from fastapi import APIRouter, Depends, HTTPException, status
-
 from backend.api.dependencies import get_conversation_service
-from backend.api.schemas.conversation import (
-    ConversationHistoryResponse,
-    ConversationTurnRequest,
-    ConversationTurnResponse,
-)
+from backend.api.schemas.conversation import ConversationHistoryResponse, ConversationTurnRequest, ConversationTurnResponse
+from backend.auth.authorization import require_assigned_doctor_access
 from backend.domain.conversation import ConversationTurn
 from backend.domain.enums import Speaker
+from backend.domain.user import User
 from backend.services.conversation import ConversationService
 
 router = APIRouter(
@@ -72,6 +68,7 @@ async def submit_turn(
 )
 async def get_conversation(
     session_id: str,
+    current_user: User = Depends(require_assigned_doctor_access),
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict[str, ConversationHistoryResponse]:
     turns = await service.get_session_turns(session_id)

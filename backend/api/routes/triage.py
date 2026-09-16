@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+
 from backend.api.dependencies import get_triage_service
 from backend.api.schemas.triage import TriageAssessRequest, TriageResponse
+from backend.auth.authorization import require_assigned_doctor_access
+from backend.domain.user import User
 from backend.services.triage import TriageService
+
 
 router = APIRouter(
     prefix="/sessions/{session_id}/triage",
@@ -27,7 +31,8 @@ def _to_response(result) -> TriageResponse:
 )
 async def get_triage(
     session_id: str,
-    service=Depends(get_triage_service),
+    current_user: User = Depends(require_assigned_doctor_access),
+    service: TriageService = Depends(get_triage_service),
 ) -> dict[str, TriageResponse]:
     result = await service.get_session_result(session_id)
 
@@ -47,7 +52,8 @@ async def get_triage(
 async def assess_triage(
     session_id: str,
     request: TriageAssessRequest,
-    service=Depends(get_triage_service),
+    current_user: User = Depends(require_assigned_doctor_access),
+    service: TriageService = Depends(get_triage_service),
 ) -> dict[str, TriageResponse]:
     signals = await service.get_session_signals(session_id)
 

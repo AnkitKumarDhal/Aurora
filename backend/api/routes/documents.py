@@ -1,15 +1,11 @@
 from uuid import uuid4
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-
 from backend.api.dependencies import get_document_service, get_storage
-from backend.api.schemas.documents import (
-    DocumentExtractionResponse,
-    DocumentListResponse,
-    DocumentResponse,
-)
+from backend.api.schemas.documents import DocumentExtractionResponse, DocumentListResponse, DocumentResponse
+from backend.auth.authorization import require_assigned_doctor_access
 from backend.domain.document import Document
 from backend.domain.enums import DocumentStatus, DocumentType
+from backend.domain.user import User
 from backend.integrations.storage import LocalStorage
 from backend.services.document import DocumentService
 
@@ -107,6 +103,7 @@ async def upload_document(
 )
 async def get_session_documents(
     session_id: str,
+    current_user: User = Depends(require_assigned_doctor_access),
     service: DocumentService = Depends(get_document_service),
 ) -> dict[str, DocumentListResponse]:
     documents = await service.get_session_documents(session_id)
@@ -128,6 +125,7 @@ async def get_session_documents(
 async def get_document(
     session_id: str,
     document_id: str,
+    current_user: User = Depends(require_assigned_doctor_access),
     service: DocumentService = Depends(get_document_service),
 ) -> dict[str, DocumentResponse]:
     document = await service.get_document(document_id)
@@ -150,6 +148,7 @@ async def get_document(
 async def get_document_extraction(
     session_id: str,
     document_id: str,
+    current_user: User = Depends(require_assigned_doctor_access),
     service: DocumentService = Depends(get_document_service),
 ) -> dict[str, DocumentExtractionResponse | None]:
     document = await service.get_document(document_id)
