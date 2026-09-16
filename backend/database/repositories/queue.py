@@ -14,15 +14,11 @@ class QueueRepository(BaseRepository[QueueEntryDocument]):
         return await self.get_one({"session_id": session_id},)
 
     async def get_department_queue(self, department_id: str,) -> list[QueueEntryDocument]:
-        cursor = self.collection.find({
+        collection = self._get_collection()
+        cursor = collection.find({
             "department_id": department_id,
             "status": QueueStatus.WAITING,
-        },
-            sort=[
-                ("priority_score", -1),
-                ("queued_at", 1),
-        ],
-        )
+        })
 
         return [
             self.model.from_mongo(document)

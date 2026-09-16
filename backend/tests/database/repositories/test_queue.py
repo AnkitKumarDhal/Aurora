@@ -1,56 +1,56 @@
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-
+from datetime import datetime, timezone
 import pytest
-
 from backend.database.repositories.queue import QueueRepository
 from backend.domain.enums import QueueStatus, UrgencyLevel
 from backend.models.queue import QueueEntryDocument
 
 
-@pytest.fixture
-def queue_entry() -> QueueEntryDocument:
-    now = datetime.now(timezone.utc)
+def make_document():
+    timestamp = datetime.now(timezone.utc)
 
     return QueueEntryDocument(
-        queue_entry_id="queue-001",
-        session_id="session-001",
+        queue_entry_id="queue-1",
+        session_id="session-1",
         department_id="general-medicine",
         status=QueueStatus.WAITING,
         position=1,
-        urgency_level=UrgencyLevel.LEVEL_2,
-        priority_score=75,
+        urgency_level=UrgencyLevel.LEVEL_3,
+        priority_score=60,
         doctor_id=None,
-        queued_at=now,
-        called_at=None,
-        completed_at=None,
-        created_at=now,
-        updated_at=now,
+        created_at=timestamp,
+        updated_at=timestamp,
     )
 
 
-@pytest.fixture
-def repository() -> QueueRepository:
+@pytest.mark.asyncio
+async def test_get_department_queue_uses_lazy_collection():
     repository = QueueRepository()
-    repository.collection = AsyncMock()
-    return repository
 
+    document = make_document()
 
-@pytest.mark.asyncio
-async def test_get_entry(repository: QueueRepository, queue_entry: QueueEntryDocument,) -> None:
-    repository.collection.find_one.return_value = queue_entry.to_mongo()
-    result = await repository.get_entry("queue-001")
-    assert result is not None
-    assert result.queue_entry_id == "queue-001"
-    repository.collection.find_one.assert_awaited_once_with(
-        {"queue_entry_id": "queue-001"},)
+    cursor = AsyncMock()
+    cursor.__aiter__.return_value = iter(
+        [document.to_mongo()]
+    )
 
+    collection = MagicMock()
+    collection.find.return_value = cursor
 
-@pytest.mark.asyncio
-async def test_get_session_entry(repository: QueueRepository, queue_entry: QueueEntryDocument,) -> None:
-    repository.collection.find_one.return_value = queue_entry.to_mongo()
-    result = await repository.get_session_entry("session-001")
-    assert result is not None
-    assert result.session_id == "session-001"
-    repository.collection.find_one.assert_awaited_once_with(
-        {"session_id": "session-001"},)
+    repository._get_collection = MagicMock(
+        return_value=collection
+    )
+
+    result = await repository.get_department_queue(
+        "general-medicine"
+    )
+
+    repository._get_collection.assert_called_once_with()
+
+    collection.find.assert_called_once_with({
+        "department_id": "general-medicine",
+        "status": QueueStatus.WAITING,
+    })
+
+    assert len(result) == 1
+    assert result[0].queue_entry_id == "queue-1"

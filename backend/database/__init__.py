@@ -1,9 +1,15 @@
-from .connection import close_database, database, get_database
+from .connection import (
+    close_database,
+    get_database,
+    get_database_instance,
+    initialize_database_connection,
+)
 from .initialization import initialize_database
 
 __all__ = [
-    "database",
-    "get_database",
     "close_database",
+    "get_database",
+    "get_database_instance",
+    "initialize_database_connection",
     "initialize_database",
 ]

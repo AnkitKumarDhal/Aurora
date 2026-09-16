@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,8 +12,12 @@ class Settings(BaseSettings):
         "http://localhost:5174,"
         "http://localhost:5175"
     )
+    jwt_secret: str = Field(min_length=32)
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_minutes: int = 60
+
     model_config = SettingsConfigDict(
-        env_files=".env",
+        env_file="backend/.env",
         env_file_encoding="utf-8",
         extra="ignore"
     )
