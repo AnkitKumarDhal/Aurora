@@ -366,3 +366,74 @@ async def test_expire_pending_requests(
     assert len(result) == 1
     assert result[0].promotion_request_id == "promotion-1"
     assert result[0].status == PromotionStatus.EXPIRED
+
+
+@pytest.mark.asyncio
+async def test_create_promotion_request_generates_60_second_deadline():
+    repository = AsyncMock()
+    repository.get_queue_request.return_value = None
+
+    timestamp = datetime.now(timezone.utc)
+
+    document = PromotionRequestDocument(
+        promotion_request_id="promotion-1",
+        queue_entry_id="queue-1",
+        reason="Earlier available doctor",
+        status=PromotionStatus.PENDING,
+        decision_deadline=timestamp + timedelta(seconds=60),
+        decided_by=None,
+        decision_reason=None,
+        decided_at=None,
+        created_at=timestamp,
+        updated_at=timestamp,
+    )
+
+    repository.create_request.return_value = document
+
+    service = PromotionService(repository)
+
+    result = await service.create_promotion_request(
+        "queue-1",
+        "Earlier available doctor",
+    )
+
+    assert result.queue_entry_id == "queue-1"
+    assert result.status == PromotionStatus.PENDING
+    assert (
+        result.decision_deadline - result.created_at
+    ).total_seconds() == pytest.approx(60, abs=1)
+
+
+@pytest.mark.asyncio
+async def test_create_promotion_request_rejects_existing_pending_request():
+    repository = AsyncMock()
+
+    timestamp = datetime.now(timezone.utc)
+
+    existing = PromotionRequestDocument(
+        promotion_request_id="promotion-1",
+        queue_entry_id="queue-1",
+        reason="Existing request",
+        status=PromotionStatus.PENDING,
+        decision_deadline=timestamp + timedelta(seconds=30),
+        decided_by=None,
+        decision_reason=None,
+        decided_at=None,
+        created_at=timestamp,
+        updated_at=timestamp,
+    )
+
+    repository.get_queue_request.return_value = existing
+
+    service = PromotionService(repository)
+
+    with pytest.raises(
+        ValueError,
+        match="A pending promotion request already exists",
+    ):
+        await service.create_promotion_request(
+            "queue-1",
+            "Another request",
+        )
+
+    repository.create_request.assert_not_awaited()

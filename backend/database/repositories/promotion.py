@@ -19,7 +19,8 @@ class PromotionRepository(BaseRepository[PromotionRequestDocument]):
         })
 
     async def get_pending_requests(self,) -> list[PromotionRequestDocument]:
-        cursor = self.collection.find(
+        collection = self._get_collection()
+        cursor = collection.find(
             {"status": PromotionStatus.PENDING},
             sort=[("decision_deadline", 1)],
         )

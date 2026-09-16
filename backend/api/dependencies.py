@@ -8,6 +8,7 @@ from backend.database.repositories.document import DocumentExtractionRepository,
 from backend.database.repositories.patient import PatientRepository
 from backend.database.repositories.triage import TriageRepository
 from backend.database.repositories.queue import QueueRepository
+from backend.database.repositories.promotion import PromotionRepository
 from backend.integrations.identity import MockIdentityProvider
 from backend.integrations.storage import LocalStorage
 from backend.services.assignment import AssignmentService
@@ -23,6 +24,11 @@ from backend.services.verification import VerificationService
 from backend.services.triage import TriageService
 from backend.services.queue import QueueService
 from backend.services.workflow import WorkflowService
+from backend.services.promotion import PromotionService
+
+
+def get_promotion_service() -> PromotionService:
+    return PromotionService(PromotionRepository())
 
 
 def get_clinical_session_service() -> ClinicalSessionService:
