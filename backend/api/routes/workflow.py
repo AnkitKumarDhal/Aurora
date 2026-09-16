@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from backend.auth.dependencies import require_roles
 from backend.api.dependencies import get_workflow_service
 from backend.api.schemas.queue import QueueEntryResponse
 from backend.api.schemas.workflow import AssignmentResponse, WorkflowAssignmentResponse, WorkflowQueueActionResponse
+from backend.domain.enums import ActorRole
+from backend.domain.user import User
 from backend.services.workflow import WorkflowService
 
 router = APIRouter(
@@ -119,12 +122,16 @@ async def assign_patient(
 async def call_patient(
     session_id: str,
     queue_entry_id: str,
+    current_user: User = Depends(
+        require_roles(ActorRole.DOCTOR)
+    ),
     service: WorkflowService = Depends(get_workflow_service),
 ) -> dict[str, WorkflowQueueActionResponse]:
     try:
         entry = await service.call_patient(
             session_id,
             queue_entry_id,
+            doctor_id=current_user.actor_id
         )
     except ValueError as exc:
         message = str(exc)
@@ -155,12 +162,16 @@ async def call_patient(
 async def start_consultation(
     session_id: str,
     queue_entry_id: str,
+    current_user: User = Depends(
+        require_roles(ActorRole.DOCTOR)
+    ),
     service: WorkflowService = Depends(get_workflow_service),
 ) -> dict[str, WorkflowQueueActionResponse]:
     try:
         entry = await service.start_consultation(
             session_id,
             queue_entry_id,
+            doctor_id=current_user.actor_id
         )
     except ValueError as exc:
         message = str(exc)
@@ -191,12 +202,16 @@ async def start_consultation(
 async def complete_consultation(
     session_id: str,
     queue_entry_id: str,
+    current_user: User = Depends(
+        require_roles(ActorRole.DOCTOR)
+    ),
     service: WorkflowService = Depends(get_workflow_service),
 ) -> dict[str, WorkflowQueueActionResponse]:
     try:
         entry = await service.complete_consultation(
             session_id,
             queue_entry_id,
+            doctor_id=current_user.actor_id
         )
     except ValueError as exc:
         message = str(exc)

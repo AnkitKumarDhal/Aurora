@@ -137,13 +137,16 @@ async def approve_promotion(
 async def deny_promotion(
     promotion_request_id: str,
     request: PromotionDecisionRequest,
+    current_user: User = Depends(
+        require_roles(ActorRole.ADMIN)
+    ),
     service: PromotionService = Depends(
         get_promotion_service
     ),
 ) -> dict[str, PromotionResponse]:
     result = await service.deny(
         promotion_request_id,
-        decided_by="admin",
+        decided_by=current_user.actor_id,
         decision_reason=request.decision_reason,
     )
 

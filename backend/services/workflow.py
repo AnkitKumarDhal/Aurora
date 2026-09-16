@@ -86,7 +86,7 @@ class WorkflowService:
         await self.session_service.transition_session(session_id, SessionStatus.ASSIGNED)
         return assignment
 
-    async def call_patient(self, session_id: str, queue_entry_id: str) -> QueueEntry:
+    async def call_patient(self, session_id: str, queue_entry_id: str, doctor_id: str | None = None) -> QueueEntry:
         session = await self.session_service.get_session(session_id)
         if session is None:
             raise ValueError("Clinical session not found")
@@ -100,6 +100,8 @@ class WorkflowService:
             raise ValueError("Queue entry does not belong to session")
         if entry.doctor_id is None:
             raise ValueError("Queue entry has no assigned doctor")
+        if doctor_id is not None and entry.doctor_id != doctor_id:
+            raise ValueError("Doctor is not assigned to this patient")
         if entry.status != QueueStatus.WAITING:
             raise ValueError(
                 "Queue entry must be waiting before calling the patient")
@@ -109,7 +111,7 @@ class WorkflowService:
         await self.session_service.transition_session(session_id, SessionStatus.CALLED)
         return called_entry
 
-    async def start_consultation(self, session_id: str, queue_entry_id: str) -> QueueEntry:
+    async def start_consultation(self, session_id: str, queue_entry_id: str, doctor_id: str | None = None) -> QueueEntry:
         session = await self.session_service.get_session(session_id)
         if session is None:
             raise ValueError("Clinical session not found")
@@ -120,6 +122,8 @@ class WorkflowService:
             raise ValueError("Queue entry not found")
         if entry.session_id != session_id:
             raise ValueError("Queue entry does not belong to session")
+        if doctor_id is not None and entry.doctor_id != doctor_id:
+            raise ValueError("Doctor is not assigned to this patient")
         if entry.status != QueueStatus.CALLED:
             raise ValueError("Queue entry must be called before consultation")
         consultation_entry = await self.queue_service.start_consultation(queue_entry_id)
@@ -128,7 +132,7 @@ class WorkflowService:
         await self.session_service.transition_session(session_id, SessionStatus.IN_CONSULTATION)
         return consultation_entry
 
-    async def complete_consultation(self, session_id: str, queue_entry_id: str) -> QueueEntry:
+    async def complete_consultation(self, session_id: str, queue_entry_id: str, doctor_id: str | None = None) -> QueueEntry:
         session = await self.session_service.get_session(session_id)
         if session is None:
             raise ValueError("Clinical session not found")
@@ -144,6 +148,8 @@ class WorkflowService:
         assignment = await self.assignment_service.get_session_assignment(session_id)
         if assignment is None:
             raise ValueError("Active doctor assignment not found")
+        if doctor_id is not None and assignment.doctor_id != doctor_id:
+            raise ValueError("Doctor is not assigned to this patient")
         completed_entry = await self.queue_service.complete(queue_entry_id)
         if completed_entry is None:
             raise ValueError("Queue entry could not be completed")

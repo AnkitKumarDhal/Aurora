@@ -1,13 +1,7 @@
 from uuid import uuid4
-
 from fastapi import APIRouter, Depends, HTTPException, status
-
 from backend.api.dependencies import get_clinical_summary_service
-from backend.api.schemas.clinical_summary import (
-    ClinicalSummaryCreateRequest,
-    ClinicalSummaryResponse,
-    ClinicalSummaryUpdateRequest,
-)
+from backend.api.schemas.clinical_summary import ClinicalSummaryCreateRequest, ClinicalSummaryResponse, ClinicalSummaryUpdateRequest
 from backend.domain.clinical_summary import ClinicalSummary
 from backend.services.clinical_summary import ClinicalSummaryService
 
