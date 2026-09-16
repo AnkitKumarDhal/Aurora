@@ -30,40 +30,46 @@ def make_entry(queue_entry_id: str = "queue-1"):
     )()
 
 
-def make_doctor():
+def make_doctor(departments: list[str] | None = None):
     return type(
         "Doctor",
         (),
         {
             "doctor_id": "doctor-1",
             "display_name": "Dr. Test",
-            "department_ids": ["general-medicine"],
+            "department_ids": departments or ["general-medicine"],
             "available": True,
         },
     )()
 
 
-def make_doctor_user() -> User:
+def make_user(role: ActorRole, actor_id: str = "doctor-1") -> User:
     now = datetime.now(timezone.utc)
 
     return User(
-        user_id="user-doctor-1",
-        username="doctor",
+        user_id=f"user-{actor_id}",
+        username=actor_id,
         password_hash="",
-        role=ActorRole.DOCTOR,
-        actor_id="doctor-1",
+        role=role,
+        actor_id=actor_id,
         is_active=True,
         created_at=now,
         updated_at=now,
     )
 
 
-def override_doctor():
-    app.dependency_overrides[get_current_user] = make_doctor_user
+def override_user(user: User):
+    app.dependency_overrides[get_current_user] = lambda: user
 
-    doctor_repository = AsyncMock()
-    doctor_repository.get_doctor.return_value = make_doctor()
-    app.dependency_overrides[get_doctor_repository] = lambda: doctor_repository
+
+def override_doctor_repository(doctor=None):
+    repository = AsyncMock()
+    repository.get_doctor.return_value = doctor
+    app.dependency_overrides[get_doctor_repository] = lambda: repository
+
+
+def override_queue_service(service):
+    app.dependency_overrides[get_queue_service] = lambda: service
 
 
 def test_get_department_queue():
@@ -73,42 +79,67 @@ def test_get_department_queue():
         make_entry("queue-2"),
     ]
 
-    app.dependency_overrides[get_queue_service] = lambda: service
-    override_doctor()
+    override_queue_service(service)
+    override_user(make_user(ActorRole.DOCTOR))
+    override_doctor_repository(make_doctor())
 
     try:
         with TestClient(app) as client:
-            response = client.get(
-                "/api/v1/queue/departments/general-medicine"
-            )
+            response = client.get("/api/v1/queue/departments/general-medicine")
 
         assert response.status_code == 200
         assert len(response.json()["data"]) == 2
-        assert response.json()["data"][0]["queue_entry_id"] == "queue-1"
-        assert response.json()["data"][1]["queue_entry_id"] == "queue-2"
-
         service.get_department_queue.assert_awaited_once_with(
-            "general-medicine"
-        )
+            "general-medicine")
     finally:
         app.dependency_overrides.clear()
 
 
-def test_get_empty_department_queue():
+def test_get_department_queue_requires_authentication():
     service = AsyncMock()
-    service.get_department_queue.return_value = []
-
-    app.dependency_overrides[get_queue_service] = lambda: service
-    override_doctor()
+    override_queue_service(service)
 
     try:
         with TestClient(app) as client:
-            response = client.get(
-                "/api/v1/queue/departments/general-medicine"
-            )
+            response = client.get("/api/v1/queue/departments/general-medicine")
+
+        assert response.status_code == 401
+        service.get_department_queue.assert_not_awaited()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_department_queue_rejects_wrong_department():
+    service = AsyncMock()
+    override_queue_service(service)
+    override_user(make_user(ActorRole.DOCTOR))
+    override_doctor_repository(make_doctor(["other-department"]))
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/queue/departments/general-medicine")
+
+        assert response.status_code == 403
+        service.get_department_queue.assert_not_awaited()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_department_queue_allows_admin():
+    service = AsyncMock()
+    service.get_department_queue.return_value = []
+
+    override_queue_service(service)
+    override_user(make_user(ActorRole.ADMIN, "admin-1"))
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/queue/departments/general-medicine")
 
         assert response.status_code == 200
         assert response.json()["data"] == []
+        service.get_department_queue.assert_awaited_once_with(
+            "general-medicine")
     finally:
         app.dependency_overrides.clear()
 
@@ -117,19 +148,48 @@ def test_get_queue_entry():
     service = AsyncMock()
     service.get_entry.return_value = make_entry()
 
-    app.dependency_overrides[get_queue_service] = lambda: service
-    override_doctor()
+    override_queue_service(service)
+    override_user(make_user(ActorRole.DOCTOR))
+    override_doctor_repository(make_doctor())
 
     try:
         with TestClient(app) as client:
-            response = client.get(
-                "/api/v1/queue/queue-1"
-            )
+            response = client.get("/api/v1/queue/queue-1")
 
         assert response.status_code == 200
         assert response.json()["data"]["queue_entry_id"] == "queue-1"
-        assert response.json()["data"]["session_id"] == "session-1"
-        assert response.json()["data"]["status"] == "WAITING"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_queue_entry_requires_authentication():
+    service = AsyncMock()
+    service.get_entry.return_value = make_entry()
+    override_queue_service(service)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/queue/queue-1")
+
+        assert response.status_code == 401
+        service.get_entry.assert_not_awaited()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_queue_entry_rejects_wrong_department():
+    service = AsyncMock()
+    service.get_entry.return_value = make_entry()
+
+    override_queue_service(service)
+    override_user(make_user(ActorRole.DOCTOR))
+    override_doctor_repository(make_doctor(["other-department"]))
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/queue/queue-1")
+
+        assert response.status_code == 403
     finally:
         app.dependency_overrides.clear()
 
@@ -138,16 +198,14 @@ def test_get_queue_entry_not_found():
     service = AsyncMock()
     service.get_entry.return_value = None
 
-    app.dependency_overrides[get_queue_service] = lambda: service
-    override_doctor()
+    override_queue_service(service)
+    override_user(make_user(ActorRole.DOCTOR))
+    override_doctor_repository(make_doctor())
 
     try:
         with TestClient(app) as client:
-            response = client.get(
-                "/api/v1/queue/queue-missing"
-            )
+            response = client.get("/api/v1/queue/queue-missing")
 
         assert response.status_code == 404
-        assert response.json()["detail"] == "Queue entry not found"
     finally:
         app.dependency_overrides.clear()

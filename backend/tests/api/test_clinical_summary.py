@@ -46,7 +46,7 @@ def make_doctor_user() -> User:
     )
 
 
-def make_assignment():
+def make_assignment(doctor_id: str = "doctor-1"):
     now = datetime.now(timezone.utc)
 
     return type(
@@ -55,7 +55,7 @@ def make_assignment():
         {
             "assignment_id": "assignment-1",
             "session_id": "session_test",
-            "doctor_id": "doctor-1",
+            "doctor_id": doctor_id,
             "department_id": "general-medicine",
             "status": AssignmentStatus.ACTIVE,
             "assigned_at": now,
@@ -203,5 +203,41 @@ def test_confirm_summary():
             "session_test",
             "doctor-1",
         )
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_summary_requires_authentication():
+    service = AsyncMock()
+    service.get_session_summary.return_value = make_summary()
+
+    override_summary_service(service)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/sessions/session_test/summary")
+
+        assert response.status_code == 401
+        service.get_session_summary.assert_not_awaited()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_summary_rejects_unassigned_doctor():
+    service = AsyncMock()
+    assignment_repository = AsyncMock()
+    assignment_repository.get_session_assignment.return_value = make_assignment(
+        "doctor-2")
+
+    override_summary_service(service)
+    app.dependency_overrides[get_current_user] = make_doctor_user
+    app.dependency_overrides[get_assignment_repository] = lambda: assignment_repository
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/sessions/session_test/summary")
+
+        assert response.status_code == 403
+        service.get_session_summary.assert_not_awaited()
     finally:
         app.dependency_overrides.clear()
