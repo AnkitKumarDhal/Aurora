@@ -34,6 +34,9 @@ class FhirClient(Protocol):
     async def create_encounter(self, encounter: FhirEncounter) -> FhirEncounter:
         ...
 
+    async def update_encounter_status(self, encounter_id: str, status: str) -> FhirEncounter | None:
+        ...
+
     async def create_document_reference(self, document: FhirDocumentReference) -> FhirDocumentReference:
         ...
 
@@ -50,6 +53,15 @@ class MockFhirClient:
 
     async def create_encounter(self, encounter: FhirEncounter) -> FhirEncounter:
         self.encounters[encounter.encounter_id] = encounter
+        return encounter
+
+    async def update_encounter_status(self, encounter_id: str, status: str) -> FhirEncounter | None:
+        encounter = self.encounters.get(encounter_id)
+
+        if encounter is None:
+            return None
+
+        encounter.status = status
         return encounter
 
     async def create_document_reference(self, document: FhirDocumentReference) -> FhirDocumentReference:

@@ -41,6 +41,39 @@ async def test_create_encounter():
 
 
 @pytest.mark.asyncio
+async def test_update_encounter_status():
+    client = MockFhirClient()
+    encounter = FhirEncounter(
+        encounter_id="encounter-1",
+        patient_id="patient-1",
+        department_id="general-medicine",
+        status="planned",
+    )
+
+    await client.create_encounter(encounter)
+
+    result = await client.update_encounter_status(
+        "encounter-1",
+        "in-progress",
+    )
+
+    assert result is encounter
+    assert result.status == "in-progress"
+
+
+@pytest.mark.asyncio
+async def test_update_missing_encounter_status():
+    client = MockFhirClient()
+
+    result = await client.update_encounter_status(
+        "missing",
+        "finished",
+    )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
 async def test_create_document_reference():
     client = MockFhirClient()
     document = FhirDocumentReference(

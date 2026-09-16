@@ -79,6 +79,14 @@ def get_triage_service() -> TriageService:
     )
 
 
+def get_healthcare_integration_service() -> HealthcareIntegrationService:
+    return HealthcareIntegrationService(
+        abdm_client=MockAbdmClient(),
+        fhir_client=MockFhirClient(),
+        his_client=MockHisClient(),
+    )
+
+
 def get_workflow_service() -> WorkflowService:
     assignment_repository = AssignmentRepository()
     assignment_service = AssignmentService(assignment_repository)
@@ -96,19 +104,12 @@ def get_workflow_service() -> WorkflowService:
             repository=TriageRepository(),
             signal_repository=ClinicalSignalRepository(),
         ),
+        healthcare_integration_service=get_healthcare_integration_service(),
     )
 
 
 def get_patient_service() -> PatientService:
     return PatientService(PatientRepository())
-
-
-def get_healthcare_integration_service() -> HealthcareIntegrationService:
-    return HealthcareIntegrationService(
-        abdm_client=MockAbdmClient(),
-        fhir_client=MockFhirClient(),
-        his_client=MockHisClient(),
-    )
 
 
 def get_verification_service() -> VerificationService:

@@ -96,12 +96,18 @@ def assignment_scheduler(
 
 
 @pytest.fixture
+def healthcare_integration_service():
+    return AsyncMock()
+
+
+@pytest.fixture
 def service(
     session_service: ClinicalSessionService,
     queue_service: QueueService,
     assignment_scheduler: AssignmentSchedulerService,
     assignment_service: AssignmentService,
     triage_service: TriageService,
+    healthcare_integration_service,
 ) -> WorkflowService:
     return WorkflowService(
         session_service,
@@ -109,6 +115,7 @@ def service(
         assignment_scheduler,
         assignment_service,
         triage_service,
+        healthcare_integration_service,
     )
 
 
@@ -235,6 +242,7 @@ async def test_queue_session(
 
     assert result.status == QueueStatus.WAITING
     session_repository.update_session.assert_awaited_once()
+    service.healthcare_integration_service.create_encounter.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -265,6 +273,11 @@ async def test_assign_patient(
         "queue-1",
         {"doctor_id": "doctor-1"},
     )
+    service.healthcare_integration_service.create_encounter.assert_awaited_once_with(
+        session_id="session-1",
+        patient_id="patient-1",
+        department_id="medicine",
+    )
     session_repository.update_session.assert_awaited_once()
 
 
@@ -288,6 +301,7 @@ async def test_assign_patient_returns_none_when_no_doctor(
     assert result is None
     queue_repository.update_entry.assert_not_awaited()
     session_repository.update_session.assert_not_awaited()
+    service.healthcare_integration_service.create_encounter.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -377,6 +391,10 @@ async def test_call_patient(
     result = await service.call_patient("session-1", "queue-1")
 
     assert result.status == QueueStatus.CALLED
+    service.healthcare_integration_service.update_encounter_status.assert_awaited_once_with(
+        "encounter_session-1",
+        "arrived",
+    )
     session_repository.update_session.assert_awaited_once()
 
 
@@ -399,6 +417,8 @@ async def test_call_patient_requires_assigned_doctor(
     ):
         await service.call_patient("session-1", "queue-1")
 
+    service.healthcare_integration_service.update_encounter_status.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_start_consultation(
@@ -419,6 +439,10 @@ async def test_start_consultation(
     result = await service.start_consultation("session-1", "queue-1")
 
     assert result.status == QueueStatus.IN_CONSULTATION
+    service.healthcare_integration_service.update_encounter_status.assert_awaited_once_with(
+        "encounter_session-1",
+        "in-progress",
+    )
     session_repository.update_session.assert_awaited_once()
 
 
@@ -448,6 +472,10 @@ async def test_complete_consultation(
     result = await service.complete_consultation("session-1", "queue-1")
 
     assert result.status == QueueStatus.COMPLETED
+    service.healthcare_integration_service.update_encounter_status.assert_awaited_once_with(
+        "encounter_session-1",
+        "finished",
+    )
     session_repository.update_session.assert_awaited_once()
     assignment_repository.get_session_assignment.assert_awaited_once_with(
         "session-1",

@@ -1,7 +1,7 @@
 from backend.domain.patient import Patient
 from backend.integrations.abdm import AbdmClient
-from backend.integrations.fhir import FhirClient, FhirPatient
-from backend.integrations.his import HisClient, HisPatient
+from backend.integrations.fhir import FhirClient, FhirEncounter, FhirPatient
+from backend.integrations.his import HisClient, HisEncounter, HisPatient
 
 
 class HealthcareIntegrationService:
@@ -43,3 +43,29 @@ class HealthcareIntegrationService:
         await self.his_client.upsert_patient(his_patient)
 
         return patient
+
+    async def create_encounter(self, session_id: str, patient_id: str, department_id: str) -> str:
+        encounter_id = f"encounter_{session_id}"
+
+        fhir_encounter = FhirEncounter(
+            encounter_id=encounter_id,
+            patient_id=patient_id,
+            department_id=department_id,
+            status="planned",
+        )
+
+        his_encounter = HisEncounter(
+            encounter_id=encounter_id,
+            patient_id=patient_id,
+            department_id=department_id,
+            status="scheduled",
+        )
+
+        await self.fhir_client.create_encounter(fhir_encounter)
+        await self.his_client.create_encounter(his_encounter)
+
+        return encounter_id
+
+    async def update_encounter_status(self, encounter_id: str, status: str) -> None:
+        await self.fhir_client.update_encounter_status(encounter_id, status)
+        await self.his_client.update_encounter_status(encounter_id, status)
