@@ -6,6 +6,7 @@ from backend.api.routes.verification import router as verification_router
 from backend.api.routes.conversation import router as conversation_router
 from backend.api.routes.documents import router as documents_router
 from backend.api.routes.doctor_case import router as doctor_case_router
+from backend.api.routes.doctor_queue import router as doctor_queue_router
 from backend.api.routes.sessions import router as sessions_router
 from backend.api.routes.consent import router as consent_router
 from backend.api.routes.triage import router as triage_router
@@ -42,6 +43,7 @@ app.include_router(consent_router, prefix="/api/v1")
 app.include_router(conversation_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(doctor_case_router, prefix="/api/v1")
+app.include_router(doctor_queue_router, prefix="/api/v1")
 app.include_router(clinical_summary_router, prefix="/api/v1")
 app.include_router(intake_router, prefix="/api/v1")
 app.include_router(triage_router, prefix="/api/v1")
