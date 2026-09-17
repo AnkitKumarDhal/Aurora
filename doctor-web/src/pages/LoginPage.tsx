@@ -28,7 +28,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <section className="w-full max-w-[380px] rounded-[20px] border border-border bg-surface px-8 pb-7 pt-9 shadow-[0_24px_48px_-24px_rgba(58,46,92,0.28)]">
+      <section className="w-full max-w-95 rounded-[20px] border border-border bg-surface px-8 pb-7 pt-9 shadow-[0_24px_48px_-24px_rgba(58,46,92,0.28)]">
         <div className="flex items-center gap-2.5">
           <span className="aurora-mark aurora-mark-lg" />
           <span className="font-display text-[21px] font-medium text-primary-dark">
