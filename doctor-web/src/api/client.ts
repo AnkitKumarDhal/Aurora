@@ -1,4 +1,5 @@
 import type { ApiError } from "@/types/api";
+import { getAccessToken } from "@/auth/auth";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -19,7 +20,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = localStorage.getItem("aurora_access_token");
+  const token = getAccessToken();
   const headers = new Headers(options.headers);
 
   headers.set("Accept", "application/json");
@@ -42,6 +43,7 @@ export async function apiRequest<T>(
 
     try {
       const error = (await response.json()) as ApiError;
+
       if (error.detail) {
         detail = error.detail;
       }
