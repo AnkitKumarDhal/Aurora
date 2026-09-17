@@ -61,27 +61,12 @@
   --color-accent-dark: var(--aurora-accent-dark);
   --color-accent-tint: var(--aurora-accent-tint);
 
-  --color-sidebar: var(--aurora-surface);
-  --color-sidebar-foreground: var(--aurora-text-primary);
-  --color-sidebar-primary: var(--aurora-primary);
-  --color-sidebar-primary-foreground: var(--aurora-primary-dark);
-  --color-sidebar-accent: var(--aurora-primary-tint);
-  --color-sidebar-accent-foreground: var(--aurora-text-primary);
-  --color-sidebar-border: var(--aurora-border);
-  --color-sidebar-ring: var(--aurora-primary);
-
-  --color-chart-1: var(--aurora-success);
-  --color-chart-2: var(--aurora-primary);
-  --color-chart-3: var(--aurora-warning);
-  --color-chart-4: var(--aurora-accent);
-  --color-chart-5: var(--aurora-danger);
-
-  --radius-sm: 0.5rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
-  --radius-3xl: 1.5rem;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 20px;
+  --radius-2xl: 20px;
+  --radius-3xl: 20px;
 }
 
 :root {
@@ -212,6 +197,8 @@
   body {
     @apply min-h-screen bg-background text-foreground font-sans antialiased;
     margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
   }
 
   button,
@@ -223,13 +210,20 @@
 
 .aurora-mark {
   display: block;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 0.35rem;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 8px;
   background: linear-gradient(
-    135deg,
-    var(--aurora-primary) 0%,
-    var(--aurora-accent) 100%
+    145deg,
+    var(--aurora-primary),
+    var(--aurora-accent)
   );
   box-shadow: 0 4px 12px rgba(58, 46, 92, 0.12);
+}
+
+.aurora-mark-lg {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
 }

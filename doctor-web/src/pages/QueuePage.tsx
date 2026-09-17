@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DoctorHeader from "@/components/layout/DoctorHeader";
 import { useAuth } from "@/auth/useAuth";
@@ -44,6 +43,7 @@ function severityMeta(level: UrgencyLevel | null): {
   border: string;
   background: string;
   label: string;
+  text: string;
 } {
   switch (level) {
     case 1:
@@ -51,36 +51,42 @@ function severityMeta(level: UrgencyLevel | null): {
         border: "border-t-success",
         background: "bg-success/10",
         label: "Level 1 · Routine",
+        text: "text-text-primary",
       };
     case 2:
       return {
         border: "border-t-primary",
-        background: "bg-primary/10",
+        background: "bg-primary-tint",
         label: "Level 2 · Low",
+        text: "text-primary-dark",
       };
     case 3:
       return {
         border: "border-t-warning",
-        background: "bg-warning/10",
+        background: "bg-warning/15",
         label: "Level 3 · Moderate",
+        text: "text-text-primary",
       };
     case 4:
       return {
         border: "border-t-accent",
-        background: "bg-accent/15",
+        background: "bg-accent-tint",
         label: "Level 4 · Elevated",
+        text: "text-accent-dark",
       };
     case 5:
       return {
         border: "border-t-danger",
         background: "bg-danger/10",
         label: "Level 5 · Critical",
+        text: "text-danger",
       };
     default:
       return {
         border: "border-t-border",
-        background: "bg-muted",
+        background: "bg-primary-tint",
         label: "Unrated",
+        text: "text-text-primary",
       };
   }
 }
@@ -94,13 +100,13 @@ function statusMeta(status: QueueStatus): {
     case "WAITING":
       return {
         background: "bg-primary-tint",
-        text: "text-text-primary",
+        text: "text-primary-dark",
         label: "Waiting",
       };
     case "PROMOTION_PENDING":
       return {
-        background: "bg-accent-tint",
-        text: "text-accent-dark",
+        background: "bg-warning/20",
+        text: "text-text-primary",
         label: "Promotion review",
       };
     case "CALLED":
@@ -118,18 +124,18 @@ function statusMeta(status: QueueStatus): {
     case "COMPLETED":
       return {
         background: "bg-primary-tint",
-        text: "text-text-primary",
+        text: "text-text-secondary",
         label: "Completed",
       };
     case "CANCELLED":
       return {
-        background: "bg-muted",
+        background: "bg-primary-tint",
         text: "text-text-secondary",
         label: "Cancelled",
       };
     default:
       return {
-        background: "bg-muted",
+        background: "bg-primary-tint",
         text: "text-text-secondary",
         label: status,
       };
@@ -164,44 +170,44 @@ function QueueCard({
 
   return (
     <button
-      className={`group flex min-h-[140px] flex-col rounded-xl border border-border border-t-4 bg-surface p-4 text-left shadow-[0_8px_24px_rgba(58,46,92,0.05)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(58,46,92,0.08)] ${severity.border}`}
+      className={`group flex min-h-[140px] flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-[18px] pb-4 text-left shadow-[0_10px_24px_-18px_rgba(58,46,92,0.4)] transition duration-150 hover:-translate-y-[3px] hover:border-primary hover:shadow-[0_20px_32px_-18px_rgba(58,46,92,0.45)] ${severity.border}`}
       onClick={() => onOpen(entry)}
       type="button"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-display text-[15px] font-semibold text-text-primary">
+          <p className="truncate text-[15.5px] font-extrabold text-text-primary">
             {entry.patient?.display_name ?? "Unknown patient"}
           </p>
 
-          <p className="mt-0.5 text-[10px] font-medium text-text-secondary">
+          <p className="mt-px text-xs text-text-secondary">
             {entry.patient?.age !== null && entry.patient?.age !== undefined
               ? `${entry.patient.age} yrs`
-              : "Age unavailable"}{" "}
+              : "Age unknown"}{" "}
             · position {entry.position ?? "—"}
           </p>
         </div>
 
         <span
-          className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold ${severity.background} text-text-primary`}
+          className={`shrink-0 rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold ${severity.background} ${severity.text}`}
         >
           {severity.label}
         </span>
       </div>
 
-      <p className="mt-3 line-clamp-2 text-[11px] leading-4 text-text-primary">
+      <p className="mb-3.5 mt-1 min-h-[2.6em] line-clamp-2 text-[13px] leading-[1.5] text-text-primary">
         {entry.summary?.chief_complaint ?? "No chief complaint available"}
       </p>
 
-      <div className="mt-auto flex items-center justify-between pt-3">
+      <div className="mt-auto flex items-center justify-between">
         <span
-          className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${status.background} ${status.text}`}
+          className={`inline-flex items-center gap-[5px] rounded-full px-2.5 py-1 text-[11px] font-bold ${status.background} ${status.text}`}
         >
-          <span className="mr-1 inline-block size-1.5 rounded-full bg-current align-middle" />
+          <span className="size-1.5 rounded-full bg-current" />
           {status.label}
         </span>
 
-        <span className="text-[10px] font-medium text-text-secondary">
+        <span className="text-xs tabular-nums text-text-secondary">
           {formatWaitingTime(entry.waiting_time_seconds)}
         </span>
       </div>
@@ -215,7 +221,6 @@ export default function QueuePage() {
   const [entries, setEntries] = useState<DoctorQueueEntry[]>([]);
   const [filter, setFilter] = useState<QueueFilter>("ALL");
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -238,7 +243,6 @@ export default function QueuePage() {
       } finally {
         if (!cancelled) {
           setIsLoading(false);
-          setIsRefreshing(false);
         }
       }
     }
@@ -246,7 +250,6 @@ export default function QueuePage() {
     void loadQueue();
 
     const interval = window.setInterval(() => {
-      setIsRefreshing(true);
       void loadQueue();
     }, 15000);
 
@@ -273,22 +276,6 @@ export default function QueuePage() {
       ? entries
       : entries.filter((entry) => entry.status === filter);
 
-  async function handleRefresh() {
-    setIsRefreshing(true);
-
-    try {
-      const response = await getDoctorQueue();
-      setEntries(response.entries);
-      setError("");
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unable to refresh the queue",
-      );
-    } finally {
-      setIsRefreshing(false);
-    }
-  }
-
   function handleOpen(entry: DoctorQueueEntry) {
     navigate(
       `/cases/${entry.session_id}?queueEntryId=${encodeURIComponent(
@@ -299,89 +286,75 @@ export default function QueuePage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <DoctorHeader user={user} onLogout={logout} />
+      <DoctorHeader user={user} onLogout={logout} showThemeToggle />
 
-      <div className="mx-auto max-w-[950px] px-5 pb-12 pt-7">
-        <div className="flex flex-col gap-4">
+      <div className="mx-auto w-full max-w-[1180px] px-7 pb-16 pt-7">
+        <div className="mb-1.5 flex flex-wrap items-end justify-between gap-5">
           <div>
-            <h1 className="font-display text-[29px] font-semibold tracking-[-0.02em] text-text-primary">
+            <h1 className="font-display text-[27px] font-medium tracking-[-0.01em] text-primary-dark">
               Your queue
             </h1>
 
-            <p className="mt-1 text-[11px] font-medium text-text-secondary">
-              {entries.length} patients · General Medicine
+            <p className="mt-1 text-[13.5px] text-text-secondary">
+              {filteredEntries.length}{" "}
+              {filteredEntries.length === 1 ? "patient" : "patients"} · General
+              Medicine
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {QUEUE_FILTERS.map((option) => {
-              const active = filter === option.value;
-
-              return (
-                <Button
-                  className={[
-                    "h-7 rounded-full border px-3 text-[10px] font-semibold shadow-none",
-                    active
-                      ? "border-primary-dark bg-primary-dark text-white hover:bg-primary-dark/90"
-                      : "border-border bg-surface text-text-secondary hover:bg-primary-tint hover:text-text-primary",
-                  ].join(" ")}
-                  key={option.value}
-                  onClick={() => setFilter(option.value)}
-                  type="button"
-                  variant="outline"
-                >
-                  {option.label}
-                  <span
-                    className={[
-                      "ml-1.5 rounded-full px-1.5 py-0.5 text-[8px]",
-                      active
-                        ? "bg-white/15 text-white"
-                        : "bg-primary-tint text-text-secondary",
-                    ].join(" ")}
-                  >
-                    {counts[option.value]}
-                  </span>
-                </Button>
-              );
-            })}
-
-            <Button
-              aria-label="Refresh queue"
-              className="ml-auto size-7 rounded-full border-border bg-surface text-text-secondary hover:bg-primary-tint hover:text-text-primary"
-              disabled={isRefreshing}
-              onClick={handleRefresh}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              <RefreshCw
-                className={isRefreshing ? "size-3.5 animate-spin" : "size-3.5"}
-              />
-            </Button>
           </div>
         </div>
 
+        <div className="my-[22px] flex flex-wrap gap-2">
+          {QUEUE_FILTERS.map((option) => {
+            const active = filter === option.value;
+
+            return (
+              <Button
+                className={[
+                  "h-auto rounded-full border-[1.5px] px-3.5 py-[7px] text-xs font-bold shadow-none",
+                  active
+                    ? "border-primary-dark bg-primary-dark text-surface-alt hover:bg-primary-dark"
+                    : "border-border bg-surface-alt text-text-secondary hover:border-primary hover:bg-surface-alt hover:text-primary-dark",
+                ].join(" ")}
+                key={option.value}
+                onClick={() => setFilter(option.value)}
+                type="button"
+                variant="outline"
+              >
+                {option.label}
+                <span
+                  className={[
+                    "rounded-full px-1.5 py-px text-[11px]",
+                    active
+                      ? "bg-white/20 text-white"
+                      : "bg-border text-text-primary",
+                  ].join(" ")}
+                >
+                  {counts[option.value]}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+
         {error && (
-          <div className="mt-5 rounded-xl border border-danger/25 bg-accent-tint px-4 py-3">
-            <p className="text-[11px] text-accent-dark">{error}</p>
+          <div className="mb-5 rounded-[8px] border border-danger/30 bg-accent-tint px-4 py-3">
+            <p className="text-[13px] text-danger">{error}</p>
           </div>
         )}
 
         {isLoading ? (
-          <div className="mt-5 rounded-xl border border-border bg-surface px-5 py-10 text-center shadow-[0_8px_24px_rgba(58,46,92,0.04)]">
-            <p className="text-[11px] text-text-secondary">Loading queue...</p>
+          <div className="rounded-[20px] border border-border bg-surface px-5 py-16 text-center">
+            <p className="text-[13px] text-text-secondary">Loading queue...</p>
           </div>
         ) : filteredEntries.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-border bg-surface px-5 py-10 text-center shadow-[0_8px_24px_rgba(58,46,92,0.04)]">
-            <p className="font-display text-[16px] font-semibold text-text-primary">
-              No patients in this view
-            </p>
-            <p className="mt-1 text-[10px] text-text-secondary">
-              The queue will refresh automatically.
+          <div className="rounded-[20px] border-[1.5px] border-dashed border-border px-5 py-16 text-center">
+            <div className="mb-2.5 text-[28px]">🌤️</div>
+            <p className="text-[13px] text-text-secondary">
+              No patients in this view right now.
             </p>
           </div>
         ) : (
-          <div className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(268px,1fr))] gap-4">
             {filteredEntries.map((entry) => (
               <QueueCard
                 entry={entry}
