@@ -78,7 +78,7 @@ async def test_get_case_aggregates_doctor_case_data():
     summary_service.get_session_summary.return_value = summary
     document_service.get_session_documents.return_value = documents
     triage_service.get_session_result.return_value = triage
-    assignment_service.get_session_assignment.return_value = assignment
+    assignment_service.get_session_assignment_history.return_value = assignment
 
     service = DoctorCaseService(
         session_service=session_service,
@@ -111,7 +111,7 @@ async def test_get_case_aggregates_doctor_case_data():
     triage_service.get_session_result.assert_awaited_once_with(
         "session-1",
     )
-    assignment_service.get_session_assignment.assert_awaited_once_with(
+    assignment_service.get_session_assignment_history.assert_awaited_once_with(
         "session-1",
     )
 
@@ -143,4 +143,4 @@ async def test_get_case_returns_none_for_missing_session():
     summary_service.get_session_summary.assert_not_awaited()
     document_service.get_session_documents.assert_not_awaited()
     triage_service.get_session_result.assert_not_awaited()
-    assignment_service.get_session_assignment.assert_not_awaited()
+    assignment_service.get_session_assignment_history.assert_not_awaited()

@@ -1,37 +1,55 @@
 from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends
-
 from backend.api.dependencies import get_doctor_queue_service
 from backend.api.schemas.clinical_summary import ClinicalSummaryResponse
-from backend.api.schemas.doctor_queue import (
-    DoctorQueueEntryResponse,
-    DoctorQueuePatientResponse,
-    DoctorQueueResponse,
-)
+from backend.api.schemas.doctor_queue import DoctorQueueEntryResponse, DoctorQueuePatientResponse, DoctorQueueResponse
 from backend.auth.dependencies import require_roles
-from backend.domain.enums import ActorRole
+from backend.domain.enums import ActorRole, QueueStatus
 from backend.domain.user import User
 from backend.services.doctor_queue import DoctorQueueService
 
 
-router = APIRouter(
-    prefix="/doctors/me/queue",
-    tags=["doctor-queue"],
-)
+router = APIRouter(prefix="/doctors/me/queue", tags=["doctor-queue"],)
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    return value.astimezone(timezone.utc)
 
 
 def _waiting_time_seconds(
     queued_at: datetime | None,
+    status: QueueStatus,
+    called_at: datetime | None = None,
 ) -> int | None:
     if queued_at is None:
         return None
 
-    now = datetime.now(timezone.utc)
-    return max(0, int((now - queued_at).total_seconds()))
+    queued_time = _as_utc(queued_at)
+
+    if (
+        status in {
+            QueueStatus.CALLED,
+            QueueStatus.IN_CONSULTATION,
+            QueueStatus.COMPLETED,
+        }
+        and called_at is not None
+    ):
+        end_time = _as_utc(called_at)
+    else:
+        end_time = datetime.now(timezone.utc)
+
+    return max(
+        0,
+        int((end_time - queued_time).total_seconds()),
+    )
 
 
-def _summary_response(summary) -> ClinicalSummaryResponse | None:
+def _summary_response(
+    summary,
+) -> ClinicalSummaryResponse | None:
     if summary is None:
         return None
 
@@ -85,6 +103,8 @@ async def get_doctor_queue(
                 urgency_level=entry.urgency_level,
                 waiting_time_seconds=_waiting_time_seconds(
                     entry.queued_at,
+                    entry.status,
+                    entry.called_at,
                 ),
                 doctor_id=entry.doctor_id,
                 status=entry.status,

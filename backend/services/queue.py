@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-
 from backend.database.repositories.queue import QueueRepository
 from backend.domain.enums import QueueStatus
 from backend.domain.queue import QueueEntry
@@ -12,56 +11,57 @@ class QueueService:
         self.repository = repository
         self.engine = engine or QueueEngine()
 
-    async def get_department_queue(self, department_id: str,) -> list[QueueEntry]:
-        documents = await self.repository.get_department_queue(department_id)
-        entries = [
-            self._to_domain(document)
-            for document in documents
-        ]
+    async def get_department_queue(self, department_id: str) -> list[QueueEntry]:
+        documents = await self.repository.get_department_queue(department_id,)
+        entries = [self._to_domain(document) for document in documents]
         return self.engine.sort_entries(entries)
 
-    async def get_entry(self, queue_entry_id: str,) -> QueueEntry | None:
+    async def get_department_entries(self, department_id: str) -> list[QueueEntry]:
+        documents = await self.repository.get_department_entries(department_id,)
+        return [self._to_domain(document) for document in documents]
+
+    async def get_entry(self, queue_entry_id: str) -> QueueEntry | None:
         document = await self.repository.get_entry(queue_entry_id)
         if document is None:
             return None
         return self._to_domain(document)
 
-    async def get_session_entry(self, session_id: str,) -> QueueEntry | None:
+    async def get_session_entry(self, session_id: str) -> QueueEntry | None:
         document = await self.repository.get_session_entry(session_id)
         if document is None:
             return None
         return self._to_domain(document)
 
-    async def enqueue(self, entry: QueueEntry,) -> QueueEntry:
+    async def enqueue(self, entry: QueueEntry) -> QueueEntry:
         if entry.status != QueueStatus.WAITING:
             raise ValueError(
-                "Queue entry must be waiting when added to the queue")
+                "Queue entry must be waiting when added to the queue",)
         if entry.queued_at is None:
             entry.queued_at = datetime.now(timezone.utc)
         document = self._to_document(entry)
         await self.repository.create_entry(document)
         return entry
 
-    async def update_entry(self, queue_entry_id: str, updates: dict,) -> QueueEntry | None:
-        document = await self.repository.update_entry(queue_entry_id, updates,)
+    async def update_entry(self, queue_entry_id: str, updates: dict) -> QueueEntry | None:
+        document = await self.repository.update_entry(queue_entry_id, updates)
         if document is None:
             return None
         return self._to_domain(document)
 
-    async def mark_called(self, queue_entry_id: str,) -> QueueEntry | None:
+    async def mark_called(self, queue_entry_id: str) -> QueueEntry | None:
         return await self.update_entry(queue_entry_id, {
             "status": QueueStatus.CALLED,
             "called_at": datetime.now(timezone.utc),
         },
         )
 
-    async def start_consultation(self, queue_entry_id: str,) -> QueueEntry | None:
+    async def start_consultation(self, queue_entry_id: str) -> QueueEntry | None:
         return await self.update_entry(queue_entry_id, {
             "status": QueueStatus.IN_CONSULTATION,
         },
         )
 
-    async def complete(self, queue_entry_id: str,) -> QueueEntry | None:
+    async def complete(self, queue_entry_id: str) -> QueueEntry | None:
         return await self.update_entry(queue_entry_id, {
             "status": QueueStatus.COMPLETED,
             "completed_at": datetime.now(timezone.utc),
@@ -69,7 +69,7 @@ class QueueService:
         )
 
     @staticmethod
-    def _to_domain(document: QueueEntryDocument,) -> QueueEntry:
+    def _to_domain(document: QueueEntryDocument) -> QueueEntry:
         return QueueEntry(
             queue_entry_id=document.queue_entry_id,
             session_id=document.session_id,
@@ -87,7 +87,7 @@ class QueueService:
         )
 
     @staticmethod
-    def _to_document(entry: QueueEntry,) -> QueueEntryDocument:
+    def _to_document(entry: QueueEntry) -> QueueEntryDocument:
         return QueueEntryDocument(
             queue_entry_id=entry.queue_entry_id,
             session_id=entry.session_id,

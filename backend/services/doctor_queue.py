@@ -33,7 +33,7 @@ class DoctorQueueService:
         queue_entries: list[QueueEntry] = []
 
         for department_id in doctor.department_ids:
-            entries = await self.queue_service.get_department_queue(
+            entries = await self.queue_service.get_department_entries(
                 department_id,
             )
 

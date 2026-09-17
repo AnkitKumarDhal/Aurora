@@ -1,0 +1,229 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/700.css";
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/500.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Fraunces", serif;
+  --font-sans: "Manrope", sans-serif;
+
+  --color-background: var(--aurora-bg);
+  --color-foreground: var(--aurora-text-primary);
+
+  --color-card: var(--aurora-surface);
+  --color-card-foreground: var(--aurora-text-primary);
+
+  --color-popover: var(--aurora-surface-alt);
+  --color-popover-foreground: var(--aurora-text-primary);
+
+  --color-primary: var(--aurora-primary);
+  --color-primary-foreground: var(--aurora-primary-dark);
+
+  --color-secondary: var(--aurora-primary-tint);
+  --color-secondary-foreground: var(--aurora-text-primary);
+
+  --color-muted: var(--aurora-primary-tint);
+  --color-muted-foreground: var(--aurora-text-secondary);
+
+  --color-accent: var(--aurora-accent);
+  --color-accent-foreground: var(--aurora-accent-dark);
+
+  --color-destructive: var(--aurora-danger);
+  --color-destructive-foreground: var(--aurora-surface-alt);
+
+  --color-border: var(--aurora-border);
+  --color-input: var(--aurora-border);
+  --color-ring: var(--aurora-primary);
+
+  --color-success: var(--aurora-success);
+  --color-warning: var(--aurora-warning);
+  --color-danger: var(--aurora-danger);
+
+  --color-bg: var(--aurora-bg);
+  --color-surface: var(--aurora-surface);
+  --color-surface-alt: var(--aurora-surface-alt);
+
+  --color-text-primary: var(--aurora-text-primary);
+  --color-text-secondary: var(--aurora-text-secondary);
+
+  --color-primary-dark: var(--aurora-primary-dark);
+  --color-primary-tint: var(--aurora-primary-tint);
+
+  --color-accent-dark: var(--aurora-accent-dark);
+  --color-accent-tint: var(--aurora-accent-tint);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 20px;
+  --radius-2xl: 20px;
+  --radius-3xl: 20px;
+}
+
+:root {
+  --aurora-bg: #fbf5f3;
+  --aurora-surface: #fffdfc;
+  --aurora-surface-alt: #ffffff;
+  --aurora-border: #e7e1f3;
+
+  --aurora-text-primary: #3a2e5c;
+  --aurora-text-secondary: #8a6d9e;
+
+  --aurora-primary: #b8a9de;
+  --aurora-primary-dark: #3a2e5c;
+  --aurora-primary-tint: #efeaf8;
+
+  --aurora-accent: #f4b8a8;
+  --aurora-accent-dark: #7a3a28;
+  --aurora-accent-tint: #fceee9;
+
+  --aurora-danger: #c97a6a;
+  --aurora-success: #6fa97f;
+  --aurora-warning: #e0a758;
+
+  --background: var(--aurora-bg);
+  --foreground: var(--aurora-text-primary);
+
+  --card: var(--aurora-surface);
+  --card-foreground: var(--aurora-text-primary);
+
+  --popover: var(--aurora-surface-alt);
+  --popover-foreground: var(--aurora-text-primary);
+
+  --primary: var(--aurora-primary);
+  --primary-foreground: var(--aurora-primary-dark);
+
+  --secondary: var(--aurora-primary-tint);
+  --secondary-foreground: var(--aurora-text-primary);
+
+  --muted: var(--aurora-primary-tint);
+  --muted-foreground: var(--aurora-text-secondary);
+
+  --accent: var(--aurora-accent);
+  --accent-foreground: var(--aurora-accent-dark);
+
+  --destructive: var(--aurora-danger);
+  --destructive-foreground: var(--aurora-surface-alt);
+
+  --border: var(--aurora-border);
+  --input: var(--aurora-border);
+  --ring: var(--aurora-primary);
+
+  --radius: 0.625rem;
+
+  --sidebar: var(--aurora-surface);
+  --sidebar-foreground: var(--aurora-text-primary);
+  --sidebar-primary: var(--aurora-primary);
+  --sidebar-primary-foreground: var(--aurora-primary-dark);
+  --sidebar-accent: var(--aurora-primary-tint);
+  --sidebar-accent-foreground: var(--aurora-text-primary);
+  --sidebar-border: var(--aurora-border);
+  --sidebar-ring: var(--aurora-primary);
+}
+
+.dark {
+  --aurora-bg: #211c2a;
+  --aurora-surface: #2a2436;
+  --aurora-surface-alt: #302a3d;
+  --aurora-border: #473d57;
+
+  --aurora-text-primary: #f4eff6;
+  --aurora-text-secondary: #c9bad4;
+
+  --aurora-primary: #c5b7e7;
+  --aurora-primary-dark: #211c2a;
+  --aurora-primary-tint: #3a3149;
+
+  --aurora-accent: #f1b4a5;
+  --aurora-accent-dark: #3a211b;
+  --aurora-accent-tint: #47302b;
+
+  --aurora-danger: #d68a7a;
+  --aurora-success: #7db58b;
+  --aurora-warning: #e8b66b;
+
+  --background: var(--aurora-bg);
+  --foreground: var(--aurora-text-primary);
+
+  --card: var(--aurora-surface);
+  --card-foreground: var(--aurora-text-primary);
+
+  --popover: var(--aurora-surface-alt);
+  --popover-foreground: var(--aurora-text-primary);
+
+  --primary: var(--aurora-primary);
+  --primary-foreground: var(--aurora-primary-dark);
+
+  --secondary: var(--aurora-primary-tint);
+  --secondary-foreground: var(--aurora-text-primary);
+
+  --muted: var(--aurora-primary-tint);
+  --muted-foreground: var(--aurora-text-secondary);
+
+  --accent: var(--aurora-accent);
+  --accent-foreground: var(--aurora-accent-dark);
+
+  --destructive: var(--aurora-danger);
+  --destructive-foreground: var(--aurora-surface-alt);
+
+  --border: var(--aurora-border);
+  --input: var(--aurora-border);
+  --ring: var(--aurora-primary);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/30;
+  }
+
+  html {
+    @apply font-sans;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground font-sans antialiased;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+}
+
+.aurora-mark {
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(
+    145deg,
+    var(--aurora-primary),
+    var(--aurora-accent)
+  );
+  box-shadow: 0 4px 12px rgba(58, 46, 92, 0.12);
+}
+
+.aurora-mark-lg {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}

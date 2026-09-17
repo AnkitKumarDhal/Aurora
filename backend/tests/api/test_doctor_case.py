@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 
 from backend.api.dependencies import get_doctor_case_service
-from backend.auth.authorization import require_assigned_doctor_access
+from backend.auth.authorization import require_doctor_case_access
 from backend.domain.enums import ActorRole
 from backend.domain.user import User
 from backend.main import app
@@ -33,7 +33,7 @@ def override_service(service):
 
 
 def override_doctor_access(user: User):
-    app.dependency_overrides[require_assigned_doctor_access] = lambda: user
+    app.dependency_overrides[require_doctor_case_access] = lambda: user
 
 
 def test_get_doctor_case_requires_authentication():

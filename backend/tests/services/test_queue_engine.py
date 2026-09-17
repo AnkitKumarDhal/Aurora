@@ -210,3 +210,43 @@ def test_future_queue_time_does_not_reduce_priority():
     )
 
     assert engine.effective_priority(entry, now) == 50.0
+
+
+def test_naive_queued_time_is_treated_as_utc():
+    engine = QueueEngine()
+    now = datetime.now(timezone.utc)
+    queued_at = (
+        now - timedelta(minutes=10)
+    ).replace(tzinfo=None)
+
+    entry = make_entry(
+        "patient-1",
+        40,
+        queued_at,
+    )
+
+    assert engine.effective_priority(entry, now) == 45.0
+
+
+def test_naive_queued_times_can_be_sorted():
+    engine = QueueEngine()
+    now = datetime.now(timezone.utc)
+
+    older = (
+        now - timedelta(minutes=20)
+    ).replace(tzinfo=None)
+    newer = (
+        now - timedelta(minutes=5)
+    ).replace(tzinfo=None)
+
+    entries = [
+        make_entry("newer", 40, newer),
+        make_entry("older", 40, older),
+    ]
+
+    ordered = engine.sort_entries(entries, now)
+
+    assert [entry.queue_entry_id for entry in ordered] == [
+        "older",
+        "newer",
+    ]

@@ -1,9 +1,3 @@
-from backend.domain.assignment import DoctorAssignment
-from backend.domain.clinical_session import ClinicalSession
-from backend.domain.clinical_summary import ClinicalSummary
-from backend.domain.document import Document
-from backend.domain.patient import Patient
-from backend.domain.triage import TriageResult
 from backend.services.assignment import AssignmentService
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_summary import ClinicalSummaryService
@@ -38,14 +32,22 @@ class DoctorCaseService:
         if session is None:
             return None
 
-        patient = await self.patient_service.get_patient(session.patient_id)
-        summary = await self.summary_service.get_session_summary(session_id)
+        patient = await self.patient_service.get_patient(
+            session.patient_id,
+        )
+        summary = await self.summary_service.get_session_summary(
+            session_id,
+        )
         documents = await self.document_service.get_session_documents(
             session_id,
         )
-        triage = await self.triage_service.get_session_result(session_id)
-        assignment = await self.assignment_service.get_session_assignment(
+        triage = await self.triage_service.get_session_result(
             session_id,
+        )
+        assignment = (
+            await self.assignment_service.get_session_assignment_history(
+                session_id,
+            )
         )
 
         return {
