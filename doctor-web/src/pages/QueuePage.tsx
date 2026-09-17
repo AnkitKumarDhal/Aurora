@@ -7,6 +7,7 @@ import { getDoctorQueue } from "@/api/queue";
 import type { DoctorQueueEntry, QueueStatus } from "@/types/api";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import { getUrgencyStyles } from "@/lib/urgency";
+import QueueSkeleton from "@/components/QueueSkeleton";
 
 type QueueFilter =
   | "ALL"
@@ -184,6 +185,7 @@ function QueueCard({
           />
           {status.label}
         </span>
+
         <span className="text-xs tabular-nums text-text-secondary">
           {formatWaitingTime(waitingSeconds)}
         </span>
@@ -298,6 +300,7 @@ export default function QueuePage() {
                 variant="outline"
               >
                 {option.label}
+
                 <span
                   className={[
                     "rounded-full px-1.5 py-px text-[11px]",
@@ -320,12 +323,11 @@ export default function QueuePage() {
         )}
 
         {isLoading ? (
-          <div className="rounded-[20px] border border-border bg-surface px-5 py-16 text-center">
-            <p className="text-[13px] text-text-secondary">Loading queue...</p>
-          </div>
+          <QueueSkeleton />
         ) : filteredEntries.length === 0 ? (
           <div className="rounded-[20px] border-[1.5px] border-dashed border-border px-5 py-16 text-center">
             <div className="mb-2.5 text-[28px]">🌤️</div>
+
             <p className="text-[13px] text-text-secondary">
               No patients in this view right now.
             </p>

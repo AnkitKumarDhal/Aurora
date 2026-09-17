@@ -29,6 +29,7 @@ import type {
 } from "@/types/api";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import { getUrgencyStyles } from "@/lib/urgency";
+import { toast } from "sonner";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -176,7 +177,23 @@ function WorkflowActions({
     return null;
   }
 
-  if (status === "ASSIGNED") {
+  if (status === "ASSIGNED" && queueEntry.status === "PROMOTION_PENDING") {
+    return (
+      <span
+        className="rounded-full px-3 py-2 text-[11px] font-bold text-text-secondary"
+        style={{
+          background:
+            "color-mix(in srgb, var(--aurora-warning) 22%, var(--aurora-surface))",
+          color:
+            "color-mix(in srgb, var(--aurora-warning) 60%, var(--aurora-text-primary))",
+        }}
+      >
+        Promotion review
+      </span>
+    );
+  }
+
+  if (status === "ASSIGNED" && queueEntry.status === "WAITING") {
     return (
       <Button
         className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
@@ -613,11 +630,12 @@ function DocumentsPanel({
   documents: DoctorCaseResponse["documents"];
 }) {
   return (
-    <Card className="rounded-[20px] border border-border bg-surface p-0 shadow-none mt-4">
+    <Card className="mt-4 rounded-[20px] border border-border bg-surface p-0 shadow-none">
       <CardHeader className="flex flex-row items-center justify-between px-[22px] pb-0 pt-5">
         <CardTitle className="font-display text-[15.5px] font-semibold text-primary-dark">
           Documents
         </CardTitle>
+
         <span className="text-[11.5px] text-text-secondary">
           {documents.length} {documents.length === 1 ? "file" : "files"}
         </span>
@@ -647,6 +665,7 @@ function DocumentsPanel({
                     <p className="truncate text-[13px] font-bold text-text-primary">
                       {document.filename}
                     </p>
+
                     <p className="text-[11px] text-text-secondary">
                       {document.document_type.replace(/_/g, " ").toLowerCase()}
                     </p>
@@ -688,6 +707,7 @@ function TriagePanel({ triage }: { triage: DoctorCaseResponse["triage"] }) {
             Triage
           </CardTitle>
         </CardHeader>
+
         <CardContent className="px-[22px] pb-5 pt-[14px]">
           <span className="text-xs italic text-text-secondary">
             No triage result available.
@@ -729,6 +749,7 @@ function TriagePanel({ triage }: { triage: DoctorCaseResponse["triage"] }) {
             <span className="text-[12.5px] font-semibold text-text-secondary">
               Priority score
             </span>
+
             <span className="text-[13.5px] font-extrabold text-text-primary">
               {triage.priority_score ?? "—"} / 100
             </span>
@@ -753,6 +774,7 @@ function TriagePanel({ triage }: { triage: DoctorCaseResponse["triage"] }) {
           <span className="text-[12.5px] font-semibold text-text-secondary">
             Red flags
           </span>
+
           <span
             className="text-[13.5px] font-extrabold"
             style={{
@@ -769,6 +791,7 @@ function TriagePanel({ triage }: { triage: DoctorCaseResponse["triage"] }) {
           <span className="text-[12.5px] font-semibold text-text-secondary">
             Status
           </span>
+
           <span className="text-[13.5px] font-extrabold text-text-primary">
             {statusLabel(triage.status)}
           </span>
@@ -795,7 +818,7 @@ function IdentityPanel({
   ];
 
   return (
-    <Card className="rounded-[20px] border border-border bg-surface p-0 shadow-none mt-4">
+    <Card className="mt-4 rounded-[20px] border border-border bg-surface p-0 shadow-none">
       <CardHeader className="px-[22px] pb-0 pt-5">
         <CardTitle className="font-display text-[15.5px] font-semibold text-primary-dark">
           Patient identity
@@ -814,6 +837,7 @@ function IdentityPanel({
             key={label}
           >
             <span className="text-text-secondary">{label}</span>
+
             <span className="text-right font-bold text-text-primary">
               {value}
             </span>
@@ -838,7 +862,6 @@ export default function CasePage() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
   const [form, setForm] = useState({
     chief_complaint: "",
     history_of_present_illness: "",
@@ -950,13 +973,6 @@ export default function CasePage() {
     };
   }, [loadCase, queueEntryIdFromUrl]);
 
-  function showToast(message: string): void {
-    setToast(message);
-    window.setTimeout(() => {
-      setToast("");
-    }, 2600);
-  }
-
   async function handleCall(): Promise<void> {
     if (!sessionId || !queueEntry) {
       return;
@@ -968,7 +984,7 @@ export default function CasePage() {
     try {
       await callPatient(sessionId, queueEntry.queue_entry_id);
       await loadCase();
-      showToast(`Patient called`);
+      toast.success("Patient called");
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to call patient",
@@ -989,7 +1005,7 @@ export default function CasePage() {
     try {
       await startConsultation(sessionId, queueEntry.queue_entry_id);
       await loadCase();
-      showToast(`Consultation Started`);
+      toast.success("Consultation started");
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to start consultation",
@@ -1014,7 +1030,7 @@ export default function CasePage() {
     try {
       await completeConsultation(sessionId, queueEntry.queue_entry_id);
       await loadCase();
-      showToast(`Complete Consultation`);
+      toast.success("Consultation completed");
     } catch (error) {
       setError(
         error instanceof Error
@@ -1070,7 +1086,7 @@ export default function CasePage() {
 
       setIsEditing(false);
       await loadCase();
-      showToast(`Summary Saved`);
+      toast.success("Summary saved");
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to save summary",
@@ -1091,7 +1107,7 @@ export default function CasePage() {
     try {
       await confirmSummary(sessionId);
       await loadCase();
-      showToast(`Summary Confirmed`);
+      toast.success("Summary confirmed");
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to confirm summary",
@@ -1127,6 +1143,7 @@ export default function CasePage() {
         ) : error && !caseData ? (
           <div className="rounded-[20px] border border-border bg-surface px-5 py-10">
             <p className="text-[13px] text-danger">{error}</p>
+
             <Button
               className="mt-4"
               onClick={() => navigate("/queue")}
@@ -1235,13 +1252,6 @@ export default function CasePage() {
           </>
         ) : null}
       </div>
-
-      {toast && (
-        <div className="fixed bottom-[26px] left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary-dark px-5 py-3 text-[13px] font-bold text-surface shadow-[0_18px_40px_-14px_rgba(58,46,92,0.6)]">
-          <span className="size-[7px] shrink-0 rounded-full bg-accent" />
-          {toast}
-        </div>
-      )}
     </main>
   );
 }

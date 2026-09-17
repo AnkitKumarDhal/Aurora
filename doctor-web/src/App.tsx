@@ -9,6 +9,7 @@ import { useAuth } from "@/auth/useAuth";
 import CasePage from "@/pages/CasePage";
 import LoginPage from "@/pages/LoginPage";
 import QueuePage from "@/pages/QueuePage";
+import { Toaster } from "@/components/ui/sonner";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -58,6 +59,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppRoutes />
+      <Toaster />
     </BrowserRouter>
   );
 }
