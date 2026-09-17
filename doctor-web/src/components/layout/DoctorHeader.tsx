@@ -5,8 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { CurrentUser } from "@/types/api";
@@ -96,7 +94,7 @@ export default function DoctorHeader({
             </Button>
           )}
 
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               render={
                 <button
@@ -122,23 +120,14 @@ export default function DoctorHeader({
 
             <DropdownMenuContent
               align="end"
-              className="w-52 rounded-xl border-border bg-surface p-1.5 shadow-[0_18px_40px_-18px_rgba(58,46,92,0.45)]"
+              className="min-w-44 rounded-xl border-border bg-surface p-1.5 shadow-[0_18px_40px_-18px_rgba(58,46,92,0.45)]"
               sideOffset={8}
             >
-              <DropdownMenuLabel className="px-2.5 py-2 text-xs text-text-secondary">
-                <span className="block font-semibold text-text-primary">
-                  {user?.username ?? "Doctor"}
-                </span>
-                <span className="mt-0.5 block text-[10px] font-medium">
-                  Doctor workspace
-                </span>
-              </DropdownMenuLabel>
-
-              <DropdownMenuSeparator className="bg-border" />
-
               <DropdownMenuItem
-                className="cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold text-danger focus:bg-accent-tint focus:text-accent-dark"
-                onSelect={onLogout}
+                className="cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold text-danger focus:bg-accent-tint focus:text-accent-dark"
+                onSelect={() => {
+                  onLogout();
+                }}
               >
                 Sign out
               </DropdownMenuItem>
