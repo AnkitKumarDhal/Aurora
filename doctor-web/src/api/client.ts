@@ -1,8 +1,7 @@
 import type { ApiError } from "@/types/api";
 import { getAccessToken } from "@/auth/auth";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 export class ApiRequestError extends Error {
   status: number;

@@ -6,6 +6,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
+import CasePage from "@/pages/CasePage";
 import LoginPage from "@/pages/LoginPage";
 import QueuePage from "@/pages/QueuePage";
 
@@ -37,6 +38,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <QueuePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cases/:sessionId"
+        element={
+          <ProtectedRoute>
+            <CasePage />
           </ProtectedRoute>
         }
       />

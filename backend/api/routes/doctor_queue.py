@@ -27,6 +27,11 @@ def _waiting_time_seconds(
     if queued_at is None:
         return None
 
+    if queued_at.tzinfo is None:
+        queued_at = queued_at.replace(tzinfo=timezone.utc)
+    else:
+        queued_at = queued_at.astimezone(timezone.utc)
+
     now = datetime.now(timezone.utc)
     return max(0, int((now - queued_at).total_seconds()))
 
