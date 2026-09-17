@@ -1,13 +1,20 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/700.css";
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/500.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: "Geist Variable", sans-serif;
+  --font-display: "Fraunces", serif;
+  --font-sans: "Manrope", sans-serif;
 
   --color-background: var(--aurora-bg);
   --color-foreground: var(--aurora-text-primary);
@@ -69,13 +76,12 @@
   --color-chart-4: var(--aurora-accent);
   --color-chart-5: var(--aurora-danger);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
 }
 
 :root {
@@ -140,38 +146,58 @@
 }
 
 .dark {
+  --aurora-bg: #211c2a;
+  --aurora-surface: #2a2436;
+  --aurora-surface-alt: #302a3d;
+  --aurora-border: #473d57;
+
+  --aurora-text-primary: #f4eff6;
+  --aurora-text-secondary: #c9bad4;
+
+  --aurora-primary: #c5b7e7;
+  --aurora-primary-dark: #211c2a;
+  --aurora-primary-tint: #3a3149;
+
+  --aurora-accent: #f1b4a5;
+  --aurora-accent-dark: #3a211b;
+  --aurora-accent-tint: #47302b;
+
+  --aurora-danger: #d68a7a;
+  --aurora-success: #7db58b;
+  --aurora-warning: #e8b66b;
+
   --background: var(--aurora-bg);
   --foreground: var(--aurora-text-primary);
+
   --card: var(--aurora-surface);
   --card-foreground: var(--aurora-text-primary);
+
   --popover: var(--aurora-surface-alt);
   --popover-foreground: var(--aurora-text-primary);
+
   --primary: var(--aurora-primary);
   --primary-foreground: var(--aurora-primary-dark);
+
   --secondary: var(--aurora-primary-tint);
   --secondary-foreground: var(--aurora-text-primary);
+
   --muted: var(--aurora-primary-tint);
   --muted-foreground: var(--aurora-text-secondary);
+
   --accent: var(--aurora-accent);
   --accent-foreground: var(--aurora-accent-dark);
+
   --destructive: var(--aurora-danger);
   --destructive-foreground: var(--aurora-surface-alt);
+
   --border: var(--aurora-border);
   --input: var(--aurora-border);
   --ring: var(--aurora-primary);
-  --sidebar: var(--aurora-surface);
-  --sidebar-foreground: var(--aurora-text-primary);
-  --sidebar-primary: var(--aurora-primary);
-  --sidebar-primary-foreground: var(--aurora-primary-dark);
-  --sidebar-accent: var(--aurora-primary-tint);
-  --sidebar-accent-foreground: var(--aurora-text-primary);
-  --sidebar-border: var(--aurora-border);
-  --sidebar-ring: var(--aurora-primary);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/30;
   }
 
   html {
@@ -179,7 +205,31 @@
     color-scheme: light;
   }
 
-  body {
-    @apply bg-background text-foreground;
+  html.dark {
+    color-scheme: dark;
   }
+
+  body {
+    @apply min-h-screen bg-background text-foreground font-sans antialiased;
+    margin: 0;
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+}
+
+.aurora-mark {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(
+    135deg,
+    var(--aurora-primary) 0%,
+    var(--aurora-accent) 100%
+  );
+  box-shadow: 0 4px 12px rgba(58, 46, 92, 0.12);
 }

@@ -1,64 +1,144 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, LogOut, RefreshCw, UserRound } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import DoctorHeader from "@/components/layout/DoctorHeader";
 import { useAuth } from "@/auth/useAuth";
 import { getDoctorQueue } from "@/api/queue";
 import type { DoctorQueueEntry, QueueStatus, UrgencyLevel } from "@/types/api";
 
-type QueueFilter = "ALL" | QueueStatus;
+type QueueFilter =
+  | "ALL"
+  | "WAITING"
+  | "PROMOTION_PENDING"
+  | "CALLED"
+  | "IN_CONSULTATION";
 
-const QUEUE_FILTERS: QueueFilter[] = [
-  "ALL",
-  "WAITING",
-  "PROMOTION_PENDING",
-  "CALLED",
-  "IN_CONSULTATION",
+const QUEUE_FILTERS: {
+  value: QueueFilter;
+  label: string;
+}[] = [
+  {
+    value: "ALL",
+    label: "All",
+  },
+  {
+    value: "WAITING",
+    label: "Waiting",
+  },
+  {
+    value: "PROMOTION_PENDING",
+    label: "Promotion review",
+  },
+  {
+    value: "CALLED",
+    label: "Called",
+  },
+  {
+    value: "IN_CONSULTATION",
+    label: "In consultation",
+  },
 ];
 
-function severityClass(level: UrgencyLevel | null): string {
+function severityMeta(level: UrgencyLevel | null): {
+  border: string;
+  background: string;
+  label: string;
+} {
   switch (level) {
     case 1:
-      return "border-l-success";
+      return {
+        border: "border-t-success",
+        background: "bg-success/10",
+        label: "Level 1 · Routine",
+      };
     case 2:
-      return "border-l-primary";
+      return {
+        border: "border-t-primary",
+        background: "bg-primary/10",
+        label: "Level 2 · Low",
+      };
     case 3:
-      return "border-l-warning";
+      return {
+        border: "border-t-warning",
+        background: "bg-warning/10",
+        label: "Level 3 · Moderate",
+      };
     case 4:
-      return "border-l-accent";
+      return {
+        border: "border-t-accent",
+        background: "bg-accent/15",
+        label: "Level 4 · Elevated",
+      };
     case 5:
-      return "border-l-danger";
+      return {
+        border: "border-t-danger",
+        background: "bg-danger/10",
+        label: "Level 5 · Critical",
+      };
     default:
-      return "border-l-muted";
+      return {
+        border: "border-t-border",
+        background: "bg-muted",
+        label: "Unrated",
+      };
   }
 }
 
-function statusLabel(status: QueueStatus): string {
+function statusMeta(status: QueueStatus): {
+  background: string;
+  text: string;
+  label: string;
+} {
   switch (status) {
     case "WAITING":
-      return "Waiting";
+      return {
+        background: "bg-primary-tint",
+        text: "text-text-primary",
+        label: "Waiting",
+      };
     case "PROMOTION_PENDING":
-      return "Promotion pending";
+      return {
+        background: "bg-accent-tint",
+        text: "text-accent-dark",
+        label: "Promotion review",
+      };
     case "CALLED":
-      return "Called";
+      return {
+        background: "bg-accent-tint",
+        text: "text-accent-dark",
+        label: "Called",
+      };
     case "IN_CONSULTATION":
-      return "In consultation";
+      return {
+        background: "bg-success/15",
+        text: "text-text-primary",
+        label: "In consultation",
+      };
     case "COMPLETED":
-      return "Completed";
+      return {
+        background: "bg-primary-tint",
+        text: "text-text-primary",
+        label: "Completed",
+      };
     case "CANCELLED":
-      return "Cancelled";
+      return {
+        background: "bg-muted",
+        text: "text-text-secondary",
+        label: "Cancelled",
+      };
     default:
-      return status;
+      return {
+        background: "bg-muted",
+        text: "text-text-secondary",
+        label: status,
+      };
   }
-}
-
-function urgencyLabel(level: UrgencyLevel | null): string {
-  return level === null ? "Unrated" : `Level ${level}`;
 }
 
 function formatWaitingTime(seconds: number | null): string {
   if (seconds === null) {
-    return "Waiting time unavailable";
+    return "—";
   }
 
   const totalMinutes = Math.floor(seconds / 60);
@@ -66,10 +146,10 @@ function formatWaitingTime(seconds: number | null): string {
   const minutes = totalMinutes % 60;
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m waiting`;
+    return `${hours}h ${minutes}m`;
   }
 
-  return `${minutes}m waiting`;
+  return `${minutes}m`;
 }
 
 function QueueCard({
@@ -77,56 +157,53 @@ function QueueCard({
   onOpen,
 }: {
   entry: DoctorQueueEntry;
-  onOpen: (sessionId: string) => void;
+  onOpen: (entry: DoctorQueueEntry) => void;
 }) {
-  const patientName = entry.patient?.display_name ?? "Unknown patient";
-  const age = entry.patient?.age;
-  const complaint =
-    entry.summary?.chief_complaint ?? "No chief complaint available";
+  const severity = severityMeta(entry.urgency_level);
+  const status = statusMeta(entry.status);
 
   return (
     <button
-      className={`group flex min-h-56 flex-col rounded-2xl border border-l-4 bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${severityClass(entry.urgency_level)}`}
-      onClick={() => onOpen(entry.session_id)}
+      className={`group flex min-h-[140px] flex-col rounded-xl border border-border border-t-4 bg-surface p-4 text-left shadow-[0_8px_24px_rgba(58,46,92,0.05)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(58,46,92,0.08)] ${severity.border}`}
+      onClick={() => onOpen(entry)}
       type="button"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-lg font-semibold tracking-tight">{patientName}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {age !== null && age !== undefined
-              ? `${age} years`
-              : "Age unavailable"}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-display text-[15px] font-semibold text-text-primary">
+            {entry.patient?.display_name ?? "Unknown patient"}
+          </p>
+
+          <p className="mt-0.5 text-[10px] font-medium text-text-secondary">
+            {entry.patient?.age !== null && entry.patient?.age !== undefined
+              ? `${entry.patient.age} yrs`
+              : "Age unavailable"}{" "}
+            · position {entry.position ?? "—"}
           </p>
         </div>
 
-        <span className="rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          {statusLabel(entry.status)}
+        <span
+          className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold ${severity.background} text-text-primary`}
+        >
+          {severity.label}
         </span>
       </div>
 
-      <div className="mt-6">
-        <p className="text-sm text-muted-foreground">Chief complaint</p>
-        <p className="mt-1 line-clamp-2 text-sm leading-6">{complaint}</p>
-      </div>
+      <p className="mt-3 line-clamp-2 text-[11px] leading-4 text-text-primary">
+        {entry.summary?.chief_complaint ?? "No chief complaint available"}
+      </p>
 
-      <div className="mt-auto flex items-end justify-between gap-4 pt-6">
-        <div>
-          <p className="text-xs text-muted-foreground">Urgency</p>
-          <p className="mt-1 text-sm font-medium">
-            {urgencyLabel(entry.urgency_level)}
-          </p>
-        </div>
+      <div className="mt-auto flex items-center justify-between pt-3">
+        <span
+          className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${status.background} ${status.text}`}
+        >
+          <span className="mr-1 inline-block size-1.5 rounded-full bg-current align-middle" />
+          {status.label}
+        </span>
 
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">Queue position</p>
-          <p className="mt-1 text-sm font-medium">{entry.position ?? "—"}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-        <Activity className="size-4" />
-        {formatWaitingTime(entry.waiting_time_seconds)}
+        <span className="text-[10px] font-medium text-text-secondary">
+          {formatWaitingTime(entry.waiting_time_seconds)}
+        </span>
       </div>
     </button>
   );
@@ -179,6 +256,18 @@ export default function QueuePage() {
     };
   }, []);
 
+  const counts = {
+    ALL: entries.length,
+    WAITING: entries.filter((entry) => entry.status === "WAITING").length,
+    PROMOTION_PENDING: entries.filter(
+      (entry) => entry.status === "PROMOTION_PENDING",
+    ).length,
+    CALLED: entries.filter((entry) => entry.status === "CALLED").length,
+    IN_CONSULTATION: entries.filter(
+      (entry) => entry.status === "IN_CONSULTATION",
+    ).length,
+  };
+
   const filteredEntries =
     filter === "ALL"
       ? entries
@@ -200,95 +289,104 @@ export default function QueuePage() {
     }
   }
 
+  function handleOpen(entry: DoctorQueueEntry) {
+    navigate(
+      `/cases/${entry.session_id}?queueEntryId=${encodeURIComponent(
+        entry.queue_entry_id,
+      )}`,
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+      <DoctorHeader user={user} onLogout={logout} />
+
+      <div className="mx-auto max-w-[950px] px-5 pb-12 pt-7">
+        <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Aurora</h1>
-            <p className="text-sm text-muted-foreground">General Medicine</p>
-          </div>
+            <h1 className="font-display text-[29px] font-semibold tracking-[-0.02em] text-text-primary">
+              Your queue
+            </h1>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-full border px-3 py-2 text-sm md:flex">
-              <UserRound className="size-4 text-muted-foreground" />
-              <span>{user?.username}</span>
-            </div>
-
-            <Button
-              onClick={handleRefresh}
-              size="icon"
-              variant="outline"
-              disabled={isRefreshing}
-              type="button"
-            >
-              <RefreshCw
-                className={isRefreshing ? "size-4 animate-spin" : "size-4"}
-              />
-            </Button>
-
-            <Button
-              onClick={logout}
-              size="icon"
-              variant="outline"
-              type="button"
-            >
-              <LogOut className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Doctor queue
+            <p className="mt-1 text-[11px] font-medium text-text-secondary">
+              {entries.length} patients · General Medicine
             </p>
-            <h2 className="mt-1 text-3xl font-semibold tracking-tight">
-              Your patients
-            </h2>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {QUEUE_FILTERS.map((option) => (
-              <Button
-                key={option}
-                onClick={() => setFilter(option)}
-                size="sm"
-                variant={filter === option ? "default" : "outline"}
-                type="button"
-              >
-                {option === "ALL" ? "All" : statusLabel(option)}
-              </Button>
-            ))}
+            {QUEUE_FILTERS.map((option) => {
+              const active = filter === option.value;
+
+              return (
+                <Button
+                  className={[
+                    "h-7 rounded-full border px-3 text-[10px] font-semibold shadow-none",
+                    active
+                      ? "border-primary-dark bg-primary-dark text-white hover:bg-primary-dark/90"
+                      : "border-border bg-surface text-text-secondary hover:bg-primary-tint hover:text-text-primary",
+                  ].join(" ")}
+                  key={option.value}
+                  onClick={() => setFilter(option.value)}
+                  type="button"
+                  variant="outline"
+                >
+                  {option.label}
+                  <span
+                    className={[
+                      "ml-1.5 rounded-full px-1.5 py-0.5 text-[8px]",
+                      active
+                        ? "bg-white/15 text-white"
+                        : "bg-primary-tint text-text-secondary",
+                    ].join(" ")}
+                  >
+                    {counts[option.value]}
+                  </span>
+                </Button>
+              );
+            })}
+
+            <Button
+              aria-label="Refresh queue"
+              className="ml-auto size-7 rounded-full border-border bg-surface text-text-secondary hover:bg-primary-tint hover:text-text-primary"
+              disabled={isRefreshing}
+              onClick={handleRefresh}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <RefreshCw
+                className={isRefreshing ? "size-3.5 animate-spin" : "size-3.5"}
+              />
+            </Button>
           </div>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-            <p className="text-sm text-destructive">{error}</p>
+          <div className="mt-5 rounded-xl border border-danger/25 bg-accent-tint px-4 py-3">
+            <p className="text-[11px] text-accent-dark">{error}</p>
           </div>
         )}
 
         {isLoading ? (
-          <div className="mt-8 rounded-2xl border bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">Loading queue...</p>
+          <div className="mt-5 rounded-xl border border-border bg-surface px-5 py-10 text-center shadow-[0_8px_24px_rgba(58,46,92,0.04)]">
+            <p className="text-[11px] text-text-secondary">Loading queue...</p>
           </div>
         ) : filteredEntries.length === 0 ? (
-          <div className="mt-8 rounded-2xl border bg-card p-8 text-center">
-            <p className="font-medium">No patients in this view</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+          <div className="mt-5 rounded-xl border border-border bg-surface px-5 py-10 text-center shadow-[0_8px_24px_rgba(58,46,92,0.04)]">
+            <p className="font-display text-[16px] font-semibold text-text-primary">
+              No patients in this view
+            </p>
+            <p className="mt-1 text-[10px] text-text-secondary">
               The queue will refresh automatically.
             </p>
           </div>
         ) : (
-          <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredEntries.map((entry) => (
               <QueueCard
-                key={entry.queue_entry_id}
                 entry={entry}
-                onOpen={(sessionId) => navigate(`/cases/${sessionId}`)}
+                key={entry.queue_entry_id}
+                onOpen={handleOpen}
               />
             ))}
           </div>

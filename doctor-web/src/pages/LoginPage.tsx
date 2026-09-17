@@ -13,8 +13,8 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-text-secondary">Loading...</p>
       </main>
     );
   }
@@ -26,54 +26,76 @@ export default function LoginPage() {
     return <Navigate to={destination} replace />;
   }
 
-  async function handleSubmit(
-    event: Parameters<NonNullable<React.ComponentProps<"form">["onSubmit"]>>[0],
-  ) {
-    event.preventDefault();
-    setError("");
-    setIsSubmitting(true);
-
-    try {
-      await login({ username, password });
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Unable to sign in");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <section className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-sm">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">Aurora</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Doctor workspace</p>
+    <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
+      <section className="w-full max-w-[320px] rounded-[18px] border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(58,46,92,0.08)]">
+        <div className="flex items-center gap-2.5">
+          <span className="aurora-mark" />
+          <span className="font-display text-[18px] font-semibold text-text-primary">
+            Aurora
+          </span>
         </div>
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="username">
+        <div className="mt-7">
+          <h1 className="font-display text-[23px] font-semibold leading-tight text-text-primary">
+            Doctor sign in
+          </h1>
+
+          <p className="mt-1.5 text-[12px] leading-5 text-text-secondary">
+            General Medicine · OPD clinical workspace
+          </p>
+        </div>
+
+        <form
+          className="mt-6 space-y-4"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setError("");
+            setIsSubmitting(true);
+
+            try {
+              await login({ username, password });
+            } catch (error) {
+              setError(
+                error instanceof Error ? error.message : "Unable to sign in",
+              );
+            } finally {
+              setIsSubmitting(false);
+            }
+          }}
+        >
+          <div className="space-y-1.5">
+            <label
+              className="text-[11px] font-semibold text-text-secondary"
+              htmlFor="username"
+            >
               Username
             </label>
+
             <input
               id="username"
-              className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
+              className="h-9 w-full rounded-md border border-border bg-surface-alt px-3 text-xs text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               autoComplete="username"
               disabled={isSubmitting}
               onChange={(event) => setUsername(event.target.value)}
+              placeholder="doctor1"
               required
               type="text"
               value={username}
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="password">
+          <div className="space-y-1.5">
+            <label
+              className="text-[11px] font-semibold text-text-secondary"
+              htmlFor="password"
+            >
               Password
             </label>
+
             <input
               id="password"
-              className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
+              className="h-9 w-full rounded-md border border-border bg-surface-alt px-3 text-xs text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               autoComplete="current-password"
               disabled={isSubmitting}
               onChange={(event) => setPassword(event.target.value)}
@@ -84,15 +106,34 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-destructive" role="alert">
+            <p
+              className="rounded-md bg-accent-tint px-3 py-2 text-[11px] leading-4 text-accent-dark"
+              role="alert"
+            >
               {error}
             </p>
           )}
 
-          <Button className="w-full" disabled={isSubmitting} type="submit">
+          <Button
+            className="h-9 w-full rounded-md bg-primary-dark text-xs font-semibold text-white shadow-sm hover:bg-primary-dark/90"
+            disabled={isSubmitting}
+            type="submit"
+          >
             {isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-[10px] leading-4 text-text-secondary">
+          Calls{" "}
+          <span className="rounded bg-primary-tint px-1 py-0.5 font-medium">
+            POST /api/v1/auth/login
+          </span>{" "}
+          · stores{" "}
+          <span className="rounded bg-primary-tint px-1 py-0.5 font-medium">
+            access_token
+          </span>{" "}
+          as a bearer token
+        </p>
       </section>
     </main>
   );
