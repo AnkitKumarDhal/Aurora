@@ -28,6 +28,7 @@ import type {
   SessionStatus,
   UrgencyLevel,
 } from "@/types/api";
+import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -896,6 +897,13 @@ export default function CasePage() {
     allergies: "",
   });
 
+  const liveWaitingSeconds = useElapsedSeconds(
+    queueEntry?.waiting_time_seconds ?? null,
+    queueEntry?.queued_at ?? null,
+    queueEntry?.status === "WAITING" ||
+      queueEntry?.status === "PROMOTION_PENDING",
+  );
+
   const queueEntryIdFromUrl = searchParams.get("queueEntryId");
 
   const applyCase = useCallback(
@@ -1217,10 +1225,7 @@ export default function CasePage() {
                         <span>·</span>
 
                         <span>
-                          waiting{" "}
-                          {formatWaitingTime(
-                            queueEntry?.waiting_time_seconds ?? null,
-                          )}
+                          waiting {formatWaitingTime(liveWaitingSeconds)}
                         </span>
                       </div>
                     </div>

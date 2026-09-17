@@ -5,6 +5,7 @@ import DoctorHeader from "@/components/layout/DoctorHeader";
 import { useAuth } from "@/auth/useAuth";
 import { getDoctorQueue } from "@/api/queue";
 import type { DoctorQueueEntry, QueueStatus, UrgencyLevel } from "@/types/api";
+import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 
 type QueueFilter =
   | "ALL"
@@ -167,6 +168,11 @@ function QueueCard({
 }) {
   const severity = severityMeta(entry.urgency_level);
   const status = statusMeta(entry.status);
+  const waitingSeconds = useElapsedSeconds(
+    entry.waiting_time_seconds,
+    entry.queued_at,
+    entry.status === "WAITING" || entry.status === "PROMOTION_PENDING",
+  );
 
   return (
     <button
@@ -208,7 +214,7 @@ function QueueCard({
         </span>
 
         <span className="text-xs tabular-nums text-text-secondary">
-          {formatWaitingTime(entry.waiting_time_seconds)}
+          {formatWaitingTime(waitingSeconds)}
         </span>
       </div>
     </button>
