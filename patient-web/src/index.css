@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/* Aurora — Color Palette (Light mode) */
+:root {
+  /* Base surfaces */
+  --color-bg: #FBF5F3;          /* app/page background — blush white */
+  --color-surface: #FFFDFC;     /* cards, kiosk screen surface */
+  --color-surface-alt: #FFFFFF; /* inputs, secondary surfaces */
+  --color-border: #E7E1F3;
+
+  /* Text */
+  --color-text-primary: #3A2E5C;   /* headings, primary text */
+  --color-text-secondary: #8A6D9E; /* subtitles, muted text */
+
+  /* Primary — lavender */
+  --color-primary: #B8A9DE;
+  --color-primary-dark: #3A2E5C;   /* text-on-primary / high-contrast primary */
+  --color-primary-tint: #EFEAF8;   /* selected states, chips, subtle fills */
+
+  /* Accent — peach */
+  --color-accent: #F4B8A8;
+  --color-accent-dark: #7A3A28;    /* text-on-accent */
+  --color-accent-tint: #FCEEE9;    /* subtle fills, consent/info boxes */
+
+  /* Status */
+  --color-danger: #C97A6A;
+  --color-success: #6FA97F;
+  --color-warning: #E0A758;
+
+  /* shadcn/ui CSS Variables (mapping to Aurora palette) */
+  --background: var(--color-bg);
+  --foreground: var(--color-text-primary);
+  
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text-primary);
+  
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-dark);
+  
+  --secondary: var(--color-accent);
+  --secondary-foreground: var(--color-accent-dark);
+  
+  --muted: var(--color-primary-tint);
+  --muted-foreground: var(--color-text-secondary);
+  
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-dark);
+  
+  --destructive: var(--color-danger);
+  --destructive-foreground: var(--color-text-primary);
+  
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+  
+  --radius: 0.5rem;
+}
+
+/* Dark mode colors */
+.dark {
+  --color-bg: #1A1625;
+  --color-surface: #252035;
+  --color-surface-alt: #2F2942;
+  --color-border: #3D3652;
+  
+  --color-text-primary: #E8E4F0;
+  --color-text-secondary: #B8A9DE;
+  
+  --color-primary: #7C6EB3;
+  --color-primary-dark: #E8E4F0;
+  --color-primary-tint: #2F2942;
+  
+  --color-accent: #E08B7A;
+  --color-accent-dark: #FCEEE9;
+  --color-accent-tint: #3D2A25;
+  
+  --color-danger: #E08B7A;
+  --color-success: #5A8F6A;
+  --color-warning: #C99345;
+
+  /* shadcn/ui Dark mode mapping */
+  --background: var(--color-bg);
+  --foreground: var(--color-text-primary);
+  
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text-primary);
+  
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-dark);
+  
+  --secondary: var(--color-accent);
+  --secondary-foreground: var(--color-accent-dark);
+  
+  --muted: var(--color-primary-tint);
+  --muted-foreground: var(--color-text-secondary);
+  
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-dark);
+  
+  --destructive: var(--color-danger);
+  --destructive-foreground: var(--color-text-primary);
+  
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
