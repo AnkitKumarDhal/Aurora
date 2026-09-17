@@ -98,7 +98,7 @@ export default function DoctorHeader({
             <button
               aria-expanded={isMenuOpen}
               aria-haspopup="menu"
-              className="flex items-center gap-2.5 rounded-full border border-border bg-surface-alt py-1 pl-1 pr-3 transition hover:border-primary"
+              className="flex items-center gap-2.5 rounded-full border border-border bg-surface-alt py-1 pl-2 pr-3 transition-colors hover:border-primary/70 hover:bg-primary-tint/30"
               onClick={() => setIsMenuOpen((value) => !value)}
               type="button"
             >

@@ -1010,9 +1010,7 @@ export default function CasePage() {
     try {
       await callPatient(sessionId, queueEntry.queue_entry_id);
       await loadCase();
-      showToast(
-        `POST /queue/${queueEntry.queue_entry_id}/call → patient called`,
-      );
+      showToast(`Patient called`);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to call patient",
@@ -1033,7 +1031,7 @@ export default function CasePage() {
     try {
       await startConsultation(sessionId, queueEntry.queue_entry_id);
       await loadCase();
-      showToast(`POST /queue/${queueEntry.queue_entry_id}/start-consultation`);
+      showToast(`Consultation Started`);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to start consultation",
@@ -1058,7 +1056,7 @@ export default function CasePage() {
     try {
       await completeConsultation(sessionId, queueEntry.queue_entry_id);
       await loadCase();
-      showToast(`POST /queue/${queueEntry.queue_entry_id}/complete`);
+      showToast(`Complete Consultation`);
     } catch (error) {
       setError(
         error instanceof Error
@@ -1114,7 +1112,7 @@ export default function CasePage() {
 
       setIsEditing(false);
       await loadCase();
-      showToast(`PATCH /sessions/${sessionId}/summary → saved`);
+      showToast(`Summary Saved`);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to save summary",
@@ -1135,7 +1133,7 @@ export default function CasePage() {
     try {
       await confirmSummary(sessionId);
       await loadCase();
-      showToast(`POST /sessions/${sessionId}/summary/confirm`);
+      showToast(`Summary Confirmed`);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to confirm summary",
