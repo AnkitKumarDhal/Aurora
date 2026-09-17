@@ -170,7 +170,7 @@ function QueueCard({
 
   return (
     <button
-      className={`group flex min-h-[140px] flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-[18px] pb-4 text-left shadow-[0_10px_24px_-18px_rgba(58,46,92,0.4)] transition duration-150 hover:-translate-y-[3px] hover:border-primary hover:shadow-[0_20px_32px_-18px_rgba(58,46,92,0.45)] ${severity.border}`}
+      className={`group flex min-h-[140px] flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-[18px] pb-4 text-left shadow-[0_10px_24px_-18px_rgba(58,46,92,0.4)] transition duration-150 hover:-translate-y-[3px] hover:border-primary hover:border-1 hover:shadow-[0_20px_32px_-18px_rgba(58,46,92,0.45)] ${severity.border}`}
       onClick={() => onOpen(entry)}
       type="button"
     >

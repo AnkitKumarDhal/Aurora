@@ -1,6 +1,14 @@
 import { SunMedium } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { CurrentUser } from "@/types/api";
 
 interface DoctorHeaderProps {
@@ -32,7 +40,6 @@ export default function DoctorHeader({
   showThemeToggle = false,
 }: DoctorHeaderProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -48,14 +55,9 @@ export default function DoctorHeader({
     document.documentElement.classList.toggle("dark");
   }
 
-  function handleLogout() {
-    setIsMenuOpen(false);
-    onLogout();
-  }
-
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface/90 backdrop-blur-[10px]">
-      <div className="flex items-center justify-between gap-4 px-7 py-3">
+      <div className="flex items-center justify-between gap-4 px-7 py-3.25">
         <div className="flex items-center gap-3.5">
           <div className="flex items-center gap-2.5">
             <span className="aurora-mark" />
@@ -64,7 +66,7 @@ export default function DoctorHeader({
             </span>
           </div>
 
-          <span className="rounded-full bg-primary-tint px-3 py-1 text-xs font-bold text-primary-dark">
+          <span className="rounded-full bg-primary-tint px-3 py-1.5 text-xs font-bold text-primary-dark">
             General Medicine
           </span>
         </div>
@@ -94,13 +96,14 @@ export default function DoctorHeader({
             </Button>
           )}
 
-          <div className="relative">
-            <button
-              aria-expanded={isMenuOpen}
-              aria-haspopup="menu"
-              className="flex items-center gap-2.5 rounded-full border border-border bg-surface-alt py-1 pl-2 pr-3 transition-colors hover:border-primary/70 hover:bg-primary-tint/30"
-              onClick={() => setIsMenuOpen((value) => !value)}
-              type="button"
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  className="flex items-center gap-2.5 rounded-full border border-border bg-surface-alt py-1 pl-2 pr-3 transition-colors hover:border-primary/70 hover:bg-primary-tint/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  type="button"
+                />
+              }
             >
               <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-tint to-accent-tint text-xs font-extrabold text-primary-dark">
                 {getInitials(user?.username)}
@@ -110,24 +113,37 @@ export default function DoctorHeader({
                 <span className="block text-[13px] font-bold text-text-primary">
                   {user?.username ?? "Doctor"}
                 </span>
+
                 <span className="block text-[11px] text-text-secondary">
                   DOCTOR
                 </span>
               </span>
-            </button>
+            </DropdownMenuTrigger>
 
-            {isMenuOpen && (
-              <div className="absolute right-0 top-[calc(100%+8px)] min-w-40 rounded-lg border border-border bg-surface p-1.5 shadow-[0_16px_32px_-16px_rgba(58,46,92,0.35)]">
-                <button
-                  className="w-full rounded-md px-2.5 py-2 text-left text-[13px] text-text-primary transition hover:bg-primary-tint"
-                  onClick={handleLogout}
-                  type="button"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
+            <DropdownMenuContent
+              align="end"
+              className="w-52 rounded-xl border-border bg-surface p-1.5 shadow-[0_18px_40px_-18px_rgba(58,46,92,0.45)]"
+              sideOffset={8}
+            >
+              <DropdownMenuLabel className="px-2.5 py-2 text-xs text-text-secondary">
+                <span className="block font-semibold text-text-primary">
+                  {user?.username ?? "Doctor"}
+                </span>
+                <span className="mt-0.5 block text-[10px] font-medium">
+                  Doctor workspace
+                </span>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator className="bg-border" />
+
+              <DropdownMenuItem
+                className="cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold text-danger focus:bg-accent-tint focus:text-accent-dark"
+                onSelect={onLogout}
+              >
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
