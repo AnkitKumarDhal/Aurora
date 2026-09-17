@@ -55,3 +55,29 @@ async def require_assigned_doctor_access(session_id: str, current_user: User = D
                             detail="Doctor is not assigned to this patient")
 
     return current_user
+
+
+async def require_doctor_case_access(
+    session_id: str,
+    current_user: User = Depends(
+        require_roles(ActorRole.DOCTOR),
+    ),
+    assignment_repository=Depends(get_assignment_repository),
+) -> User:
+    assignment = await assignment_repository.get_session_assignment_history(
+        session_id,
+    )
+
+    if assignment is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Doctor has no assignment history for this session",
+        )
+
+    if assignment.doctor_id != current_user.actor_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Doctor is not assigned to this patient",
+        )
+
+    return current_user

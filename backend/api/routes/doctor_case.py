@@ -10,7 +10,7 @@ from backend.api.schemas.doctor_case import (
     DoctorCaseSummaryResponse,
     DoctorCaseTriageResponse,
 )
-from backend.auth.authorization import require_assigned_doctor_access
+from backend.auth.authorization import require_doctor_case_access
 from backend.domain.assignment import DoctorAssignment
 from backend.domain.clinical_session import ClinicalSession
 from backend.domain.clinical_summary import ClinicalSummary
@@ -19,6 +19,7 @@ from backend.domain.patient import Patient
 from backend.domain.triage import TriageResult
 from backend.domain.user import User
 from backend.services.doctor_case import DoctorCaseService
+
 
 router = APIRouter(
     prefix="/doctors/me/cases",
@@ -127,8 +128,12 @@ def _assignment_response(
 )
 async def get_doctor_case(
     session_id: str,
-    current_user: User = Depends(require_assigned_doctor_access),
-    service: DoctorCaseService = Depends(get_doctor_case_service),
+    current_user: User = Depends(
+        require_doctor_case_access,
+    ),
+    service: DoctorCaseService = Depends(
+        get_doctor_case_service,
+    ),
 ) -> dict[str, DoctorCaseResponse]:
     case = await service.get_case(session_id)
 

@@ -40,7 +40,7 @@ const QUEUE_FILTERS: {
 ];
 
 function severityMeta(level: UrgencyLevel | null): {
-  border: string;
+  accent: string;
   background: string;
   label: string;
   text: string;
@@ -48,42 +48,42 @@ function severityMeta(level: UrgencyLevel | null): {
   switch (level) {
     case 1:
       return {
-        border: "border-t-success",
+        accent: "before:bg-success",
         background: "bg-success/10",
         label: "Level 1 · Routine",
         text: "text-text-primary",
       };
     case 2:
       return {
-        border: "border-t-primary",
+        accent: "before:bg-primary",
         background: "bg-primary-tint",
         label: "Level 2 · Low",
         text: "text-primary-dark",
       };
     case 3:
       return {
-        border: "border-t-warning",
+        accent: "before:bg-warning",
         background: "bg-warning/15",
         label: "Level 3 · Moderate",
         text: "text-text-primary",
       };
     case 4:
       return {
-        border: "border-t-accent",
+        accent: "before:bg-accent",
         background: "bg-accent-tint",
         label: "Level 4 · Elevated",
         text: "text-accent-dark",
       };
     case 5:
       return {
-        border: "border-t-danger",
+        accent: "before:bg-danger",
         background: "bg-danger/10",
         label: "Level 5 · Critical",
         text: "text-danger",
       };
     default:
       return {
-        border: "border-t-border",
+        accent: "before:bg-border",
         background: "bg-primary-tint",
         label: "Unrated",
         text: "text-text-primary",
@@ -170,7 +170,7 @@ function QueueCard({
 
   return (
     <button
-      className={`group flex min-h-[140px] flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-[18px] pb-4 text-left shadow-[0_10px_24px_-18px_rgba(58,46,92,0.4)] transition duration-150 hover:-translate-y-[3px] hover:border-primary hover:border-1 hover:shadow-[0_20px_32px_-18px_rgba(58,46,92,0.45)] ${severity.border}`}
+      className={`group relative flex min-h-[140px] flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-[18px] pb-4 text-left shadow-[0_10px_24px_-18px_rgba(58,46,92,0.4)] transition duration-150 before:absolute before:inset-x-0 before:top-0 before:h-[5px] before:rounded-t-[14px] ${severity.accent} hover:-translate-y-[3px] hover:border-primary hover:shadow-[0_20px_32px_-18px_rgba(58,46,92,0.45)]`}
       onClick={() => onOpen(entry)}
       type="button"
     >
