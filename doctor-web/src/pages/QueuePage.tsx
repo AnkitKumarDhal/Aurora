@@ -19,15 +19,15 @@ const QUEUE_FILTERS: QueueFilter[] = [
 function severityClass(level: UrgencyLevel | null): string {
   switch (level) {
     case 1:
-      return "border-l-green-500";
+      return "border-l-success";
     case 2:
       return "border-l-primary";
     case 3:
-      return "border-l-yellow-500";
+      return "border-l-warning";
     case 4:
-      return "border-l-orange-400";
+      return "border-l-accent";
     case 5:
-      return "border-l-red-500";
+      return "border-l-danger";
     default:
       return "border-l-muted";
   }
