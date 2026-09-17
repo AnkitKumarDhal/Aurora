@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import DoctorHeader from "@/components/layout/DoctorHeader";
 import { useAuth } from "@/auth/useAuth";
 import { getDoctorQueue } from "@/api/queue";
-import type { DoctorQueueEntry, QueueStatus, UrgencyLevel } from "@/types/api";
+import type { DoctorQueueEntry, QueueStatus } from "@/types/api";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
+import { getUrgencyStyles } from "@/lib/urgency";
 
 type QueueFilter =
   | "ALL"
@@ -39,58 +40,6 @@ const QUEUE_FILTERS: {
     label: "In consultation",
   },
 ];
-
-function severityMeta(level: UrgencyLevel | null): {
-  accent: string;
-  background: string;
-  label: string;
-  text: string;
-} {
-  switch (level) {
-    case 1:
-      return {
-        accent: "before:bg-success",
-        background: "bg-success/10",
-        label: "Level 1 · Routine",
-        text: "text-text-primary",
-      };
-    case 2:
-      return {
-        accent: "before:bg-primary",
-        background: "bg-primary-tint",
-        label: "Level 2 · Low",
-        text: "text-primary-dark",
-      };
-    case 3:
-      return {
-        accent: "before:bg-warning",
-        background: "bg-warning/15",
-        label: "Level 3 · Moderate",
-        text: "text-text-primary",
-      };
-    case 4:
-      return {
-        accent: "before:bg-accent",
-        background: "bg-accent-tint",
-        label: "Level 4 · Elevated",
-        text: "text-accent-dark",
-      };
-    case 5:
-      return {
-        accent: "before:bg-danger",
-        background: "bg-danger/10",
-        label: "Level 5 · Critical",
-        text: "text-danger",
-      };
-    default:
-      return {
-        accent: "before:bg-border",
-        background: "bg-primary-tint",
-        label: "Unrated",
-        text: "text-text-primary",
-      };
-  }
-}
 
 function statusMeta(status: QueueStatus): {
   background: string;
@@ -166,7 +115,7 @@ function QueueCard({
   entry: DoctorQueueEntry;
   onOpen: (entry: DoctorQueueEntry) => void;
 }) {
-  const severity = severityMeta(entry.urgency_level);
+  const severity = getUrgencyStyles(entry.urgency_level);
   const status = statusMeta(entry.status);
   const waitingSeconds = useElapsedSeconds(
     entry.waiting_time_seconds,
@@ -195,9 +144,13 @@ function QueueCard({
         </div>
 
         <span
-          className={`shrink-0 rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold ${severity.background} ${severity.text}`}
+          className="shrink-0 rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold"
+          style={{
+            background: severity.badgeBackground,
+            color: severity.badgeColor,
+          }}
         >
-          {severity.label}
+          Level {entry.urgency_level ?? "—"} · {severity.label}
         </span>
       </div>
 

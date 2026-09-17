@@ -26,9 +26,9 @@ import type {
   DoctorCaseResponse,
   DoctorQueueEntry,
   SessionStatus,
-  UrgencyLevel,
 } from "@/types/api";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
+import { getUrgencyStyles } from "@/lib/urgency";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -62,60 +62,6 @@ function formatWaitingTime(seconds: number | null): string {
   }
 
   return `${remainingMinutes}m`;
-}
-
-function severityMeta(level: UrgencyLevel | null): {
-  background: string;
-  color: string;
-  border: string;
-  label: string;
-} {
-  switch (level) {
-    case 1:
-      return {
-        background: "var(--aurora-primary-tint)",
-        color: "var(--aurora-primary-dark)",
-        border: "var(--aurora-success)",
-        label: "Routine",
-      };
-    case 2:
-      return {
-        background: "var(--aurora-primary-tint)",
-        color: "var(--aurora-primary-dark)",
-        border: "var(--aurora-primary)",
-        label: "Low",
-      };
-    case 3:
-      return {
-        background:
-          "color-mix(in srgb, var(--aurora-warning) 18%, var(--aurora-surface))",
-        color: "var(--aurora-text-primary)",
-        border: "var(--aurora-warning)",
-        label: "Moderate",
-      };
-    case 4:
-      return {
-        background: "var(--aurora-accent-tint)",
-        color: "var(--aurora-accent-dark)",
-        border: "var(--aurora-accent)",
-        label: "Elevated",
-      };
-    case 5:
-      return {
-        background:
-          "color-mix(in srgb, var(--aurora-danger) 14%, var(--aurora-surface))",
-        color: "var(--aurora-danger)",
-        border: "var(--aurora-danger)",
-        label: "Critical",
-      };
-    default:
-      return {
-        background: "var(--aurora-primary-tint)",
-        color: "var(--aurora-text-primary)",
-        border: "var(--aurora-border)",
-        label: "Unrated",
-      };
-  }
 }
 
 function workflowIndex(status: SessionStatus): number {
@@ -751,7 +697,7 @@ function TriagePanel({ triage }: { triage: DoctorCaseResponse["triage"] }) {
     );
   }
 
-  const severity = severityMeta(triage.urgency_level);
+  const severity = getUrgencyStyles(triage.urgency_level);
 
   return (
     <Card className="rounded-[20px] border border-border bg-surface p-0 shadow-none">
@@ -766,9 +712,13 @@ function TriagePanel({ triage }: { triage: DoctorCaseResponse["triage"] }) {
           <span className="text-[12.5px] font-semibold text-text-secondary">
             Urgency level
           </span>
+
           <span
-            className="text-[13.5px] font-extrabold"
-            style={{ color: severity.color }}
+            className="rounded-full px-2.5 py-1 text-[12px] font-extrabold"
+            style={{
+              background: severity.badgeBackground,
+              color: severity.badgeColor,
+            }}
           >
             Level {triage.urgency_level ?? "—"} · {severity.label}
           </span>
@@ -1151,7 +1101,7 @@ export default function CasePage() {
     }
   }
 
-  const severity = severityMeta(caseData?.triage?.urgency_level ?? null);
+  const severity = getUrgencyStyles(caseData?.triage?.urgency_level ?? null);
 
   return (
     <main className="min-h-screen bg-background">
@@ -1214,8 +1164,8 @@ export default function CasePage() {
                         <span
                           className="rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold"
                           style={{
-                            background: severity.background,
-                            color: severity.color,
+                            background: severity.badgeBackground,
+                            color: severity.badgeColor,
                           }}
                         >
                           Level {caseData.triage?.urgency_level ?? "—"} ·{" "}
