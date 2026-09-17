@@ -1,4 +1,5 @@
 import { AlertTriangle, Check, LoaderCircle, Phone, Play } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type {
   DoctorCaseResponse,
@@ -44,7 +45,7 @@ function WorkflowStepper({ status }: { status: SessionStatus }) {
   ];
 
   return (
-    <div className="mt-[18px] flex flex-wrap items-center">
+    <div className="mt-4.5 flex flex-wrap items-center">
       {steps.map((step, index) => {
         const done = index < currentIndex;
         const current = index === currentIndex;
@@ -54,7 +55,7 @@ function WorkflowStepper({ status }: { status: SessionStatus }) {
             <div className="flex items-center gap-2">
               <span
                 className={[
-                  "flex size-[22px] items-center justify-center rounded-full border-2 text-[10px] font-extrabold",
+                  "flex size-5.5 items-center justify-center rounded-full border-2 text-[10px] font-extrabold transition-all duration-300 ease-out",
                   done
                     ? "border-primary-dark bg-primary-dark text-surface"
                     : current
@@ -67,7 +68,7 @@ function WorkflowStepper({ status }: { status: SessionStatus }) {
 
               <span
                 className={[
-                  "text-xs font-bold",
+                  "text-xs font-bold transition-colors duration-300",
                   done || current ? "text-primary-dark" : "text-text-secondary",
                 ].join(" ")}
               >
@@ -78,7 +79,7 @@ function WorkflowStepper({ status }: { status: SessionStatus }) {
             {index < steps.length - 1 && (
               <span
                 className={[
-                  "mx-1.5 h-0.5 w-7",
+                  "mx-1.5 h-0.5 w-7 transition-colors duration-300",
                   index < currentIndex ? "bg-primary-dark" : "bg-border",
                 ].join(" ")}
               />
@@ -86,6 +87,23 @@ function WorkflowStepper({ status }: { status: SessionStatus }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function WorkflowAction({
+  actionKey,
+  children,
+}: {
+  actionKey: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2 motion-safe:duration-200"
+      key={actionKey}
+    >
+      {children}
     </div>
   );
 }
@@ -112,95 +130,107 @@ function WorkflowActions({
     return null;
   }
 
+  const actionKey = `${status}:${queueEntry.status}:${summaryConfirmed}`;
+
   if (status === "ASSIGNED" && queueEntry.status === "PROMOTION_PENDING") {
     return (
-      <span
-        className="rounded-full px-3 py-2 text-[11px] font-bold"
-        style={{
-          background:
-            "color-mix(in srgb, var(--aurora-warning) 22%, var(--aurora-surface))",
-          color:
-            "color-mix(in srgb, var(--aurora-warning) 60%, var(--aurora-text-primary))",
-        }}
-      >
-        Promotion review
-      </span>
+      <WorkflowAction actionKey={actionKey}>
+        <span
+          className="rounded-full px-3 py-2 text-[11px] font-bold"
+          style={{
+            background:
+              "color-mix(in srgb, var(--aurora-warning) 22%, var(--aurora-surface))",
+            color:
+              "color-mix(in srgb, var(--aurora-warning) 60%, var(--aurora-text-primary))",
+          }}
+        >
+          Promotion review
+        </span>
+      </WorkflowAction>
     );
   }
 
   if (status === "ASSIGNED" && queueEntry.status === "WAITING") {
     return (
-      <Button
-        className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
-        disabled={isActing}
-        onClick={onCall}
-        type="button"
-      >
-        {isActing ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" />
-            Calling
-          </>
-        ) : (
-          <>
-            <Phone className="size-4" />
-            Call patient
-          </>
-        )}
-      </Button>
+      <WorkflowAction actionKey={actionKey}>
+        <Button
+          className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
+          disabled={isActing}
+          onClick={onCall}
+          type="button"
+        >
+          {isActing ? (
+            <>
+              <LoaderCircle className="size-4 animate-spin" />
+              Calling
+            </>
+          ) : (
+            <>
+              <Phone className="size-4" />
+              Call patient
+            </>
+          )}
+        </Button>
+      </WorkflowAction>
     );
   }
 
   if (status === "CALLED") {
     return (
-      <Button
-        className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
-        disabled={isActing}
-        onClick={onStart}
-        type="button"
-      >
-        {isActing ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" />
-            Starting
-          </>
-        ) : (
-          <>
-            <Play className="size-4" />
-            Start consultation
-          </>
-        )}
-      </Button>
+      <WorkflowAction actionKey={actionKey}>
+        <Button
+          className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
+          disabled={isActing}
+          onClick={onStart}
+          type="button"
+        >
+          {isActing ? (
+            <>
+              <LoaderCircle className="size-4 animate-spin" />
+              Starting
+            </>
+          ) : (
+            <>
+              <Play className="size-4" />
+              Start consultation
+            </>
+          )}
+        </Button>
+      </WorkflowAction>
     );
   }
 
   if (status === "IN_CONSULTATION") {
     return (
-      <Button
-        className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
-        disabled={isActing || !summaryConfirmed}
-        onClick={onComplete}
-        type="button"
-      >
-        {isActing ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" />
-            Completing
-          </>
-        ) : (
-          <>
-            <Check className="size-4" />
-            Complete consultation
-          </>
-        )}
-      </Button>
+      <WorkflowAction actionKey={actionKey}>
+        <Button
+          className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
+          disabled={isActing || !summaryConfirmed}
+          onClick={onComplete}
+          type="button"
+        >
+          {isActing ? (
+            <>
+              <LoaderCircle className="size-4 animate-spin" />
+              Completing
+            </>
+          ) : (
+            <>
+              <Check className="size-4" />
+              Complete consultation
+            </>
+          )}
+        </Button>
+      </WorkflowAction>
     );
   }
 
   return (
-    <span className="rounded-full bg-primary-tint px-3 py-2 text-[11px] font-bold text-text-secondary">
-      Consultation completed
-    </span>
+    <WorkflowAction actionKey={actionKey}>
+      <span className="rounded-full bg-primary-tint px-3 py-2 text-[11px] font-bold text-text-secondary">
+        Consultation completed
+      </span>
+    </WorkflowAction>
   );
 }
 
@@ -224,10 +254,10 @@ export default function CaseHeader({
   const severity = getUrgencyStyles(caseData.triage?.urgency_level ?? null);
 
   return (
-    <div className="rounded-[20px] border border-border bg-surface px-6 py-[22px]">
+    <div className="rounded-[20px] border border-border bg-surface px-6 py-5.5">
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div className="flex items-center gap-3.5">
-          <span className="flex size-[52px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-tint to-accent-tint font-display text-lg font-semibold text-primary-dark">
+          <span className="flex size-13 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-primary-tint to-accent-tint font-display text-lg font-semibold text-primary-dark">
             {getInitials(caseData.patient?.display_name ?? "Patient")}
           </span>
 
@@ -236,7 +266,7 @@ export default function CaseHeader({
               {caseData.patient?.display_name ?? "Unknown patient"}
             </h1>
 
-            <div className="mt-[3px] flex flex-wrap items-center gap-2.5 text-[12.5px] text-text-secondary">
+            <div className="mt-0.75 flex flex-wrap items-center gap-2.5 text-[12.5px] text-text-secondary">
               <span>
                 {caseData.patient?.age !== null &&
                 caseData.patient?.age !== undefined
@@ -247,7 +277,7 @@ export default function CaseHeader({
               <span>·</span>
 
               <span
-                className="rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold"
+                className="rounded-full px-2.5 py-0.75 text-[10.5px] font-extrabold"
                 style={{
                   background: severity.badgeBackground,
                   color: severity.badgeColor,
@@ -274,8 +304,8 @@ export default function CaseHeader({
       </div>
 
       {caseData.triage?.red_flags_present && (
-        <div className="mt-4 flex items-center gap-2.5 rounded-md border border-danger/35 bg-[color-mix(in_srgb,var(--aurora-danger)_12%,var(--aurora-surface))] px-3.5 py-[11px] text-[13px] font-bold text-danger">
-          <AlertTriangle className="size-[18px] shrink-0" />
+        <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 mt-4 flex items-center gap-2.5 rounded-md border border-danger/35 bg-[color-mix(in_srgb,var(--aurora-danger)_12%,var(--aurora-surface))] px-3.5 py-2.75 text-[13px] font-bold text-danger motion-safe:duration-300">
+          <AlertTriangle className="size-4.5 shrink-0" />
           Red flag signals present — reviewed by triage policy, not an AI
           diagnosis
         </div>
