@@ -31,6 +31,7 @@ import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import { getUrgencyStyles } from "@/lib/urgency";
 import { toast } from "sonner";
 import CaseSkeleton from "@/components/CaseSkeleton";
+import { getApiErrorMessage } from "@/api/client";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -913,10 +914,6 @@ export default function CasePage() {
 
       applyCase(response, entry);
       setError("");
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unable to load patient case",
-      );
     } finally {
       setIsLoading(false);
     }
@@ -943,11 +940,7 @@ export default function CasePage() {
           return;
         }
 
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load patient case",
-        );
+        setError(getApiErrorMessage(error, "Unable to load patient case"));
       })
       .finally(() => {
         if (!cancelled) {
@@ -966,7 +959,7 @@ export default function CasePage() {
     }
 
     const interval = window.setInterval(() => {
-      void loadCase();
+      void loadCase().catch(() => {});
     }, 15000);
 
     return () => {
@@ -987,9 +980,7 @@ export default function CasePage() {
       await loadCase();
       toast.success("Patient called");
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unable to call patient",
-      );
+      toast.error(getApiErrorMessage(error, "Unable to call patient."));
     } finally {
       setIsActing(false);
     }
@@ -1008,9 +999,7 @@ export default function CasePage() {
       await loadCase();
       toast.success("Consultation started");
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unable to start consultation",
-      );
+      toast.error(getApiErrorMessage(error, "Unable to start consultation"));
     } finally {
       setIsActing(false);
     }
@@ -1033,10 +1022,8 @@ export default function CasePage() {
       await loadCase();
       toast.success("Consultation completed");
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Unable to complete consultation",
+      toast.error(
+        getApiErrorMessage(error, "Unable to complete consultation."),
       );
     } finally {
       setIsActing(false);
@@ -1089,9 +1076,7 @@ export default function CasePage() {
       await loadCase();
       toast.success("Summary saved");
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unable to save summary",
-      );
+      toast.error(getApiErrorMessage(error, "Unable to save summary"));
     } finally {
       setIsSaving(false);
     }
@@ -1110,9 +1095,7 @@ export default function CasePage() {
       await loadCase();
       toast.success("Summary confirmed");
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unable to confirm summary",
-      );
+      toast.error(getApiErrorMessage(error, "Unable to confirm summary"));
     } finally {
       setIsConfirming(false);
     }

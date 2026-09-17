@@ -15,6 +15,18 @@ export class ApiRequestError extends Error {
   }
 }
 
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiRequestError) {
+    return error.detail;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -38,7 +50,7 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    let detail = `Request failed with status ${response.status}`;
+    let detail = "";
 
     try {
       const error = (await response.json()) as ApiError;
@@ -47,11 +59,40 @@ export async function apiRequest<T>(
         detail = error.detail;
       }
     } catch {
-      detail = `Request failed with status ${response.status}`;
+      detail = "";
+    }
+
+    if (!detail) {
+      switch (response.status) {
+        case 400:
+          detail = "The request could not be completed.";
+          break;
+        case 401:
+          detail = "Your session has expired. Please sign in again.";
+          break;
+        case 403:
+          detail = "You do not have permission to perform this action.";
+          break;
+        case 404:
+          detail = "The requested resource could not be found.";
+          break;
+        case 409:
+          detail = "The request conflicts with the current case state.";
+          break;
+        case 500:
+          detail = "The server encountered an unexpected error.";
+          break;
+        case 502:
+        case 503:
+        case 504:
+          detail = "Aurora is temporarily unavailable. Please try again.";
+          break;
+        default:
+          detail = `The request could not be completed (HTTP ${response.status}).`;
+      }
     }
 
     throw new ApiRequestError(response.status, detail);
   }
-
   return response.json() as Promise<T>;
 }
