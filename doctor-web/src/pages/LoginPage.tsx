@@ -122,18 +122,6 @@ export default function LoginPage() {
             {isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
         </form>
-
-        <p className="mt-4 text-center text-[10px] leading-4 text-text-secondary">
-          Calls{" "}
-          <span className="rounded bg-primary-tint px-1 py-0.5 font-medium">
-            POST /api/v1/auth/login
-          </span>{" "}
-          · stores{" "}
-          <span className="rounded bg-primary-tint px-1 py-0.5 font-medium">
-            access_token
-          </span>{" "}
-          as a bearer token
-        </p>
       </section>
     </main>
   );
