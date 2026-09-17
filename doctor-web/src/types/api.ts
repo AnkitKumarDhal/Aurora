@@ -32,6 +32,17 @@ export type AssignmentStatus = string;
 export type TriageStatus = string;
 export type DocumentStatus = "UPLOADED" | "PROCESSING" | "PROCESSED" | "FAILED";
 export type DocumentType = string;
+
+export interface DocumentExtraction {
+  extraction_id: string;
+  document_id: string;
+  status: DocumentStatus;
+  extracted_text: string | null;
+  structured_data: Record<string, unknown> | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 export type SummaryStatus = string;
 
 export interface ApiError {
