@@ -30,6 +30,7 @@ import type {
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import { getUrgencyStyles } from "@/lib/urgency";
 import { toast } from "sonner";
+import CaseSkeleton from "@/components/CaseSkeleton";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -1135,11 +1136,7 @@ export default function CasePage() {
         </Button>
 
         {isLoading ? (
-          <div className="rounded-[20px] border border-border bg-surface px-5 py-16 text-center">
-            <p className="text-[13px] text-text-secondary">
-              Loading patient case...
-            </p>
-          </div>
+          <CaseSkeleton />
         ) : error && !caseData ? (
           <div className="rounded-[20px] border border-border bg-surface px-5 py-10">
             <p className="text-[13px] text-danger">{error}</p>
