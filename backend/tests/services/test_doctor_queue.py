@@ -1,5 +1,8 @@
 from unittest.mock import AsyncMock
+
 import pytest
+
+from backend.domain.enums import QueueStatus
 from backend.services.doctor_queue import DoctorQueueService
 
 
@@ -14,7 +17,9 @@ def make_doctor():
     )()
 
 
-def make_queue_entry():
+def make_queue_entry(
+    status: QueueStatus = QueueStatus.WAITING,
+):
     return type(
         "QueueEntry",
         (),
@@ -24,6 +29,7 @@ def make_queue_entry():
             "doctor_id": "doctor-1",
             "department_id": "general-medicine",
             "position": 1,
+            "status": status,
         },
     )()
 
@@ -60,7 +66,7 @@ async def test_get_doctor_queue_returns_assigned_entries():
     summary_service = AsyncMock()
 
     doctor_repository.get_doctor.return_value = make_doctor()
-    queue_service.get_department_queue.return_value = [
+    queue_service.get_department_entries.return_value = [
         make_queue_entry(),
     ]
     session_service.get_session.return_value = make_session()
@@ -85,9 +91,41 @@ async def test_get_doctor_queue_returns_assigned_entries():
     doctor_repository.get_doctor.assert_awaited_once_with(
         "doctor-1",
     )
-    queue_service.get_department_queue.assert_awaited_once_with(
+    queue_service.get_department_entries.assert_awaited_once_with(
         "general-medicine",
     )
+
+
+@pytest.mark.asyncio
+async def test_get_doctor_queue_keeps_non_waiting_entries():
+    doctor_repository = AsyncMock()
+    session_service = AsyncMock()
+    queue_service = AsyncMock()
+    patient_service = AsyncMock()
+    summary_service = AsyncMock()
+
+    called_entry = make_queue_entry(QueueStatus.CALLED)
+
+    doctor_repository.get_doctor.return_value = make_doctor()
+    queue_service.get_department_entries.return_value = [
+        called_entry,
+    ]
+    session_service.get_session.return_value = make_session()
+    patient_service.get_patient.return_value = make_patient()
+    summary_service.get_session_summary.return_value = None
+
+    service = DoctorQueueService(
+        doctor_repository=doctor_repository,
+        session_service=session_service,
+        queue_service=queue_service,
+        patient_service=patient_service,
+        summary_service=summary_service,
+    )
+
+    result = await service.get_doctor_queue("doctor-1")
+
+    assert len(result) == 1
+    assert result[0]["queue_entry"].status == QueueStatus.CALLED
 
 
 @pytest.mark.asyncio
@@ -102,7 +140,7 @@ async def test_get_doctor_queue_filters_entries_for_other_doctors():
     other_entry.doctor_id = "doctor-2"
 
     doctor_repository.get_doctor.return_value = make_doctor()
-    queue_service.get_department_queue.return_value = [
+    queue_service.get_department_entries.return_value = [
         other_entry,
     ]
 
@@ -143,4 +181,4 @@ async def test_get_doctor_queue_returns_empty_for_unknown_doctor():
     result = await service.get_doctor_queue("missing-doctor")
 
     assert result == []
-    queue_service.get_department_queue.assert_not_awaited()
+    queue_service.get_department_entries.assert_not_awaited()

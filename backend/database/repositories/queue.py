@@ -25,6 +25,14 @@ class QueueRepository(BaseRepository[QueueEntryDocument]):
             async for document in cursor
         ]
 
+    async def get_department_entries(self, department_id: str) -> list[QueueEntryDocument]:
+        collection = self._get_collection()
+        cursor = collection.find({"department_id": department_id})
+        return [
+            self.model.from_mongo(document)
+            async for document in cursor
+        ]
+
     async def create_entry(self, entry: QueueEntryDocument,) -> QueueEntryDocument:
         return await self.create(entry)
 
