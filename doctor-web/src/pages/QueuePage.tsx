@@ -44,49 +44,59 @@ const QUEUE_FILTERS: {
 function statusMeta(status: QueueStatus): {
   background: string;
   text: string;
+  dot: string;
   label: string;
 } {
   switch (status) {
     case "WAITING":
       return {
-        background: "bg-primary-tint",
-        text: "text-primary-dark",
+        background: "var(--aurora-primary-tint)",
+        text: "var(--aurora-primary-dark)",
+        dot: "var(--aurora-primary)",
         label: "Waiting",
       };
     case "PROMOTION_PENDING":
       return {
-        background: "bg-warning/20",
-        text: "text-text-primary",
+        background:
+          "color-mix(in srgb, var(--aurora-warning) 22%, var(--aurora-surface))",
+        text: "color-mix(in srgb, var(--aurora-warning) 60%, var(--aurora-text-primary))",
+        dot: "var(--aurora-warning)",
         label: "Promotion review",
       };
     case "CALLED":
       return {
-        background: "bg-accent-tint",
-        text: "text-accent-dark",
+        background: "var(--aurora-accent-tint)",
+        text: "var(--aurora-accent-dark)",
+        dot: "var(--aurora-accent)",
         label: "Called",
       };
     case "IN_CONSULTATION":
       return {
-        background: "bg-success/15",
-        text: "text-text-primary",
+        background:
+          "color-mix(in srgb, var(--aurora-success) 18%, var(--aurora-surface))",
+        text: "color-mix(in srgb, var(--aurora-success) 55%, var(--aurora-text-primary))",
+        dot: "var(--aurora-success)",
         label: "In consultation",
       };
     case "COMPLETED":
       return {
-        background: "bg-primary-tint",
-        text: "text-text-secondary",
+        background: "var(--aurora-border)",
+        text: "var(--aurora-text-secondary)",
+        dot: "var(--aurora-text-secondary)",
         label: "Completed",
       };
     case "CANCELLED":
       return {
-        background: "bg-primary-tint",
-        text: "text-text-secondary",
+        background: "var(--aurora-primary-tint)",
+        text: "var(--aurora-text-secondary)",
+        dot: "var(--aurora-text-secondary)",
         label: "Cancelled",
       };
     default:
       return {
-        background: "bg-primary-tint",
-        text: "text-text-secondary",
+        background: "var(--aurora-primary-tint)",
+        text: "var(--aurora-text-secondary)",
+        dot: "var(--aurora-text-secondary)",
         label: status,
       };
   }
@@ -160,12 +170,20 @@ function QueueCard({
 
       <div className="mt-auto flex items-center justify-between">
         <span
-          className={`inline-flex items-center gap-[5px] rounded-full px-2.5 py-1 text-[11px] font-bold ${status.background} ${status.text}`}
+          className="inline-flex items-center gap-[5px] rounded-full px-2.5 py-1 text-[11px] font-bold"
+          style={{
+            background: status.background,
+            color: status.text,
+          }}
         >
-          <span className="size-1.5 rounded-full bg-current" />
+          <span
+            className="size-1.5 rounded-full"
+            style={{
+              background: status.dot,
+            }}
+          />
           {status.label}
         </span>
-
         <span className="text-xs tabular-nums text-text-secondary">
           {formatWaitingTime(waitingSeconds)}
         </span>
