@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Check,
-  FileText,
-  LoaderCircle,
-  Phone,
-  Play,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DoctorHeader from "@/components/layout/DoctorHeader";
 import { useAuth } from "@/auth/useAuth";
 import { getDoctorCase } from "@/api/case";
@@ -25,829 +16,48 @@ import type {
   ClinicalSummary,
   DoctorCaseResponse,
   DoctorQueueEntry,
-  SessionStatus,
 } from "@/types/api";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
-import { getUrgencyStyles } from "@/lib/urgency";
 import { toast } from "sonner";
-import CaseSkeleton from "@/components/CaseSkeleton";
 import { getApiErrorMessage } from "@/api/client";
+import CaseSkeleton from "@/components/CaseSkeleton";
+import CaseHeader from "@/features/case/components/CaseHeader";
+import ClinicalSummaryPanel from "@/features/case/components/ClinicalSummaryPanel";
+import DocumentsPanel from "@/features/case/components/DocumentsPanel";
+import IdentityPanel from "@/features/case/components/IdentityPanel";
+import TriagePanel from "@/features/case/components/TriagePanel";
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-
-  return name.slice(0, 2).toUpperCase();
+interface SummaryForm {
+  chief_complaint: string;
+  history_of_present_illness: string;
+  past_medical_history: string;
+  medications: string;
+  allergies: string;
 }
 
-function formatDate(value: string | null): string {
-  if (!value) {
-    return "—";
-  }
+const EMPTY_FORM: SummaryForm = {
+  chief_complaint: "",
+  history_of_present_illness: "",
+  past_medical_history: "",
+  medications: "",
+  allergies: "",
+};
 
-  return value.slice(0, 10);
-}
-
-function formatWaitingTime(seconds: number | null): string {
-  if (seconds === null) {
-    return "—";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${remainingMinutes}m`;
-  }
-
-  return `${remainingMinutes}m`;
-}
-
-function workflowIndex(status: SessionStatus): number {
-  const statuses: SessionStatus[] = [
-    "ASSIGNED",
-    "CALLED",
-    "IN_CONSULTATION",
-    "COMPLETED",
-  ];
-
-  const index = statuses.indexOf(status);
-
-  return index < 0 ? 0 : index;
-}
-
-function statusLabel(status: string): string {
-  return status
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function WorkflowStepper({ status }: { status: SessionStatus }) {
-  const currentIndex = workflowIndex(status);
-
-  const steps = [
-    {
-      status: "ASSIGNED" as SessionStatus,
-      label: "Assigned",
-    },
-    {
-      status: "CALLED" as SessionStatus,
-      label: "Called",
-    },
-    {
-      status: "IN_CONSULTATION" as SessionStatus,
-      label: "In consultation",
-    },
-    {
-      status: "COMPLETED" as SessionStatus,
-      label: "Completed",
-    },
-  ];
-
-  return (
-    <div className="mt-[18px] flex flex-wrap items-center">
-      {steps.map((step, index) => {
-        const done = index < currentIndex;
-        const current = index === currentIndex;
-
-        return (
-          <div className="flex items-center" key={step.status}>
-            <div className="flex items-center gap-2">
-              <span
-                className={[
-                  "flex size-[22px] items-center justify-center rounded-full border-2 text-[10px] font-extrabold",
-                  done
-                    ? "border-primary-dark bg-primary-dark text-surface"
-                    : current
-                      ? "border-accent bg-accent text-accent-dark"
-                      : "border-border bg-surface text-text-secondary",
-                ].join(" ")}
-              >
-                {done ? <Check className="size-3" /> : index + 1}
-              </span>
-
-              <span
-                className={[
-                  "text-xs font-bold",
-                  done || current ? "text-primary-dark" : "text-text-secondary",
-                ].join(" ")}
-              >
-                {step.label}
-              </span>
-            </div>
-
-            {index < steps.length - 1 && (
-              <span
-                className={[
-                  "mx-1.5 h-0.5 w-7",
-                  index < currentIndex ? "bg-primary-dark" : "bg-border",
-                ].join(" ")}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function WorkflowActions({
-  caseData,
-  queueEntry,
-  isActing,
-  onCall,
-  onStart,
-  onComplete,
-}: {
-  caseData: DoctorCaseResponse;
-  queueEntry: DoctorQueueEntry | null;
-  isActing: boolean;
-  onCall: () => void;
-  onStart: () => void;
-  onComplete: () => void;
-}) {
-  const status = caseData.session.status;
-  const summaryConfirmed = caseData.summary?.status === "CONFIRMED";
-
-  if (!queueEntry) {
-    return null;
-  }
-
-  if (status === "ASSIGNED" && queueEntry.status === "PROMOTION_PENDING") {
-    return (
-      <span
-        className="rounded-full px-3 py-2 text-[11px] font-bold text-text-secondary"
-        style={{
-          background:
-            "color-mix(in srgb, var(--aurora-warning) 22%, var(--aurora-surface))",
-          color:
-            "color-mix(in srgb, var(--aurora-warning) 60%, var(--aurora-text-primary))",
-        }}
-      >
-        Promotion review
-      </span>
-    );
-  }
-
-  if (status === "ASSIGNED" && queueEntry.status === "WAITING") {
-    return (
-      <Button
-        className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
-        disabled={isActing}
-        onClick={onCall}
-        type="button"
-      >
-        {isActing ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" />
-            Calling
-          </>
-        ) : (
-          <>
-            <Phone className="size-4" />
-            Call patient
-          </>
-        )}
-      </Button>
-    );
-  }
-
-  if (status === "CALLED") {
-    return (
-      <Button
-        className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
-        disabled={isActing}
-        onClick={onStart}
-        type="button"
-      >
-        {isActing ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" />
-            Starting
-          </>
-        ) : (
-          <>
-            <Play className="size-4" />
-            Start consultation
-          </>
-        )}
-      </Button>
-    );
-  }
-
-  if (status === "IN_CONSULTATION") {
-    return (
-      <Button
-        className="h-9 rounded-md bg-primary-dark px-4 text-xs font-bold text-surface hover:bg-primary-dark/90"
-        disabled={isActing || !summaryConfirmed}
-        onClick={onComplete}
-        type="button"
-      >
-        {isActing ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" />
-            Completing
-          </>
-        ) : (
-          <>
-            <Check className="size-4" />
-            Complete consultation
-          </>
-        )}
-      </Button>
-    );
-  }
-
-  return (
-    <span className="rounded-full bg-primary-tint px-3 py-2 text-[11px] font-bold text-text-secondary">
-      Consultation completed
-    </span>
-  );
-}
-
-function TagList({
-  items,
-  muted = false,
-}: {
-  items: string[];
-  muted?: boolean;
-}) {
-  if (items.length === 0) {
-    return (
-      <span className="text-xs italic text-text-secondary">None recorded</span>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((item) => (
-        <span
-          className={[
-            "rounded-full px-2.5 py-1 text-xs font-semibold",
-            muted
-              ? "bg-primary-tint text-primary-dark"
-              : "bg-accent-tint text-accent-dark",
-          ].join(" ")}
-          key={item}
-        >
-          {item}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function SummaryView({ summary }: { summary: ClinicalSummary }) {
-  return (
-    <div>
-      <div className="mb-4">
-        <div className="mb-1.5 text-[11.5px] font-bold text-text-secondary">
-          Chief complaint
-        </div>
-        <div className="text-sm leading-[1.55]">
-          {summary.chief_complaint ?? "—"}
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="mb-1.5 text-[11.5px] font-bold text-text-secondary">
-          History of present illness
-        </div>
-        <div className="text-sm leading-[1.55]">
-          {summary.history_of_present_illness ?? "—"}
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="mb-1.5 text-[11.5px] font-bold text-text-secondary">
-          Past medical history
-        </div>
-        <TagList items={summary.past_medical_history} muted />
-      </div>
-
-      <div className="mb-4">
-        <div className="mb-1.5 text-[11.5px] font-bold text-text-secondary">
-          Medications
-        </div>
-        <TagList items={summary.medications} />
-      </div>
-
-      <div>
-        <div className="mb-1.5 text-[11.5px] font-bold text-text-secondary">
-          Allergies
-        </div>
-        <TagList items={summary.allergies} />
-      </div>
-    </div>
-  );
-}
-
-function SummaryEdit({
-  summary,
-  form,
-  setForm,
-}: {
-  summary: ClinicalSummary;
-  form: {
-    chief_complaint: string;
-    history_of_present_illness: string;
-    past_medical_history: string;
-    medications: string;
-    allergies: string;
+function summaryToForm(summary: ClinicalSummary): SummaryForm {
+  return {
+    chief_complaint: summary.chief_complaint ?? "",
+    history_of_present_illness: summary.history_of_present_illness ?? "",
+    past_medical_history: summary.past_medical_history.join(", "),
+    medications: summary.medications.join(", "),
+    allergies: summary.allergies.join(", "),
   };
-  setForm: React.Dispatch<
-    React.SetStateAction<{
-      chief_complaint: string;
-      history_of_present_illness: string;
-      past_medical_history: string;
-      medications: string;
-      allergies: string;
-    }>
-  >;
-}) {
-  return (
-    <div>
-      <div className="mb-4">
-        <label
-          className="mb-1.5 block text-[11.5px] font-bold text-text-secondary"
-          htmlFor="edit-chief-complaint"
-        >
-          Chief complaint
-        </label>
-        <input
-          className="w-full rounded-md border-[1.5px] border-border bg-surface-alt px-3 py-2 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint"
-          id="edit-chief-complaint"
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              chief_complaint: event.target.value,
-            }))
-          }
-          value={form.chief_complaint}
-        />
-      </div>
-
-      <div className="mb-4">
-        <label
-          className="mb-1.5 block text-[11.5px] font-bold text-text-secondary"
-          htmlFor="edit-hpi"
-        >
-          History of present illness
-        </label>
-        <textarea
-          className="min-h-24 w-full resize-y rounded-md border-[1.5px] border-border bg-surface-alt px-3 py-2 text-sm leading-[1.55] text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint"
-          id="edit-hpi"
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              history_of_present_illness: event.target.value,
-            }))
-          }
-          value={form.history_of_present_illness}
-        />
-      </div>
-
-      <div className="mb-4">
-        <label
-          className="mb-1.5 block text-[11.5px] font-bold text-text-secondary"
-          htmlFor="edit-pmh"
-        >
-          Past medical history
-        </label>
-        <input
-          className="w-full rounded-md border-[1.5px] border-border bg-surface-alt px-3 py-2 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint"
-          id="edit-pmh"
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              past_medical_history: event.target.value,
-            }))
-          }
-          placeholder="Separate items with commas"
-          value={form.past_medical_history}
-        />
-      </div>
-
-      <div className="mb-4">
-        <label
-          className="mb-1.5 block text-[11.5px] font-bold text-text-secondary"
-          htmlFor="edit-medications"
-        >
-          Medications
-        </label>
-        <input
-          className="w-full rounded-md border-[1.5px] border-border bg-surface-alt px-3 py-2 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint"
-          id="edit-medications"
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              medications: event.target.value,
-            }))
-          }
-          placeholder="Separate items with commas"
-          value={form.medications}
-        />
-      </div>
-
-      <div>
-        <label
-          className="mb-1.5 block text-[11.5px] font-bold text-text-secondary"
-          htmlFor="edit-allergies"
-        >
-          Allergies
-        </label>
-        <input
-          className="w-full rounded-md border-[1.5px] border-border bg-surface-alt px-3 py-2 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint"
-          id="edit-allergies"
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              allergies: event.target.value,
-            }))
-          }
-          placeholder="Separate items with commas"
-          value={form.allergies}
-        />
-      </div>
-
-      <span className="sr-only">{summary.summary_id}</span>
-    </div>
-  );
 }
 
-function ClinicalSummaryPanel({
-  summary,
-  isEditing,
-  isSaving,
-  isConfirming,
-  form,
-  setForm,
-  onEdit,
-  onSave,
-  onCancel,
-  onConfirm,
-}: {
-  summary: ClinicalSummary | null;
-  isEditing: boolean;
-  isSaving: boolean;
-  isConfirming: boolean;
-  form: {
-    chief_complaint: string;
-    history_of_present_illness: string;
-    past_medical_history: string;
-    medications: string;
-    allergies: string;
-  };
-  setForm: React.Dispatch<
-    React.SetStateAction<{
-      chief_complaint: string;
-      history_of_present_illness: string;
-      past_medical_history: string;
-      medications: string;
-      allergies: string;
-    }>
-  >;
-  onEdit: () => void;
-  onSave: () => void;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Card className="rounded-[20px] border border-border bg-surface p-0 shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between gap-3 px-[22px] pb-0 pt-5">
-        <CardTitle className="font-display text-[15.5px] font-semibold text-primary-dark">
-          Clinical summary
-        </CardTitle>
-
-        {summary && (
-          <span
-            className="rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold"
-            style={{
-              background:
-                summary.status === "CONFIRMED"
-                  ? "color-mix(in srgb, var(--aurora-success) 20%, var(--aurora-surface))"
-                  : "var(--aurora-primary-tint)",
-              color:
-                summary.status === "CONFIRMED"
-                  ? "color-mix(in srgb, var(--aurora-success) 55%, var(--aurora-text-primary))"
-                  : "var(--aurora-primary-dark)",
-            }}
-          >
-            {summary.status === "CONFIRMED" ? "Confirmed" : "AI-generated"}
-          </span>
-        )}
-      </CardHeader>
-
-      <CardContent className="px-[22px] pb-5 pt-[14px]">
-        {!summary ? (
-          <span className="text-xs italic text-text-secondary">
-            No clinical summary available.
-          </span>
-        ) : isEditing ? (
-          <SummaryEdit form={form} setForm={setForm} summary={summary} />
-        ) : (
-          <SummaryView summary={summary} />
-        )}
-
-        {summary && (
-          <div className="mt-[18px] flex gap-2 border-t border-border pt-4">
-            {isEditing ? (
-              <>
-                <Button
-                  className="h-9 rounded-md border border-primary bg-primary-tint px-4 text-xs font-bold text-primary-dark hover:bg-primary-tint"
-                  disabled={isSaving}
-                  onClick={onSave}
-                  type="button"
-                  variant="outline"
-                >
-                  {isSaving ? (
-                    <>
-                      <LoaderCircle className="size-4 animate-spin" />
-                      Saving
-                    </>
-                  ) : (
-                    "Save changes"
-                  )}
-                </Button>
-
-                <Button
-                  className="h-9 rounded-md px-4 text-xs font-bold text-text-secondary"
-                  disabled={isSaving}
-                  onClick={onCancel}
-                  type="button"
-                  variant="ghost"
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  className="h-9 rounded-md border border-border bg-surface-alt px-4 text-xs font-bold text-text-secondary hover:bg-primary-tint hover:text-primary-dark"
-                  onClick={onEdit}
-                  type="button"
-                  variant="outline"
-                >
-                  Edit summary
-                </Button>
-
-                <Button
-                  className="h-9 flex-1 rounded-md bg-primary-dark text-xs font-bold text-surface hover:bg-primary-dark/90"
-                  disabled={isConfirming || summary.status === "CONFIRMED"}
-                  onClick={onConfirm}
-                  type="button"
-                >
-                  {isConfirming ? (
-                    <>
-                      <LoaderCircle className="size-4 animate-spin" />
-                      Confirming
-                    </>
-                  ) : summary.status === "CONFIRMED" ? (
-                    <>
-                      <Check className="size-4" />
-                      Summary confirmed
-                    </>
-                  ) : (
-                    "Confirm summary"
-                  )}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function DocumentsPanel({
-  documents,
-}: {
-  documents: DoctorCaseResponse["documents"];
-}) {
-  return (
-    <Card className="mt-4 rounded-[20px] border border-border bg-surface p-0 shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between px-[22px] pb-0 pt-5">
-        <CardTitle className="font-display text-[15.5px] font-semibold text-primary-dark">
-          Documents
-        </CardTitle>
-
-        <span className="text-[11.5px] text-text-secondary">
-          {documents.length} {documents.length === 1 ? "file" : "files"}
-        </span>
-      </CardHeader>
-
-      <CardContent className="px-[22px] pb-5 pt-[14px]">
-        {documents.length === 0 ? (
-          <span className="text-xs italic text-text-secondary">
-            No documents uploaded for this session
-          </span>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {documents.map((document) => {
-              const processed = document.status === "PROCESSED";
-              const failed = document.status === "FAILED";
-
-              return (
-                <div
-                  className="flex items-center gap-2.5 rounded-md border border-border bg-surface-alt px-3 py-2.5"
-                  key={document.document_id}
-                >
-                  <span className="flex size-[30px] shrink-0 items-center justify-center rounded-lg bg-primary-tint text-primary-dark">
-                    <FileText className="size-[15px]" />
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-bold text-text-primary">
-                      {document.filename}
-                    </p>
-
-                    <p className="text-[11px] text-text-secondary">
-                      {document.document_type.replace(/_/g, " ").toLowerCase()}
-                    </p>
-                  </div>
-
-                  <span
-                    className="shrink-0 rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold"
-                    style={{
-                      background: processed
-                        ? "color-mix(in srgb, var(--aurora-success) 18%, var(--aurora-surface))"
-                        : failed
-                          ? "color-mix(in srgb, var(--aurora-danger) 16%, var(--aurora-surface))"
-                          : "var(--aurora-accent-tint)",
-                      color: processed
-                        ? "color-mix(in srgb, var(--aurora-success) 55%, var(--aurora-text-primary))"
-                        : failed
-                          ? "var(--aurora-danger)"
-                          : "var(--aurora-accent-dark)",
-                    }}
-                  >
-                    {document.status.toLowerCase()}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TriagePanel({ triage }: { triage: DoctorCaseResponse["triage"] }) {
-  if (!triage) {
-    return (
-      <Card className="rounded-[20px] border border-border bg-surface p-0 shadow-none">
-        <CardHeader className="px-[22px] pb-0 pt-5">
-          <CardTitle className="font-display text-[15.5px] font-semibold text-primary-dark">
-            Triage
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent className="px-[22px] pb-5 pt-[14px]">
-          <span className="text-xs italic text-text-secondary">
-            No triage result available.
-          </span>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const severity = getUrgencyStyles(triage.urgency_level);
-
-  return (
-    <Card className="rounded-[20px] border border-border bg-surface p-0 shadow-none">
-      <CardHeader className="px-[22px] pb-0 pt-5">
-        <CardTitle className="font-display text-[15.5px] font-semibold text-primary-dark">
-          Triage
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="px-[22px] pb-5 pt-[14px]">
-        <div className="flex items-center justify-between border-b border-border py-[9px]">
-          <span className="text-[12.5px] font-semibold text-text-secondary">
-            Urgency level
-          </span>
-
-          <span
-            className="rounded-full px-2.5 py-1 text-[12px] font-extrabold"
-            style={{
-              background: severity.badgeBackground,
-              color: severity.badgeColor,
-            }}
-          >
-            Level {triage.urgency_level ?? "—"} · {severity.label}
-          </span>
-        </div>
-
-        <div className="border-b border-border py-[9px]">
-          <div className="flex items-center justify-between">
-            <span className="text-[12.5px] font-semibold text-text-secondary">
-              Priority score
-            </span>
-
-            <span className="text-[13.5px] font-extrabold text-text-primary">
-              {triage.priority_score ?? "—"} / 100
-            </span>
-          </div>
-
-          {triage.priority_score !== null && (
-            <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-border">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-danger"
-                style={{
-                  width: `${Math.min(
-                    Math.max(triage.priority_score, 0),
-                    100,
-                  )}%`,
-                }}
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between border-b border-border py-[9px]">
-          <span className="text-[12.5px] font-semibold text-text-secondary">
-            Red flags
-          </span>
-
-          <span
-            className="text-[13.5px] font-extrabold"
-            style={{
-              color: triage.red_flags_present
-                ? "var(--aurora-danger)"
-                : "var(--aurora-text-primary)",
-            }}
-          >
-            {triage.red_flags_present ? "Present" : "None detected"}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between py-[9px] pb-0">
-          <span className="text-[12.5px] font-semibold text-text-secondary">
-            Status
-          </span>
-
-          <span className="text-[13.5px] font-extrabold text-text-primary">
-            {statusLabel(triage.status)}
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function IdentityPanel({
-  patient,
-}: {
-  patient: DoctorCaseResponse["patient"];
-}) {
-  if (!patient) {
-    return null;
-  }
-
-  const rows = [
-    ["Patient ID", patient.patient_id],
-    ["Date of birth", formatDate(patient.date_of_birth)],
-    ["ABHA reference", patient.abha_reference ?? "Not linked"],
-    ["Hospital reference", patient.hospital_reference ?? "—"],
-  ];
-
-  return (
-    <Card className="mt-4 rounded-[20px] border border-border bg-surface p-0 shadow-none">
-      <CardHeader className="px-[22px] pb-0 pt-5">
-        <CardTitle className="font-display text-[15.5px] font-semibold text-primary-dark">
-          Patient identity
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="px-[22px] pb-5 pt-[14px]">
-        {rows.map(([label, value], index) => (
-          <div
-            className={[
-              "flex items-center justify-between gap-4 py-2 text-[13px]",
-              index === rows.length - 1
-                ? "border-b-0 pb-0"
-                : "border-b border-border",
-            ].join(" ")}
-            key={label}
-          >
-            <span className="text-text-secondary">{label}</span>
-
-            <span className="text-right font-bold text-text-primary">
-              {value}
-            </span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
+function parseList(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export default function CasePage() {
@@ -864,13 +74,7 @@ export default function CasePage() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({
-    chief_complaint: "",
-    history_of_present_illness: "",
-    past_medical_history: "",
-    medications: "",
-    allergies: "",
-  });
+  const [form, setForm] = useState<SummaryForm>(EMPTY_FORM);
 
   const liveWaitingSeconds = useElapsedSeconds(
     queueEntry?.waiting_time_seconds ?? null,
@@ -887,15 +91,7 @@ export default function CasePage() {
       setQueueEntry(entry);
 
       if (response.summary) {
-        setForm({
-          chief_complaint: response.summary.chief_complaint ?? "",
-          history_of_present_illness:
-            response.summary.history_of_present_illness ?? "",
-          past_medical_history:
-            response.summary.past_medical_history.join(", "),
-          medications: response.summary.medications.join(", "),
-          allergies: response.summary.allergies.join(", "),
-        });
+        setForm(summaryToForm(response.summary));
       }
     },
     [],
@@ -999,7 +195,7 @@ export default function CasePage() {
       await loadCase();
       toast.success("Consultation started");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Unable to start consultation"));
+      toast.error(getApiErrorMessage(error, "Unable to start consultation."));
     } finally {
       setIsActing(false);
     }
@@ -1035,23 +231,8 @@ export default function CasePage() {
       return;
     }
 
-    setForm({
-      chief_complaint: caseData.summary.chief_complaint ?? "",
-      history_of_present_illness:
-        caseData.summary.history_of_present_illness ?? "",
-      past_medical_history: caseData.summary.past_medical_history.join(", "),
-      medications: caseData.summary.medications.join(", "),
-      allergies: caseData.summary.allergies.join(", "),
-    });
-
+    setForm(summaryToForm(caseData.summary));
     setIsEditing(true);
-  }
-
-  function parseList(value: string): string[] {
-    return value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
   }
 
   async function handleSaveSummary(): Promise<void> {
@@ -1076,7 +257,7 @@ export default function CasePage() {
       await loadCase();
       toast.success("Summary saved");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Unable to save summary"));
+      toast.error(getApiErrorMessage(error, "Unable to save summary."));
     } finally {
       setIsSaving(false);
     }
@@ -1095,13 +276,11 @@ export default function CasePage() {
       await loadCase();
       toast.success("Summary confirmed");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Unable to confirm summary"));
+      toast.error(getApiErrorMessage(error, "Unable to confirm summary."));
     } finally {
       setIsConfirming(false);
     }
   }
-
-  const severity = getUrgencyStyles(caseData?.triage?.urgency_level ?? null);
 
   return (
     <main className="min-h-screen bg-background">
@@ -1135,76 +314,15 @@ export default function CasePage() {
           </div>
         ) : caseData ? (
           <>
-            <Card className="rounded-[20px] border border-border bg-surface p-0 shadow-none">
-              <CardContent className="px-6 py-[22px]">
-                <div className="flex flex-wrap items-start justify-between gap-5">
-                  <div className="flex items-center gap-3.5">
-                    <span className="flex size-[52px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-tint to-accent-tint font-display text-lg font-semibold text-primary-dark">
-                      {initials(caseData.patient?.display_name ?? "Patient")}
-                    </span>
-
-                    <div>
-                      <h1 className="font-display text-[21px] font-semibold text-primary-dark">
-                        {caseData.patient?.display_name ?? "Unknown patient"}
-                      </h1>
-
-                      <div className="mt-[3px] flex flex-wrap items-center gap-2.5 text-[12.5px] text-text-secondary">
-                        <span>
-                          {caseData.patient?.age !== null &&
-                          caseData.patient?.age !== undefined
-                            ? `${caseData.patient.age} yrs`
-                            : "Age unknown"}
-                        </span>
-
-                        <span>·</span>
-
-                        <span
-                          className="rounded-full px-[9px] py-[3px] text-[10.5px] font-extrabold"
-                          style={{
-                            background: severity.badgeBackground,
-                            color: severity.badgeColor,
-                          }}
-                        >
-                          Level {caseData.triage?.urgency_level ?? "—"} ·{" "}
-                          {severity.label}
-                        </span>
-
-                        <span>·</span>
-
-                        <span>
-                          waiting {formatWaitingTime(liveWaitingSeconds)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <WorkflowActions
-                    caseData={caseData}
-                    isActing={isActing}
-                    onCall={handleCall}
-                    onComplete={handleComplete}
-                    onStart={handleStart}
-                    queueEntry={queueEntry}
-                  />
-                </div>
-
-                {caseData.triage?.red_flags_present && (
-                  <div className="mt-4 flex items-center gap-2.5 rounded-md border border-danger/35 bg-[color-mix(in_srgb,var(--aurora-danger)_12%,var(--aurora-surface))] px-3.5 py-[11px] text-[13px] font-bold text-danger">
-                    <AlertTriangle className="size-[18px] shrink-0" />
-                    Red flag signals present — reviewed by triage policy, not an
-                    AI diagnosis
-                  </div>
-                )}
-
-                <WorkflowStepper status={caseData.session.status} />
-              </CardContent>
-            </Card>
-
-            {error && (
-              <div className="mt-5 rounded-lg border border-danger/30 bg-accent-tint px-4 py-3">
-                <p className="text-[13px] text-danger">{error}</p>
-              </div>
-            )}
+            <CaseHeader
+              caseData={caseData}
+              isActing={isActing}
+              liveWaitingSeconds={liveWaitingSeconds}
+              onCall={handleCall}
+              onComplete={handleComplete}
+              onStart={handleStart}
+              queueEntry={queueEntry}
+            />
 
             <div className="mt-5 grid items-start gap-5 lg:grid-cols-[1.6fr_1fr]">
               <div>
@@ -1231,6 +349,12 @@ export default function CasePage() {
             </div>
           </>
         ) : null}
+
+        {error && caseData && (
+          <div className="mt-5 rounded-lg border border-danger/30 bg-accent-tint px-4 py-3">
+            <p className="text-[13px] text-danger">{error}</p>
+          </div>
+        )}
       </div>
     </main>
   );
