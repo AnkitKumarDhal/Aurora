@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -6,10 +7,11 @@ import {
   useLocation,
 } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
-import CasePage from "@/pages/CasePage";
-import LoginPage from "@/pages/LoginPage";
-import QueuePage from "@/pages/QueuePage";
 import { Toaster } from "@/components/ui/sonner";
+
+const CasePage = lazy(() => import("@/pages/CasePage"));
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const QueuePage = lazy(() => import("@/pages/QueuePage"));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -32,26 +34,37 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/queue"
-        element={
-          <ProtectedRoute>
-            <QueuePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cases/:sessionId"
-        element={
-          <ProtectedRoute>
-            <CasePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/queue" replace />} />
-    </Routes>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-background">
+          <p className="text-text-secondary">Loading...</p>
+        </main>
+      }
+    >
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route
+          path="/queue"
+          element={
+            <ProtectedRoute>
+              <QueuePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/cases/:sessionId"
+          element={
+            <ProtectedRoute>
+              <CasePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/queue" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 
