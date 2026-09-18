@@ -45,6 +45,7 @@ build/
 .nuxt/
 .vite/
 .turbo/
+*.tsbuildinfo
 
 # Frontend environment
 !.env.example
