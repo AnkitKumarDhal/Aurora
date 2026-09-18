@@ -111,3 +111,4 @@ docker-compose.override.yml
 Aurora-source.zip
 doc-ui.html
 admin-ui.html
+nig.json
