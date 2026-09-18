@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getConsentInformation, recordConsent } from "@/api/consent";
-import { createSession, getSession } from "@/api/sessions";
+import { abandonSession, createSession, getSession } from "@/api/sessions";
 import { requestIdentityOtp, verifyPatientOtp } from "@/api/verification";
 
 const SESSION_STORAGE_KEY = "aurora.patient.session_id";
+const IDLE_TIMEOUT_SECONDS = 90;
 
 export type PatientScreen =
   | "language"
@@ -71,9 +72,16 @@ export function usePatientFlow() {
   const [consentError, setConsentError] = useState<string | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-  const consentSubmissionLock = useRef(false);
+  const [isStartingNewPatient, setIsStartingNewPatient] = useState(false);
+  const [idleSecondsRemaining, setIdleSecondsRemaining] = useState<
+    number | null
+  >(IDLE_TIMEOUT_SECONDS);
 
-  const resetFlow = () => {
+  const consentSubmissionLock = useRef(false);
+  const newPatientResetLock = useRef(false);
+  const lastActivityAt = useRef(0);
+
+  const resetFlow = useCallback(() => {
     clearStoredSessionId();
     consentSubmissionLock.current = false;
     setCurrentScreen("language");
@@ -93,7 +101,34 @@ export function usePatientFlow() {
     setIsVerifying(false);
     setIsRecordingConsent(false);
     setIsNavigatingBack(false);
-  };
+    setIsStartingNewPatient(false);
+    lastActivityAt.current = Date.now();
+    setIdleSecondsRemaining(IDLE_TIMEOUT_SECONDS);
+  }, []);
+
+  const registerActivity = useCallback(() => {
+    lastActivityAt.current = Date.now();
+
+    if (currentScreen !== "waiting") {
+      setIdleSecondsRemaining(IDLE_TIMEOUT_SECONDS);
+    }
+  }, [currentScreen]);
+
+  useEffect(() => {
+    const events = ["pointerdown", "keydown", "touchstart", "wheel"] as const;
+
+    for (const event of events) {
+      window.addEventListener(event, registerActivity, {
+        passive: true,
+      });
+    }
+
+    return () => {
+      for (const event of events) {
+        window.removeEventListener(event, registerActivity);
+      }
+    };
+  }, [registerActivity]);
 
   useEffect(() => {
     const storedSessionId = readStoredSessionId();
@@ -176,6 +211,7 @@ export function usePatientFlow() {
   }, []);
 
   const handleLanguageSelect = (selectedLanguage: "en" | "hi") => {
+    registerActivity();
     setLanguage(selectedLanguage);
     setSessionError(null);
     setCurrentScreen("welcome");
@@ -186,6 +222,7 @@ export function usePatientFlow() {
       return;
     }
 
+    registerActivity();
     setSessionError(null);
     setIsCreatingSession(true);
     setIdentityType(null);
@@ -215,15 +252,18 @@ export function usePatientFlow() {
       return;
     }
 
+    registerActivity();
+
     if (currentScreen === "language") {
       return;
     }
 
-    if (!sessionId) {
-      if (currentScreen === "welcome") {
-        setCurrentScreen("language");
-      }
+    if (currentScreen === "welcome") {
+      setCurrentScreen("language");
+      return;
+    }
 
+    if (!sessionId) {
       return;
     }
 
@@ -233,34 +273,6 @@ export function usePatientFlow() {
       const session = await getSession(sessionId);
 
       switch (currentScreen) {
-        case "welcome":
-          setCurrentScreen("language");
-          break;
-
-        case "identity":
-          if (
-            session.status === "CREATED" ||
-            session.status === "IDENTIFYING"
-          ) {
-            setCurrentScreen("welcome");
-          }
-          break;
-
-        case "consent":
-          if (
-            session.status === "IDENTIFYING" &&
-            session.consent_status === "PENDING"
-          ) {
-            setCurrentScreen("identity");
-          }
-          break;
-
-        case "ai-mode":
-          if (session.status === "CONSENTED") {
-            setCurrentScreen("consent");
-          }
-          break;
-
         case "ai-voice":
         case "ai-text":
           if (
@@ -272,26 +284,141 @@ export function usePatientFlow() {
           break;
 
         case "upload":
-          if (session.status === "HISTORY_IN_PROGRESS") {
+          if (
+            session.status === "CONSENTED" ||
+            session.status === "HISTORY_IN_PROGRESS" ||
+            session.status === "DOCUMENT_PROCESSING"
+          ) {
             setCurrentScreen("ai-mode");
-          }
-          break;
-
-        case "waiting":
-          if (session.status === "DOCUMENT_PROCESSING") {
-            setCurrentScreen("upload");
           }
           break;
 
         default:
           break;
       }
-    } catch {
-      return;
     } finally {
       setIsNavigatingBack(false);
     }
   };
+
+  const handleNewPatient = useCallback(async () => {
+    if (newPatientResetLock.current) {
+      return;
+    }
+
+    newPatientResetLock.current = true;
+    registerActivity();
+    setIsStartingNewPatient(true);
+
+    const activeSessionId = sessionId;
+    const shouldAbandon =
+      activeSessionId !== null &&
+      currentScreen !== "language" &&
+      currentScreen !== "welcome" &&
+      currentScreen !== "waiting";
+
+    try {
+      if (shouldAbandon && activeSessionId) {
+        try {
+          await abandonSession(activeSessionId);
+        } catch (error) {
+          console.error(
+            "Unable to abandon the current patient session:",
+            error,
+          );
+        }
+      }
+    } finally {
+      newPatientResetLock.current = false;
+      resetFlow();
+    }
+  }, [currentScreen, registerActivity, resetFlow, sessionId]);
+
+  const handleInactivityTimeout = useCallback(async () => {
+    if (newPatientResetLock.current) {
+      return;
+    }
+
+    newPatientResetLock.current = true;
+    setIsStartingNewPatient(true);
+
+    const activeSessionId = sessionId;
+    const shouldAbandon =
+      activeSessionId !== null &&
+      currentScreen !== "language" &&
+      currentScreen !== "welcome" &&
+      currentScreen !== "waiting";
+
+    try {
+      if (shouldAbandon && activeSessionId) {
+        try {
+          await abandonSession(activeSessionId);
+        } catch (error) {
+          console.error("Unable to abandon inactive patient session:", error);
+        }
+      }
+    } finally {
+      newPatientResetLock.current = false;
+      resetFlow();
+    }
+  }, [currentScreen, resetFlow, sessionId]);
+
+  useEffect(() => {
+    const shouldPauseIdleTimer =
+      isRestoringSession ||
+      currentScreen === "waiting" ||
+      isCreatingSession ||
+      isVerifying ||
+      isRecordingConsent ||
+      isNavigatingBack ||
+      isStartingNewPatient;
+
+    if (shouldPauseIdleTimer) {
+      return;
+    }
+
+    if (lastActivityAt.current === 0) {
+      lastActivityAt.current = Date.now();
+    }
+
+    const interval = window.setInterval(() => {
+      const elapsedSeconds = Math.floor(
+        (Date.now() - lastActivityAt.current) / 1000,
+      );
+      const remaining = Math.max(0, IDLE_TIMEOUT_SECONDS - elapsedSeconds);
+
+      setIdleSecondsRemaining(remaining);
+
+      if (remaining <= 0) {
+        window.clearInterval(interval);
+        void handleInactivityTimeout();
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [
+    currentScreen,
+    handleInactivityTimeout,
+    isCreatingSession,
+    isNavigatingBack,
+    isRecordingConsent,
+    isRestoringSession,
+    isStartingNewPatient,
+    isVerifying,
+  ]);
+
+  const visibleIdleSecondsRemaining =
+    isRestoringSession ||
+    currentScreen === "waiting" ||
+    isCreatingSession ||
+    isVerifying ||
+    isRecordingConsent ||
+    isNavigatingBack ||
+    isStartingNewPatient
+      ? null
+      : idleSecondsRemaining;
 
   const handleIdentityVerification = async (
     selectedIdentityType: "abha" | "aadhaar",
@@ -301,6 +428,7 @@ export function usePatientFlow() {
       return false;
     }
 
+    registerActivity();
     setVerificationError(null);
     setIsVerifying(true);
 
@@ -333,6 +461,7 @@ export function usePatientFlow() {
       return;
     }
 
+    registerActivity();
     setVerificationError(null);
     setIsVerifying(true);
 
@@ -376,6 +505,7 @@ export function usePatientFlow() {
       return;
     }
 
+    registerActivity();
     consentSubmissionLock.current = true;
     setConsentError(null);
     setIsRecordingConsent(true);
@@ -414,6 +544,7 @@ export function usePatientFlow() {
       return;
     }
 
+    registerActivity();
     consentSubmissionLock.current = true;
     setConsentError(null);
     setIsRecordingConsent(true);
@@ -461,9 +592,13 @@ export function usePatientFlow() {
     consentError,
     isRestoringSession,
     isNavigatingBack,
+    isStartingNewPatient,
+    idleSecondsRemaining: visibleIdleSecondsRemaining,
+    registerActivity,
     handleLanguageSelect,
     handleStart,
     handleBack,
+    handleNewPatient,
     handleIdentityVerification,
     handleOtpVerification,
     handleConsentGrant,

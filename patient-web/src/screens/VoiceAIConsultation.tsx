@@ -13,6 +13,7 @@ import {
 interface VoiceAIConsultationProps {
   sessionId: string;
   onNext: () => void;
+  onActivity?: () => void;
   language: "en" | "hi";
 }
 
@@ -25,6 +26,7 @@ interface Message {
 export function VoiceAIConsultation({
   sessionId,
   onNext,
+  onActivity,
   language,
 }: VoiceAIConsultationProps) {
   const isHi = language === "hi";
@@ -54,6 +56,7 @@ export function VoiceAIConsultation({
         return;
       }
 
+      onActivity?.();
       setError(null);
       setIsSaving(true);
 
@@ -111,7 +114,7 @@ export function VoiceAIConsultation({
         setIsSaving(false);
       }
     },
-    [isHi, isSaving, sessionId],
+    [isHi, isSaving, onActivity, sessionId],
   );
 
   useEffect(() => {
@@ -153,7 +156,13 @@ export function VoiceAIConsultation({
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = isHi ? "hi-IN" : "en-US";
 
+    recognitionInstance.onstart = () => {
+      onActivity?.();
+    };
+
     recognitionInstance.onresult = (event: SpeechRecognitionResultEvent) => {
+      onActivity?.();
+
       let finalTranscript = "";
       let interimTranscript = "";
 
@@ -199,7 +208,7 @@ export function VoiceAIConsultation({
       recognitionInstance.stop();
       recognitionRef.current = null;
     };
-  }, [handleUserMessage, isHi]);
+  }, [handleUserMessage, isHi, onActivity]);
 
   const toggleListening = () => {
     const currentRecognition = recognitionRef.current;
@@ -207,6 +216,8 @@ export function VoiceAIConsultation({
     if (!currentRecognition || isSaving) {
       return;
     }
+
+    onActivity?.();
 
     if (isListening) {
       currentRecognition.stop();

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PatientBackButton } from "@/components/PatientBackButton";
 import { usePatientFlow } from "@/hooks/usePatientFlow";
 import { ConsentScreen } from "@/screens/ConsentScreen";
 import { DocumentUpload } from "@/screens/DocumentUpload";
@@ -10,7 +11,6 @@ import { TextAIConsultation } from "@/screens/TextAIConsultation";
 import { VoiceAIConsultation } from "@/screens/VoiceAIConsultation";
 import { WaitingScreen } from "@/screens/WaitingScreen";
 import { WelcomeScreen } from "@/screens/WelcomeScreen";
-import { PatientBackButton } from "@/components/PatientBackButton";
 
 export function PatientPage() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -32,9 +32,13 @@ export function PatientPage() {
     consentError,
     isRestoringSession,
     isNavigatingBack,
+    isStartingNewPatient,
+    idleSecondsRemaining,
+    registerActivity,
     handleLanguageSelect,
     handleStart,
     handleBack,
+    handleNewPatient,
     handleIdentityVerification,
     handleOtpVerification,
     handleConsentGrant,
@@ -50,6 +54,24 @@ export function PatientPage() {
   const toggleTheme = () => {
     setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
   };
+
+  const showBackButton =
+    currentScreen === "welcome" ||
+    currentScreen === "ai-voice" ||
+    currentScreen === "ai-text" ||
+    currentScreen === "upload";
+
+  const showInactivityWarning =
+    idleSecondsRemaining !== null &&
+    idleSecondsRemaining <= 30 &&
+    idleSecondsRemaining > 0;
+
+  const headerActionDisabled =
+    isCreatingSession ||
+    isVerifying ||
+    isRecordingConsent ||
+    isNavigatingBack ||
+    isStartingNewPatient;
 
   if (isRestoringSession) {
     return (
@@ -71,11 +93,6 @@ export function PatientPage() {
     );
   }
 
-  const showBackButton =
-    currentScreen !== "language" &&
-    currentScreen !== "identity" &&
-    currentScreen !== "waiting";
-
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] transition-colors duration-300">
       <header className="flex items-center justify-between border-b border-[var(--color-border)] p-6">
@@ -89,18 +106,38 @@ export function PatientPage() {
           </h1>
         </div>
 
-        <Button
-          className="rounded-full border-[var(--color-border)] bg-[var(--color-surface)]"
-          onClick={toggleTheme}
-          size="icon"
-          variant="outline"
-        >
-          {theme === "light" ? (
-            <Moon className="h-4 w-4" />
-          ) : (
-            <Sun className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            className="rounded-full border-[var(--color-border)] bg-[var(--color-surface)] px-5"
+            disabled={headerActionDisabled}
+            onClick={() => {
+              void handleNewPatient();
+            }}
+            variant="outline"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            {isStartingNewPatient
+              ? language === "hi"
+                ? "रीसेट हो रहा है..."
+                : "Resetting..."
+              : language === "hi"
+                ? "नया रोगी"
+                : "New Patient"}
+          </Button>
+
+          <Button
+            className="rounded-full border-[var(--color-border)] bg-[var(--color-surface)]"
+            onClick={toggleTheme}
+            size="icon"
+            variant="outline"
+          >
+            {theme === "light" ? (
+              <Moon className="h-4 w-4" />
+            ) : (
+              <Sun className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </header>
 
       <main className="relative container mx-auto max-w-5xl p-6 md:p-12">
@@ -187,7 +224,10 @@ export function PatientPage() {
             <div className="grid w-full max-w-4xl grid-cols-1 gap-8 px-4 md:grid-cols-2">
               <button
                 className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
-                onClick={() => setCurrentScreen("ai-voice")}
+                onClick={() => {
+                  registerActivity();
+                  setCurrentScreen("ai-voice");
+                }}
                 type="button"
               >
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
@@ -217,7 +257,10 @@ export function PatientPage() {
 
               <button
                 className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
-                onClick={() => setCurrentScreen("ai-text")}
+                onClick={() => {
+                  registerActivity();
+                  setCurrentScreen("ai-text");
+                }}
                 type="button"
               >
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
@@ -252,6 +295,7 @@ export function PatientPage() {
           <VoiceAIConsultation
             sessionId={sessionId}
             language={language}
+            onActivity={registerActivity}
             onNext={() => setCurrentScreen("upload")}
           />
         )}
@@ -276,6 +320,14 @@ export function PatientPage() {
           <WaitingScreen language={language} onReset={resetFlow} />
         )}
       </main>
+
+      {showInactivityWarning && (
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full border-2 border-[var(--color-warning)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-text-primary)] shadow-xl">
+          {language === "hi"
+            ? `यह कियोस्क ${idleSecondsRemaining} सेकंड में निष्क्रियता के कारण रीसेट होगा`
+            : `This kiosk will reset in ${idleSecondsRemaining} seconds due to inactivity`}
+        </div>
+      )}
     </div>
   );
 }
