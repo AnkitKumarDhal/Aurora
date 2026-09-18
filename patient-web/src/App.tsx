@@ -10,6 +10,7 @@ import { VoiceAIConsultation } from "./screens/VoiceAIConsultation";
 import { TextAIConsultation } from "./screens/TextAIConsultation";
 import { DocumentUpload } from "./screens/DocumentUpload";
 import { WaitingScreen } from "./screens/WaitingScreen";
+import { verifyPatient } from "./api/verification";
 
 export default function App() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -19,6 +20,10 @@ export default function App() {
     "voice" | "text" | null
   >(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(
+    null,
+  );
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
@@ -48,6 +53,8 @@ export default function App() {
     setLang("en");
     setConsultationMode(null);
     setSessionId(null);
+    setIsVerifying(false);
+    setVerificationError(null);
     setSessionError(null);
   };
 
@@ -116,13 +123,36 @@ export default function App() {
         {currentScreen === "identity" && sessionId && (
           <IdentitySelection
             language={lang}
-            onNext={(identityType, number) => {
-              console.log("Identity:", identityType, number);
-              setCurrentScreen("consent");
+            isVerifying={isVerifying}
+            error={verificationError}
+            onNext={async (identityType, number) => {
+              setVerificationError(null);
+              setIsVerifying(true);
+
+              try {
+                const verification = await verifyPatient(
+                  sessionId,
+                  identityType.toUpperCase(),
+                  number,
+                );
+
+                if (verification.status !== "VERIFIED") {
+                  throw new Error("Identity verification failed");
+                }
+
+                setCurrentScreen("consent");
+              } catch (error) {
+                setVerificationError(
+                  error instanceof Error
+                    ? error.message
+                    : "Identity verification failed",
+                );
+              } finally {
+                setIsVerifying(false);
+              }
             }}
           />
         )}
-
         {currentScreen === "consent" && sessionId && (
           <ConsentScreen
             language={lang}

@@ -23,7 +23,7 @@ class IdentityProvider(Protocol):
 
 class MockIdentityProvider:
     PATIENTS = {
-        "1111-2222-3333": IdentityVerificationResult(
+        "1111-2222-3333-44": IdentityVerificationResult(
             status=VerificationStatus.VERIFIED,
             patient_id="patient-demo-001",
             display_name="Demo Patient",
@@ -32,7 +32,7 @@ class MockIdentityProvider:
             abha_reference="11-22-33-44-55-66",
             hospital_reference="HOSP-0001",
         ),
-        "9999-8888-7777": IdentityVerificationResult(
+        "9999-8888-7777-66": IdentityVerificationResult(
             status=VerificationStatus.VERIFIED,
             patient_id="patient-demo-002",
             display_name="Demo Patient Two",

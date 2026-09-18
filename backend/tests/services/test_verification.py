@@ -35,7 +35,7 @@ async def test_verify_known_identity() -> None:
     verification_id, result = await service.verify(
         "session-1",
         "ABHA",
-        "1111-2222-3333",
+        "1111-2222-3333-44",
     )
 
     assert verification_id.startswith("ver_")
@@ -78,7 +78,7 @@ async def test_verify_existing_identity_syncs_patient() -> None:
     verification_id, result = await service.verify(
         "session-1",
         "ABHA",
-        "1111-2222-3333",
+        "1111-2222-3333-00",
     )
 
     assert verification_id.startswith("ver_")
@@ -116,7 +116,7 @@ async def test_verify_unknown_identity() -> None:
     verification_id, result = await service.verify(
         "session-1",
         "ABHA",
-        "0000-0000-0000",
+        "0000-0000-0000-00",
     )
 
     assert verification_id.startswith("ver_")
