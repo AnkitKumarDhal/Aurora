@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Moon, Sun, UserPlus } from "lucide-react";
+import { Moon, RefreshCw, Sun, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PatientBackButton } from "@/components/PatientBackButton";
 import { usePatientFlow } from "@/hooks/usePatientFlow";
@@ -7,6 +7,7 @@ import { ConsentScreen } from "@/screens/ConsentScreen";
 import { DocumentUpload } from "@/screens/DocumentUpload";
 import { IdentitySelection } from "@/screens/IdentitySelection";
 import { LanguageSelection } from "@/screens/LanguageSelection";
+import { ThankYouScreen } from "@/screens/ThankYouScreen";
 import { TextAIConsultation } from "@/screens/TextAIConsultation";
 import { VoiceAIConsultation } from "@/screens/VoiceAIConsultation";
 import { WaitingScreen } from "@/screens/WaitingScreen";
@@ -18,22 +19,21 @@ export function PatientPage() {
   const {
     currentScreen,
     language,
-    sessionId,
-    visitType,
+    draftId,
     otpChallengeId,
     otpDemoCode,
     consentVersion,
     consentText,
-    isCreatingSession,
-    sessionError,
     isVerifying,
     verificationError,
-    isRecordingConsent,
+    isLoadingConsent,
     consentError,
-    isRestoringSession,
-    isNavigatingBack,
+    isSubmittingRegistration,
+    registrationError,
+    registrationSubmitted,
     isStartingNewPatient,
     idleSecondsRemaining,
+    showInactivityWarning,
     registerActivity,
     handleLanguageSelect,
     handleStart,
@@ -43,6 +43,9 @@ export function PatientPage() {
     handleOtpVerification,
     handleConsentGrant,
     handleConsentDecline,
+    handleConversationTurn,
+    handleFinalizeRegistration,
+    handleContinueToWaiting,
     resetFlow,
     setCurrentScreen,
   } = usePatientFlow();
@@ -61,37 +64,7 @@ export function PatientPage() {
     currentScreen === "ai-text" ||
     currentScreen === "upload";
 
-  const showInactivityWarning =
-    idleSecondsRemaining !== null &&
-    idleSecondsRemaining <= 30 &&
-    idleSecondsRemaining > 0;
-
-  const headerActionDisabled =
-    isCreatingSession ||
-    isVerifying ||
-    isRecordingConsent ||
-    isNavigatingBack ||
-    isStartingNewPatient;
-
-  if (isRestoringSession) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] text-[var(--color-text-primary)]">
-        <div className="rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-10 py-8 text-center shadow-lg">
-          <div className="mb-3 text-2xl font-bold">
-            {language === "hi"
-              ? "पिछला सत्र पुनर्स्थापित हो रहा है..."
-              : "Restoring your session..."}
-          </div>
-
-          <div className="text-lg text-[var(--color-text-secondary)]">
-            {language === "hi"
-              ? "कृपया कुछ क्षण प्रतीक्षा करें।"
-              : "Please wait a moment."}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const headerActionDisabled = isSubmittingRegistration || isStartingNewPatient;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] transition-colors duration-300">
@@ -144,7 +117,6 @@ export function PatientPage() {
         {showBackButton && (
           <PatientBackButton
             className="absolute left-6 top-6 z-20 md:left-12 md:top-12"
-            disabled={isNavigatingBack || isCreatingSession || isVerifying}
             language={language}
             onClick={handleBack}
           />
@@ -155,28 +127,10 @@ export function PatientPage() {
         )}
 
         {currentScreen === "welcome" && (
-          <div className="relative">
-            {sessionError && (
-              <div className="mb-6 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-4 text-center text-[var(--color-danger)]">
-                {sessionError}
-              </div>
-            )}
-
-            <WelcomeScreen language={language} onNext={handleStart} />
-
-            {isCreatingSession && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
-                <div className="rounded-full bg-[var(--color-primary-tint)] px-5 py-3 text-sm font-semibold text-[var(--color-primary-dark)] shadow-lg">
-                  {language === "hi"
-                    ? "सत्र शुरू हो रहा है..."
-                    : "Starting your session..."}
-                </div>
-              </div>
-            )}
-          </div>
+          <WelcomeScreen language={language} onNext={handleStart} />
         )}
 
-        {currentScreen === "identity" && sessionId && (
+        {currentScreen === "identity" && draftId && (
           <IdentitySelection
             language={language}
             isVerifying={isVerifying}
@@ -190,20 +144,59 @@ export function PatientPage() {
         )}
 
         {currentScreen === "consent" &&
-          sessionId &&
-          consentVersion &&
-          consentText && (
+          (isLoadingConsent ? (
+            <div className="flex min-h-[75vh] items-center justify-center">
+              <div className="rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-10 py-8 text-center shadow-lg">
+                <div className="mb-3 text-2xl font-bold">
+                  {language === "hi"
+                    ? "सहमति जानकारी लोड हो रही है..."
+                    : "Loading consent information..."}
+                </div>
+
+                <div className="text-lg text-[var(--color-text-secondary)]">
+                  {language === "hi"
+                    ? "कृपया कुछ क्षण प्रतीक्षा करें।"
+                    : "Please wait a moment."}
+                </div>
+              </div>
+            </div>
+          ) : consentVersion && consentText ? (
             <ConsentScreen
               language={language}
               consentText={consentText}
               consentVersion={consentVersion}
-              visitType={visitType}
-              isSubmitting={isRecordingConsent}
               error={consentError}
               onDecline={handleConsentDecline}
               onNext={handleConsentGrant}
             />
-          )}
+          ) : (
+            <div className="flex min-h-[75vh] items-center justify-center px-4">
+              <div className="max-w-xl rounded-2xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] p-8 text-center shadow-lg">
+                <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+                  {language === "hi"
+                    ? "सहमति जानकारी उपलब्ध नहीं है"
+                    : "Consent information is unavailable"}
+                </h2>
+
+                <p className="mb-6 text-lg text-[var(--color-text-secondary)]">
+                  {consentError ??
+                    (language === "hi"
+                      ? "कृपया फिर से प्रयास करें।"
+                      : "Please try again.")}
+                </p>
+
+                <Button
+                  className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-5 text-lg text-white shadow-lg hover:bg-[var(--color-text-primary)]"
+                  onClick={() => {
+                    void resetFlow();
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-5 w-5" />
+                  {language === "hi" ? "फिर से शुरू करें" : "Start Again"}
+                </Button>
+              </div>
+            </div>
+          ))}
 
         {currentScreen === "ai-mode" && (
           <div className="flex h-[75vh] flex-col items-center justify-center">
@@ -271,7 +264,7 @@ export function PatientPage() {
                     viewBox="0 0 24 24"
                   >
                     <path
-                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                      d="M8 10h.01M12 10h.01M16 10.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
@@ -291,28 +284,43 @@ export function PatientPage() {
           </div>
         )}
 
-        {currentScreen === "ai-voice" && sessionId && (
+        {currentScreen === "ai-voice" && draftId && (
           <VoiceAIConsultation
-            sessionId={sessionId}
+            draftId={draftId}
             language={language}
             onActivity={registerActivity}
+            onConversationTurn={handleConversationTurn}
             onNext={() => setCurrentScreen("upload")}
           />
         )}
 
-        {currentScreen === "ai-text" && sessionId && (
+        {currentScreen === "ai-text" && draftId && (
           <TextAIConsultation
-            sessionId={sessionId}
+            draftId={draftId}
             language={language}
+            onConversationTurn={handleConversationTurn}
             onNext={() => setCurrentScreen("upload")}
           />
         )}
 
-        {currentScreen === "upload" && sessionId && (
+        {currentScreen === "upload" && draftId && (
           <DocumentUpload
-            sessionId={sessionId}
+            draftId={draftId}
             language={language}
-            onNext={() => setCurrentScreen("waiting")}
+            onActivity={registerActivity}
+            onNext={() => setCurrentScreen("thank-you")}
+          />
+        )}
+
+        {currentScreen === "thank-you" && (
+          <ThankYouScreen
+            language={language}
+            isSubmitting={isSubmittingRegistration}
+            submitted={registrationSubmitted}
+            error={registrationError}
+            onSubmit={handleFinalizeRegistration}
+            onContinue={handleContinueToWaiting}
+            onReset={resetFlow}
           />
         )}
 
@@ -321,7 +329,7 @@ export function PatientPage() {
         )}
       </main>
 
-      {showInactivityWarning && (
+      {showInactivityWarning && currentScreen !== "waiting" && (
         <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full border-2 border-[var(--color-warning)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-text-primary)] shadow-xl">
           {language === "hi"
             ? `यह कियोस्क ${idleSecondsRemaining} सेकंड में निष्क्रियता के कारण रीसेट होगा`

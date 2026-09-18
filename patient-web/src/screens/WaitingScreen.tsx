@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
+import { CheckCircle, RotateCcw, Sparkles, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, RotateCcw, Sparkles, Star } from "lucide-react";
 
 const RESET_SECONDS = 90;
 
 interface WaitingScreenProps {
-  onReset: () => void;
+  onReset: () => void | Promise<void>;
   language: "en" | "hi";
 }
 
@@ -16,7 +16,7 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
 
   useEffect(() => {
     if (timeLeft <= 0) {
-      onReset();
+      void onReset();
       return;
     }
 
@@ -29,11 +29,12 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
 
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
+
   const strokeDashoffset =
     circumference - (timeLeft / RESET_SECONDS) * circumference;
 
   return (
-    <div className="relative flex h-[80vh] w-full flex-col items-center justify-center overflow-hidden">
+    <div className="relative flex min-h-[80vh] w-full flex-col items-center justify-center overflow-hidden px-4">
       <div className="pointer-events-none absolute inset-0">
         {[...Array(12)].map((_, index) => (
           <motion.div
@@ -95,7 +96,7 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
         transition={{ delay: 0.3 }}
         className="mb-4 text-center text-4xl font-bold text-[var(--color-text-primary)]"
       >
-        {isHi ? "प्रक्रिया पूरी हुई" : "Your visit intake is complete"}
+        {isHi ? "पंजीकरण पूरा हो गया है" : "Registration complete"}
       </motion.h2>
 
       <motion.p
@@ -105,8 +106,8 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
         className="mb-8 max-w-3xl text-center text-xl leading-relaxed text-[var(--color-text-secondary)]"
       >
         {isHi
-          ? "कृपया ओपीडी में प्रतीक्षा करें। एक स्टाफ सदस्य आएगा, आपका नाम पुकारेगा और आपको अगले चरण के लिए मार्गदर्शन करेगा।"
-          : "Please wait in the OPD. A staff will come and call your name and guide you through the next process."}
+          ? "कृपया ओपीडी में प्रतीक्षा करें। एक स्टाफ सदस्य आपका नाम पुकारेगा और आपको अगले चरण के लिए मार्गदर्शन करेगा।"
+          : "Please wait in the OPD. A staff member will call your name and guide you through the next process."}
       </motion.p>
 
       <div className="relative mb-6 flex items-center justify-center">
@@ -146,7 +147,9 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
       </p>
 
       <Button
-        onClick={onReset}
+        onClick={() => {
+          void onReset();
+        }}
         className="flex min-w-[280px] items-center gap-3 rounded-xl bg-[var(--color-primary-dark)] px-12 py-6 text-xl text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
       >
         <RotateCcw className="h-6 w-6" />

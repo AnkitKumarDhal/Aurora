@@ -2,8 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from backend.domain.enums import ConsentStatus
-
 
 class ConsentRequest(BaseModel):
     version: str = Field(min_length=1)
@@ -14,13 +12,13 @@ class ConsentRequest(BaseModel):
 
 class ConsentResponse(BaseModel):
     version: str
-    consent_status: ConsentStatus
+    consent_status: str
     recorded_at: datetime
 
 
 class ConsentInformationResponse(BaseModel):
     version: str
-    status: ConsentStatus
+    status: str
     text: str
     audio_available: bool
     supported_languages: list[str]

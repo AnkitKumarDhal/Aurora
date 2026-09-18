@@ -1,9 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getConsentInformation, recordConsent } from "@/api/consent";
-import { abandonSession, createSession, getSession } from "@/api/sessions";
-import { requestIdentityOtp, verifyPatientOtp } from "@/api/verification";
+import { getConsentInformation } from "@/api/consent";
+import {
+  submitPatientRegistration,
+  type RegistrationResponse,
+} from "@/api/registration";
+import {
+  requestPatientVerificationOtp,
+  verifyPatientIdentityOtp,
+} from "@/api/patientVerification";
+import {
+  appendPatientDraftConversationTurn,
+  clearPatientDraftStorage,
+  createPatientDraft,
+  loadPatientDraft,
+  listPatientDraftDocuments,
+  savePatientDraft,
+  type PatientDraftConversationInputType,
+  type PatientDraftIdentityMethod,
+} from "@/lib/patientDraft";
 
-const SESSION_STORAGE_KEY = "aurora.patient.session_id";
 const IDLE_TIMEOUT_SECONDS = 90;
 
 export type PatientScreen =
@@ -15,248 +30,130 @@ export type PatientScreen =
   | "ai-voice"
   | "ai-text"
   | "upload"
+  | "thank-you"
   | "waiting";
 
 export type PatientVisitType = "FIRST_VISIT" | "RETURNING_VISIT" | null;
 
-function readStoredSessionId(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    return window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function storeSessionId(sessionId: string): void {
-  try {
-    window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-  } catch {
-    return;
-  }
-}
-
-function clearStoredSessionId(): void {
-  try {
-    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
-  } catch {
-    return;
-  }
-}
-
 export function usePatientFlow() {
   const [currentScreen, setCurrentScreen] = useState<PatientScreen>("language");
   const [language, setLanguage] = useState<"en" | "hi">("en");
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [identityType, setIdentityType] = useState<"abha" | "aadhaar" | null>(
-    null,
-  );
+  const [identityType, setIdentityType] =
+    useState<PatientDraftIdentityMethod | null>(null);
   const [identityIdentifier, setIdentityIdentifier] = useState<string | null>(
     null,
   );
-  const [visitType, setVisitType] = useState<PatientVisitType>(null);
   const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
   const [otpDemoCode, setOtpDemoCode] = useState<string | null>(null);
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const [sessionError, setSessionError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(
     null,
   );
   const [consentVersion, setConsentVersion] = useState<string | null>(null);
   const [consentText, setConsentText] = useState<string | null>(null);
-  const [isRecordingConsent, setIsRecordingConsent] = useState(false);
+  const [isLoadingConsent, setIsLoadingConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
-  const [isRestoringSession, setIsRestoringSession] = useState(false);
-  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const [isSubmittingRegistration, setIsSubmittingRegistration] =
+    useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(
+    null,
+  );
+  const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
   const [isStartingNewPatient, setIsStartingNewPatient] = useState(false);
-  const [idleSecondsRemaining, setIdleSecondsRemaining] = useState<
-    number | null
-  >(IDLE_TIMEOUT_SECONDS);
+  const [idleSecondsRemaining, setIdleSecondsRemaining] =
+    useState(IDLE_TIMEOUT_SECONDS);
 
-  const consentSubmissionLock = useRef(false);
   const newPatientResetLock = useRef(false);
+  const registrationSubmissionLock = useRef(false);
   const lastActivityAt = useRef(0);
 
-  const resetFlow = useCallback(() => {
-    clearStoredSessionId();
-    consentSubmissionLock.current = false;
+  const resetFlow = useCallback(async () => {
+    const activeDraftId = draftId;
+
+    await clearPatientDraftStorage(activeDraftId);
+
+    newPatientResetLock.current = false;
+    registrationSubmissionLock.current = false;
+
     setCurrentScreen("language");
     setLanguage("en");
+    setDraftId(null);
     setSessionId(null);
     setIdentityType(null);
     setIdentityIdentifier(null);
-    setVisitType(null);
     setOtpChallengeId(null);
     setOtpDemoCode(null);
     setConsentVersion(null);
     setConsentText(null);
-    setSessionError(null);
     setVerificationError(null);
     setConsentError(null);
-    setIsCreatingSession(false);
+    setRegistrationError(null);
+    setRegistrationSubmitted(false);
     setIsVerifying(false);
-    setIsRecordingConsent(false);
-    setIsNavigatingBack(false);
+    setIsLoadingConsent(false);
+    setIsSubmittingRegistration(false);
     setIsStartingNewPatient(false);
+
+    lastActivityAt.current = Date.now();
+    setIdleSecondsRemaining(IDLE_TIMEOUT_SECONDS);
+  }, [draftId]);
+
+  const registerActivity = useCallback(() => {
     lastActivityAt.current = Date.now();
     setIdleSecondsRemaining(IDLE_TIMEOUT_SECONDS);
   }, []);
 
-  const registerActivity = useCallback(() => {
-    lastActivityAt.current = Date.now();
+  const handleLanguageSelect = useCallback(
+    (selectedLanguage: "en" | "hi") => {
+      registerActivity();
+      setLanguage(selectedLanguage);
+      setCurrentScreen("welcome");
+    },
+    [registerActivity],
+  );
 
-    if (currentScreen !== "waiting") {
-      setIdleSecondsRemaining(IDLE_TIMEOUT_SECONDS);
-    }
-  }, [currentScreen]);
-
-  useEffect(() => {
-    const events = ["pointerdown", "keydown", "touchstart", "wheel"] as const;
-
-    for (const event of events) {
-      window.addEventListener(event, registerActivity, {
-        passive: true,
-      });
-    }
-
-    return () => {
-      for (const event of events) {
-        window.removeEventListener(event, registerActivity);
-      }
-    };
-  }, [registerActivity]);
-
-  useEffect(() => {
-    const storedSessionId = readStoredSessionId();
-
-    if (!storedSessionId) {
+  const handleStart = useCallback(async () => {
+    if (isStartingNewPatient || isSubmittingRegistration) {
       return;
     }
 
-    let active = true;
+    const previousDraft = loadPatientDraft();
 
-    const restoreSession = async () => {
-      setIsRestoringSession(true);
-      setSessionError(null);
-
-      try {
-        const session = await getSession(storedSessionId);
-
-        if (!active) {
-          return;
-        }
-
-        setSessionId(session.session_id);
-
-        if (session.status === "CREATED" || session.status === "IDENTIFYING") {
-          setCurrentScreen("identity");
-          return;
-        }
-
-        if (
-          session.status === "CONSENTED" ||
-          session.status === "HISTORY_IN_PROGRESS"
-        ) {
-          setCurrentScreen("ai-mode");
-          return;
-        }
-
-        if (session.status === "DOCUMENT_PROCESSING") {
-          setCurrentScreen("upload");
-          return;
-        }
-
-        if (
-          session.status === "SUMMARY_READY" ||
-          session.status === "QUEUED" ||
-          session.status === "ASSIGNED" ||
-          session.status === "CALLED" ||
-          session.status === "IN_CONSULTATION" ||
-          session.status === "COMPLETED"
-        ) {
-          setCurrentScreen("waiting");
-          return;
-        }
-
-        clearStoredSessionId();
-        setSessionId(null);
-        setCurrentScreen("language");
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        clearStoredSessionId();
-        setSessionId(null);
-        setCurrentScreen("language");
-        setSessionError(
-          "Your previous session could not be restored. Please start again.",
-        );
-      } finally {
-        if (active) {
-          setIsRestoringSession(false);
-        }
-      }
-    };
-
-    void restoreSession();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const handleLanguageSelect = (selectedLanguage: "en" | "hi") => {
-    registerActivity();
-    setLanguage(selectedLanguage);
-    setSessionError(null);
-    setCurrentScreen("welcome");
-  };
-
-  const handleStart = async () => {
-    if (isCreatingSession) {
-      return;
+    if (previousDraft) {
+      await clearPatientDraftStorage(previousDraft.draft_id);
+    } else {
+      await clearPatientDraftStorage(null);
     }
 
-    registerActivity();
-    setSessionError(null);
-    setIsCreatingSession(true);
+    const draft = createPatientDraft(language);
+
+    savePatientDraft(draft);
+
+    setDraftId(draft.draft_id);
     setIdentityType(null);
     setIdentityIdentifier(null);
-    setVisitType(null);
     setOtpChallengeId(null);
     setOtpDemoCode(null);
     setConsentVersion(null);
     setConsentText(null);
-
-    try {
-      const session = await createSession();
-      storeSessionId(session.session_id);
-      setSessionId(session.session_id);
-      setCurrentScreen("identity");
-    } catch (error) {
-      setSessionError(
-        error instanceof Error ? error.message : "Unable to start your session",
-      );
-    } finally {
-      setIsCreatingSession(false);
-    }
-  };
-
-  const handleBack = async () => {
-    if (isNavigatingBack || isCreatingSession || isVerifying) {
-      return;
-    }
+    setVerificationError(null);
+    setConsentError(null);
+    setRegistrationError(null);
+    setRegistrationSubmitted(false);
 
     registerActivity();
+    setCurrentScreen("identity");
+  }, [
+    isStartingNewPatient,
+    isSubmittingRegistration,
+    language,
+    registerActivity,
+  ]);
 
-    if (currentScreen === "language") {
-      return;
-    }
+  const handleBack = useCallback(async () => {
+    registerActivity();
 
     if (currentScreen === "welcome") {
       setCurrentScreen("language");
@@ -264,121 +161,60 @@ export function usePatientFlow() {
     }
 
     if (currentScreen === "identity") {
+      await clearPatientDraftStorage(draftId);
+
+      setDraftId(null);
+      setIdentityType(null);
+      setIdentityIdentifier(null);
+      setOtpChallengeId(null);
+      setOtpDemoCode(null);
+      setVerificationError(null);
       setCurrentScreen("language");
+
       return;
     }
 
-    if (!sessionId) {
+    if (currentScreen === "ai-voice" || currentScreen === "ai-text") {
+      setCurrentScreen("ai-mode");
       return;
     }
 
-    setIsNavigatingBack(true);
-
-    try {
-      const session = await getSession(sessionId);
-
-      switch (currentScreen) {
-        case "ai-voice":
-        case "ai-text":
-          if (
-            session.status === "CONSENTED" ||
-            session.status === "HISTORY_IN_PROGRESS"
-          ) {
-            setCurrentScreen("ai-mode");
-          }
-          break;
-
-        case "upload":
-          if (
-            session.status === "CONSENTED" ||
-            session.status === "HISTORY_IN_PROGRESS" ||
-            session.status === "DOCUMENT_PROCESSING"
-          ) {
-            setCurrentScreen("ai-mode");
-          }
-          break;
-
-        default:
-          break;
-      }
-    } finally {
-      setIsNavigatingBack(false);
+    if (currentScreen === "upload") {
+      setCurrentScreen("ai-mode");
     }
-  };
+  }, [currentScreen, draftId, registerActivity]);
 
   const handleNewPatient = useCallback(async () => {
-    if (newPatientResetLock.current) {
+    if (newPatientResetLock.current || isSubmittingRegistration) {
       return;
     }
 
     newPatientResetLock.current = true;
-    registerActivity();
     setIsStartingNewPatient(true);
 
-    const activeSessionId = sessionId;
-    const shouldAbandon =
-      activeSessionId !== null &&
-      currentScreen !== "language" &&
-      currentScreen !== "welcome" &&
-      currentScreen !== "waiting";
-
-    try {
-      if (shouldAbandon && activeSessionId) {
-        try {
-          await abandonSession(activeSessionId);
-        } catch (error) {
-          console.error(
-            "Unable to abandon the current patient session:",
-            error,
-          );
-        }
-      }
-    } finally {
-      newPatientResetLock.current = false;
-      resetFlow();
-    }
-  }, [currentScreen, registerActivity, resetFlow, sessionId]);
+    await resetFlow();
+  }, [isSubmittingRegistration, resetFlow]);
 
   const handleInactivityTimeout = useCallback(async () => {
-    if (newPatientResetLock.current) {
+    if (newPatientResetLock.current || isSubmittingRegistration) {
       return;
     }
 
     newPatientResetLock.current = true;
     setIsStartingNewPatient(true);
 
-    const activeSessionId = sessionId;
-    const shouldAbandon =
-      activeSessionId !== null &&
-      currentScreen !== "language" &&
-      currentScreen !== "welcome" &&
-      currentScreen !== "waiting";
-
-    try {
-      if (shouldAbandon && activeSessionId) {
-        try {
-          await abandonSession(activeSessionId);
-        } catch (error) {
-          console.error("Unable to abandon inactive patient session:", error);
-        }
-      }
-    } finally {
-      newPatientResetLock.current = false;
-      resetFlow();
-    }
-  }, [currentScreen, resetFlow, sessionId]);
+    await resetFlow();
+  }, [isSubmittingRegistration, resetFlow]);
 
   useEffect(() => {
-    const shouldPauseIdleTimer =
-      isRestoringSession ||
+    if (
       currentScreen === "waiting" ||
-      isCreatingSession ||
+      currentScreen === "language" ||
       isVerifying ||
-      isRecordingConsent ||
-      isNavigatingBack ||
-      isStartingNewPatient;
-
-    if (shouldPauseIdleTimer) {
+      isLoadingConsent ||
+      isSubmittingRegistration ||
+      isStartingNewPatient
+    ) {
       return;
     }
 
@@ -386,219 +222,312 @@ export function usePatientFlow() {
       lastActivityAt.current = Date.now();
     }
 
-    const interval = window.setInterval(() => {
+    const timer = window.setInterval(() => {
       const elapsedSeconds = Math.floor(
         (Date.now() - lastActivityAt.current) / 1000,
       );
+
       const remaining = Math.max(0, IDLE_TIMEOUT_SECONDS - elapsedSeconds);
 
       setIdleSecondsRemaining(remaining);
 
       if (remaining <= 0) {
-        window.clearInterval(interval);
+        window.clearInterval(timer);
         void handleInactivityTimeout();
       }
     }, 1000);
 
-    return () => {
-      window.clearInterval(interval);
-    };
+    return () => window.clearInterval(timer);
   }, [
     currentScreen,
     handleInactivityTimeout,
-    isCreatingSession,
-    isNavigatingBack,
-    isRecordingConsent,
-    isRestoringSession,
+    isLoadingConsent,
     isStartingNewPatient,
+    isSubmittingRegistration,
     isVerifying,
   ]);
 
-  const visibleIdleSecondsRemaining =
-    isRestoringSession ||
-    currentScreen === "waiting" ||
-    isCreatingSession ||
-    isVerifying ||
-    isRecordingConsent ||
-    isNavigatingBack ||
-    isStartingNewPatient
-      ? null
-      : idleSecondsRemaining;
+  const handleIdentityVerification = useCallback(
+    async (
+      selectedIdentityType: "abha" | "aadhaar",
+      identifier: string,
+    ): Promise<boolean> => {
+      if (!draftId || isVerifying) {
+        return false;
+      }
 
-  const handleIdentityVerification = async (
-    selectedIdentityType: "abha" | "aadhaar",
-    identifier: string,
-  ): Promise<boolean> => {
-    if (!sessionId || isVerifying) {
-      return false;
-    }
+      registerActivity();
+      setVerificationError(null);
+      setIsVerifying(true);
 
-    registerActivity();
-    setVerificationError(null);
-    setIsVerifying(true);
+      try {
+        const method =
+          selectedIdentityType.toUpperCase() as PatientDraftIdentityMethod;
 
-    try {
-      const challenge = await requestIdentityOtp(
-        sessionId,
-        selectedIdentityType.toUpperCase(),
-        identifier,
-      );
+        const challenge = await requestPatientVerificationOtp(
+          draftId,
+          method,
+          identifier,
+        );
 
-      setIdentityType(selectedIdentityType);
-      setIdentityIdentifier(identifier);
-      setOtpChallengeId(challenge.challenge_id);
-      setOtpDemoCode(challenge.demo_otp);
+        const draft = loadPatientDraft();
 
-      return true;
-    } catch (error) {
-      setVerificationError(
-        error instanceof Error ? error.message : "Unable to send OTP",
-      );
+        if (!draft || draft.draft_id !== draftId) {
+          throw new Error("Patient draft could not be found");
+        }
 
-      return false;
-    } finally {
-      setIsVerifying(false);
-    }
-  };
+        savePatientDraft({
+          ...draft,
+          identity_method: method,
+          identity_identifier: identifier,
+          verification_token: null,
+        });
 
-  const handleOtpVerification = async (otp: string) => {
-    if (!sessionId || !otpChallengeId || isVerifying) {
+        setIdentityType(method);
+        setIdentityIdentifier(identifier);
+        setOtpChallengeId(challenge.challenge_id);
+        setOtpDemoCode(challenge.demo_otp);
+
+        return true;
+      } catch (error) {
+        setVerificationError(
+          error instanceof Error ? error.message : "Unable to send OTP",
+        );
+
+        return false;
+      } finally {
+        setIsVerifying(false);
+      }
+    },
+    [draftId, isVerifying, registerActivity],
+  );
+
+  const handleOtpVerification = useCallback(
+    async (otp: string) => {
+      if (!draftId || !otpChallengeId || isVerifying) {
+        return;
+      }
+
+      registerActivity();
+      setVerificationError(null);
+      setConsentError(null);
+      setIsVerifying(true);
+
+      try {
+        const verification = await verifyPatientIdentityOtp(
+          draftId,
+          otpChallengeId,
+          otp,
+        );
+
+        if (verification.status !== "VERIFIED") {
+          throw new Error("Identity verification failed");
+        }
+
+        const draft = loadPatientDraft();
+
+        if (!draft || draft.draft_id !== draftId) {
+          throw new Error("Patient draft could not be found");
+        }
+
+        savePatientDraft({
+          ...draft,
+          verification_token: verification.verification_token,
+        });
+
+        setOtpChallengeId(null);
+        setOtpDemoCode(null);
+        setIsLoadingConsent(true);
+        setCurrentScreen("consent");
+
+        const consent = await getConsentInformation();
+
+        setConsentVersion(consent.version);
+        setConsentText(consent.text);
+        setConsentError(null);
+      } catch (error) {
+        setVerificationError(
+          error instanceof Error
+            ? error.message
+            : "Identity verification failed",
+        );
+
+        setConsentError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load consent information",
+        );
+      } finally {
+        setIsLoadingConsent(false);
+        setIsVerifying(false);
+      }
+    },
+    [draftId, isVerifying, otpChallengeId, registerActivity],
+  );
+
+  const handleConsentGrant = useCallback(() => {
+    if (!draftId || !consentVersion || !identityType || !identityIdentifier) {
       return;
     }
 
-    registerActivity();
-    setVerificationError(null);
-    setIsVerifying(true);
+    const draft = loadPatientDraft();
 
-    try {
-      const identification = await verifyPatientOtp(
-        sessionId,
-        otpChallengeId,
-        otp,
-      );
-
-      if (identification.status !== "VERIFIED") {
-        throw new Error("Identity verification failed");
-      }
-
-      const consent = await getConsentInformation(sessionId);
-
-      setVisitType(identification.visit_type);
-      setConsentVersion(consent.version);
-      setConsentText(consent.text);
-      setOtpChallengeId(null);
-      setOtpDemoCode(null);
-      setCurrentScreen("consent");
-    } catch (error) {
-      setVerificationError(
-        error instanceof Error ? error.message : "Identity verification failed",
-      );
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleConsentGrant = async () => {
-    if (
-      !sessionId ||
-      !consentVersion ||
-      !identityType ||
-      !identityIdentifier ||
-      isRecordingConsent ||
-      consentSubmissionLock.current
-    ) {
+    if (!draft || draft.draft_id !== draftId || !draft.verification_token) {
+      setConsentError("Your verification has expired. Please start again.");
       return;
     }
 
-    registerActivity();
-    consentSubmissionLock.current = true;
-    setConsentError(null);
-    setIsRecordingConsent(true);
-
     try {
-      const response = await recordConsent(
-        sessionId,
-        consentVersion,
-        true,
-        identityType.toUpperCase(),
-        identityIdentifier,
-      );
+      registerActivity();
 
-      if (response.consent_status !== "GRANTED") {
-        throw new Error("Consent could not be recorded");
-      }
+      savePatientDraft({
+        ...draft,
+        consent_version: consentVersion,
+        consent_granted: true,
+      });
 
+      setConsentError(null);
       setCurrentScreen("ai-mode");
     } catch (error) {
-      consentSubmissionLock.current = false;
-      setConsentError(
-        error instanceof Error ? error.message : "Unable to record consent",
-      );
-    } finally {
-      setIsRecordingConsent(false);
-    }
-  };
-
-  const handleConsentDecline = async () => {
-    if (
-      !sessionId ||
-      !consentVersion ||
-      isRecordingConsent ||
-      consentSubmissionLock.current
-    ) {
-      return;
-    }
-
-    registerActivity();
-    consentSubmissionLock.current = true;
-    setConsentError(null);
-    setIsRecordingConsent(true);
-
-    try {
-      const response = await recordConsent(
-        sessionId,
-        consentVersion,
-        false,
-        identityType?.toUpperCase() ?? "",
-        identityIdentifier ?? "",
-      );
-
-      if (response.consent_status !== "DENIED") {
-        throw new Error("Consent could not be recorded");
-      }
-
-      resetFlow();
-    } catch (error) {
-      consentSubmissionLock.current = false;
       setConsentError(
         error instanceof Error
           ? error.message
-          : "Unable to record your response",
+          : "Unable to save your consent locally",
+      );
+    }
+  }, [
+    consentVersion,
+    draftId,
+    identityIdentifier,
+    identityType,
+    registerActivity,
+  ]);
+
+  const handleConsentDecline = useCallback(async () => {
+    registerActivity();
+    await resetFlow();
+  }, [registerActivity, resetFlow]);
+
+  const handleConversationTurn = useCallback(
+    (
+      inputType: PatientDraftConversationInputType,
+      content: string,
+      turnLanguage: string,
+    ): boolean => {
+      if (!draftId) {
+        return false;
+      }
+
+      const draft = loadPatientDraft();
+
+      if (!draft || draft.draft_id !== draftId) {
+        return false;
+      }
+
+      try {
+        appendPatientDraftConversationTurn(draft, {
+          input_type: inputType,
+          content,
+          language: turnLanguage,
+        });
+
+        registerActivity();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [draftId, registerActivity],
+  );
+
+  const handleFinalizeRegistration = useCallback(async () => {
+    if (
+      !draftId ||
+      registrationSubmissionLock.current ||
+      registrationSubmitted
+    ) {
+      return;
+    }
+
+    registrationSubmissionLock.current = true;
+    setIsSubmittingRegistration(true);
+    setRegistrationError(null);
+
+    try {
+      const draft = loadPatientDraft();
+
+      if (!draft || draft.draft_id !== draftId) {
+        throw new Error("Your patient information could not be found locally");
+      }
+
+      if (!draft.verification_token || !draft.consent_granted) {
+        throw new Error("Identity verification and consent are required");
+      }
+
+      registerActivity();
+
+      const documents = await listPatientDraftDocuments(draftId);
+
+      const registration: RegistrationResponse =
+        await submitPatientRegistration(draft, documents);
+
+      setSessionId(registration.session_id);
+      setRegistrationSubmitted(true);
+      setOtpChallengeId(null);
+      setOtpDemoCode(null);
+
+      try {
+        await clearPatientDraftStorage(null);
+      } catch (cleanupError) {
+        console.error(
+          "Registration succeeded but local draft cleanup failed:",
+          cleanupError,
+        );
+      }
+    } catch (error) {
+      setRegistrationError(
+        error instanceof Error
+          ? error.message
+          : "Unable to complete your registration",
       );
     } finally {
-      setIsRecordingConsent(false);
+      registrationSubmissionLock.current = false;
+      setIsSubmittingRegistration(false);
     }
-  };
+  }, [draftId, registerActivity, registrationSubmitted]);
+
+  const handleContinueToWaiting = useCallback(() => {
+    if (!registrationSubmitted) {
+      return;
+    }
+
+    setCurrentScreen("waiting");
+  }, [registrationSubmitted]);
+
+  const showInactivityWarning =
+    idleSecondsRemaining <= 30 && idleSecondsRemaining > 0;
 
   return {
     currentScreen,
     language,
+    draftId,
     sessionId,
-    visitType,
+    identityType,
+    identityIdentifier,
     otpChallengeId,
     otpDemoCode,
     consentVersion,
     consentText,
-    isCreatingSession,
-    sessionError,
     isVerifying,
     verificationError,
-    isRecordingConsent,
+    isLoadingConsent,
     consentError,
-    isRestoringSession,
-    isNavigatingBack,
+    isSubmittingRegistration,
+    registrationError,
+    registrationSubmitted,
     isStartingNewPatient,
-    idleSecondsRemaining: visibleIdleSecondsRemaining,
+    idleSecondsRemaining,
+    showInactivityWarning,
     registerActivity,
     handleLanguageSelect,
     handleStart,
@@ -608,6 +537,9 @@ export function usePatientFlow() {
     handleOtpVerification,
     handleConsentGrant,
     handleConsentDecline,
+    handleConversationTurn,
+    handleFinalizeRegistration,
+    handleContinueToWaiting,
     resetFlow,
     setCurrentScreen,
   };

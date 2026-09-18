@@ -1,11 +1,10 @@
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { FileText, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ConsentScreenProps {
   consentText: string;
   consentVersion: string;
-  visitType: "FIRST_VISIT" | "RETURNING_VISIT" | null;
   onNext: () => void | Promise<void>;
   onDecline: () => void | Promise<void>;
   language: "en" | "hi";
@@ -16,7 +15,6 @@ interface ConsentScreenProps {
 export function ConsentScreen({
   consentText,
   consentVersion,
-  visitType,
   onNext,
   onDecline,
   language,
@@ -24,15 +22,6 @@ export function ConsentScreen({
   error = null,
 }: ConsentScreenProps) {
   const isHi = language === "hi";
-
-  const visitLabel =
-    visitType === "RETURNING_VISIT"
-      ? isHi
-        ? "पिछली यात्रा से जारी"
-        : "Returning visit"
-      : isHi
-        ? "पहली यात्रा"
-        : "First visit";
 
   return (
     <motion.div
@@ -50,10 +39,6 @@ export function ConsentScreen({
         <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
           {isHi ? "रोगी सहमति" : "Patient Consent"}
         </h2>
-
-        <p className="text-lg font-semibold text-[var(--color-primary-dark)]">
-          {visitLabel}
-        </p>
 
         <p className="mx-auto max-w-2xl text-xl text-[var(--color-text-secondary)]">
           {isHi
