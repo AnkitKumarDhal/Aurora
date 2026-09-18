@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     jwt_access_token_minutes: int = 60
+    identity_demo_mode: bool = False
 
     model_config = SettingsConfigDict(
         env_file="backend/.env",

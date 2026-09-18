@@ -34,6 +34,10 @@ class IdentityOtpVerification:
     result: IdentityVerificationResult
 
 
+class IdentityProviderUnavailableError(RuntimeError):
+    pass
+
+
 class IdentityProvider(Protocol):
     async def request_otp(
         self,
@@ -62,6 +66,9 @@ class IdentityProvider(Protocol):
 class MockIdentityProvider:
     DEMO_OTP = "123456"
     OTP_TTL_SECONDS = 300
+
+    def __init__(self, demo_mode: bool = False) -> None:
+        self.demo_mode = demo_mode
 
     IDENTITIES = {
         (
@@ -129,6 +136,11 @@ class MockIdentityProvider:
         method: str,
         identifier: str,
     ) -> IdentityOtpChallenge:
+        if not self.demo_mode:
+            raise IdentityProviderUnavailableError(
+                "Mock identity provider is disabled outside demo mode",
+            )
+
         normalized_method = method.upper()
         normalized_identifier = self._normalize_identifier(identifier)
 
@@ -153,7 +165,7 @@ class MockIdentityProvider:
             challenge_id=challenge_id,
             masked_destination="registered mobile number",
             expires_in_seconds=self.OTP_TTL_SECONDS,
-            demo_otp=self.DEMO_OTP,
+            demo_otp=self.DEMO_OTP if self.demo_mode else None,
         )
 
     async def verify_otp(
@@ -162,6 +174,11 @@ class MockIdentityProvider:
         challenge_id: str,
         otp: str,
     ) -> IdentityOtpVerification:
+        if not self.demo_mode:
+            raise IdentityProviderUnavailableError(
+                "Mock identity provider is disabled outside demo mode",
+            )
+
         challenge = self._CHALLENGES.get(challenge_id)
 
         if challenge is None:
@@ -202,6 +219,11 @@ class MockIdentityProvider:
         method: str,
         identifier: str,
     ) -> IdentityVerificationResult:
+        if not self.demo_mode:
+            raise IdentityProviderUnavailableError(
+                "Mock identity provider is disabled outside demo mode",
+            )
+
         normalized_method = method.upper()
         normalized_identifier = self._normalize_identifier(identifier)
 

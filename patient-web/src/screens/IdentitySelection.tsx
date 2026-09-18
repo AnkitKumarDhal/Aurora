@@ -129,7 +129,7 @@ export function IdentitySelection({
 
   if (showOtp && otpChallengeId) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)]">
+      <div className="flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
         <button
           className="absolute left-8 top-8 rounded-full p-2 transition-colors hover:bg-[var(--color-surface-alt)]"
           disabled={isVerifying}
@@ -139,18 +139,18 @@ export function IdentitySelection({
           <ArrowLeft className="h-6 w-6 text-[var(--color-text-secondary)]" />
         </button>
 
-        <div className="mb-8 space-y-3 text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-              <ShieldCheck className="h-10 w-10 text-[var(--color-primary-dark)]" />
+        <div className="mb-4 space-y-2 text-center">
+          <div className="mb-2 flex justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+              <ShieldCheck className="h-8 w-8 text-[var(--color-primary-dark)]" />
             </div>
           </div>
 
-          <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-3xl font-bold text-[var(--color-text-primary)]">
             {isHi ? "OTP सत्यापन" : "OTP Verification"}
           </h2>
 
-          <p className="text-lg text-[var(--color-text-secondary)]">
+          <p className="text-base text-[var(--color-text-secondary)]">
             {isHi
               ? "आपके पंजीकृत मोबाइल नंबर पर एक OTP भेजा गया है।"
               : "A one-time password has been sent to your registered mobile number."}
@@ -158,7 +158,7 @@ export function IdentitySelection({
         </div>
 
         {otpDemoCode && (
-          <div className="mb-6 rounded-xl border-2 border-[var(--color-primary)] bg-[var(--color-primary-tint)] px-6 py-4 text-center">
+          <div className="mb-4 rounded-xl border-2 border-[var(--color-primary)] bg-[var(--color-primary-tint)] px-5 py-2.5 text-center">
             <div className="text-sm font-semibold text-[var(--color-text-secondary)]">
               {isHi ? "डेमो OTP" : "Demo OTP"}
             </div>
@@ -169,21 +169,21 @@ export function IdentitySelection({
           </div>
         )}
 
-        <div className="mb-8 w-full max-w-xl rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-lg">
-          <div className="flex min-h-[70px] items-center justify-center text-center font-mono text-4xl font-bold tracking-widest text-[var(--color-text-primary)]">
+        <div className="mb-4 w-full max-w-lg rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-lg">
+          <div className="flex min-h-[60px] items-center justify-center text-center font-mono text-3xl font-bold tracking-widest text-[var(--color-text-primary)]">
             {displayOtp || (
               <span className="text-[var(--color-border)]">• • • • • •</span>
             )}
           </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-3 gap-3">
+        <div className="mb-4 grid grid-cols-3 gap-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
             <motion.button
               key={num}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+              className="h-14 w-20 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
               disabled={isVerifying}
               onClick={() => handleOtpInput(num)}
               type="button"
@@ -195,7 +195,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] text-base font-semibold text-[var(--color-danger)] shadow-md transition-all hover:bg-[var(--color-danger)] hover:text-white"
+            className="h-14 w-20 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] text-base font-semibold text-[var(--color-danger)] shadow-md transition-all hover:bg-[var(--color-danger)] hover:text-white"
             disabled={isVerifying}
             onClick={handleOtpDelete}
             type="button"
@@ -206,7 +206,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+            className="h-14 w-20 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
             disabled={isVerifying}
             onClick={() => handleOtpInput("0")}
             type="button"
@@ -217,7 +217,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-xl font-semibold text-[var(--color-text-secondary)] shadow-md transition-all hover:bg-[var(--color-warning)] hover:text-white"
+            className="h-14 w-20 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-lg font-semibold text-[var(--color-text-secondary)] shadow-md transition-all hover:bg-[var(--color-warning)] hover:text-white"
             disabled={isVerifying}
             onClick={() => setOtpNumber("")}
             type="button"
@@ -227,13 +227,13 @@ export function IdentitySelection({
         </div>
 
         {error && (
-          <div className="mb-5 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-3 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-5 py-2.5 text-center text-sm font-semibold text-[var(--color-danger)]">
             {error}
           </div>
         )}
 
         <Button
-          className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+          className="rounded-xl bg-[var(--color-primary-dark)] px-7 py-3 text-base text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
           disabled={isVerifying || otpNumber.length !== 6}
           onClick={() => {
             void handleVerifyOtp();
@@ -255,7 +255,7 @@ export function IdentitySelection({
     const maxLength = selectedId === "abha" ? 14 : 12;
 
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)]">
+      <div className="flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
         <button
           className="absolute left-8 top-8 rounded-full p-2 transition-colors hover:bg-[var(--color-surface-alt)]"
           disabled={isVerifying}
@@ -368,7 +368,7 @@ export function IdentitySelection({
   }
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center overflow-hidden">
+    <div className="flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden md:h-[calc(100svh-11rem)]">
       <div className="mb-12 space-y-4 text-center">
         <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
           {isHi ? "पहचान का तरीका चुनें" : "Select Identification Method"}

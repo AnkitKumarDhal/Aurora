@@ -6,7 +6,10 @@ import pytest
 
 from backend.domain.enums import SessionStatus, VerificationStatus
 from backend.domain.patient import Patient
-from backend.integrations.identity import MockIdentityProvider
+from backend.integrations.identity import (
+    IdentityProviderUnavailableError,
+    MockIdentityProvider,
+)
 from backend.services.verification import VerificationService
 
 
@@ -28,7 +31,7 @@ async def test_request_otp() -> None:
     service = VerificationService(
         session_service=session_service,
         patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(demo_mode=True),
         healthcare_integration_service=healthcare_integration_service,
     )
 
@@ -60,10 +63,11 @@ async def test_verify_otp_known_new_identity() -> None:
     session_service.set_verification_status.return_value = session
     patient_service.get_by_identity.return_value = None
     patient_service.get_patient.return_value = None
+
     service = VerificationService(
         session_service=session_service,
         patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(demo_mode=True),
         healthcare_integration_service=healthcare_integration_service,
     )
 
@@ -112,7 +116,7 @@ async def test_verify_otp_existing_identity() -> None:
     service = VerificationService(
         session_service=session_service,
         patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(demo_mode=True),
         healthcare_integration_service=healthcare_integration_service,
     )
 
@@ -141,8 +145,36 @@ async def test_verify_otp_existing_identity() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mock_identity_provider_is_disabled_outside_demo_mode() -> None:
+    provider = MockIdentityProvider(demo_mode=False)
+
+    with pytest.raises(
+        IdentityProviderUnavailableError,
+        match="disabled outside demo mode",
+    ):
+        await provider.request_otp(
+            "session-1",
+            "AADHAAR",
+            "1234-5678-9012",
+        )
+
+
+@pytest.mark.asyncio
+async def test_mock_identity_provider_exposes_demo_otp_only_in_demo_mode() -> None:
+    provider = MockIdentityProvider(demo_mode=True)
+
+    challenge = await provider.request_otp(
+        "session-1",
+        "AADHAAR",
+        "1234-5678-9012",
+    )
+
+    assert challenge.demo_otp == "123456"
+
+
+@pytest.mark.asyncio
 async def test_verify_otp_rejects_invalid_otp() -> None:
-    provider = MockIdentityProvider()
+    provider = MockIdentityProvider(demo_mode=True)
 
     challenge = await provider.request_otp(
         "session-1",
@@ -160,7 +192,7 @@ async def test_verify_otp_rejects_invalid_otp() -> None:
 
 @pytest.mark.asyncio
 async def test_verify_otp_rejects_wrong_session() -> None:
-    provider = MockIdentityProvider()
+    provider = MockIdentityProvider(demo_mode=True)
 
     challenge = await provider.request_otp(
         "session-1",
@@ -181,7 +213,7 @@ async def test_verify_otp_rejects_wrong_session() -> None:
 
 @pytest.mark.asyncio
 async def test_mock_identity_accepts_arbitrary_valid_aadhaar() -> None:
-    result = await MockIdentityProvider().lookup(
+    result = await MockIdentityProvider(demo_mode=True).lookup(
         "AADHAAR",
         "5555-6666-7777",
     )
@@ -193,7 +225,7 @@ async def test_mock_identity_accepts_arbitrary_valid_aadhaar() -> None:
 
 @pytest.mark.asyncio
 async def test_mock_identity_accepts_arbitrary_valid_abha() -> None:
-    result = await MockIdentityProvider().lookup(
+    result = await MockIdentityProvider(demo_mode=True).lookup(
         "ABHA",
         "44443333222211",
     )
@@ -209,7 +241,7 @@ async def test_mock_identity_rejects_invalid_identifier_length() -> None:
         ValueError,
         match="AADHAAR identifier must contain 12 digits",
     ):
-        await MockIdentityProvider().request_otp(
+        await MockIdentityProvider(demo_mode=True).request_otp(
             "session-1",
             "AADHAAR",
             "123456",
@@ -222,7 +254,7 @@ async def test_mock_identity_rejects_unknown_method() -> None:
         ValueError,
         match="Unsupported identity method",
     ):
-        await MockIdentityProvider().request_otp(
+        await MockIdentityProvider(demo_mode=True).request_otp(
             "session-1",
             "HOSPITAL_ID",
             "11112222333344",
@@ -243,7 +275,7 @@ async def test_persist_identity_requires_verified_session() -> None:
     service = VerificationService(
         session_service=session_service,
         patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(demo_mode=True),
         healthcare_integration_service=healthcare_integration_service,
     )
 
@@ -278,7 +310,7 @@ async def test_persist_identity_creates_first_visit_patient() -> None:
     service = VerificationService(
         session_service=session_service,
         patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(demo_mode=True),
         healthcare_integration_service=healthcare_integration_service,
     )
 
@@ -340,7 +372,7 @@ async def test_persist_identity_reuses_returning_patient() -> None:
     service = VerificationService(
         session_service=session_service,
         patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(demo_mode=True),
         healthcare_integration_service=healthcare_integration_service,
     )
 
@@ -409,7 +441,7 @@ async def test_persist_identity_recovers_from_duplicate_patient_creation() -> No
     service = VerificationService(
         session_service=session_service,
         patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(demo_mode=True),
         healthcare_integration_service=healthcare_integration_service,
     )
 

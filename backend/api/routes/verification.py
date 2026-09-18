@@ -8,6 +8,7 @@ from backend.api.schemas.verification import (
     VerificationResponse,
 )
 from backend.domain.enums import VerificationStatus
+from backend.integrations.identity import IdentityProviderUnavailableError
 from backend.services.verification import VerificationService
 
 router = APIRouter(
@@ -31,6 +32,11 @@ async def request_verification_otp(
             request.method,
             request.identifier,
         )
+    except IdentityProviderUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -61,6 +67,11 @@ async def verify_patient(
                 request.otp,
             )
         )
+    except IdentityProviderUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

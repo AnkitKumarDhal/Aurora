@@ -1,4 +1,5 @@
 from backend.auth.service import AuthenticationService
+from backend.config import settings
 from backend.database.repositories.assignment import AssignmentRepository
 from backend.database.repositories.doctor import DoctorRepository
 from backend.database.repositories.clinical_session import ClinicalSessionRepository
@@ -118,7 +119,9 @@ def get_verification_service() -> VerificationService:
     return VerificationService(
         session_service=ClinicalSessionService(ClinicalSessionRepository()),
         patient_service=PatientService(PatientRepository()),
-        identity_provider=MockIdentityProvider(),
+        identity_provider=MockIdentityProvider(
+            demo_mode=settings.identity_demo_mode,
+        ),
         healthcare_integration_service=get_healthcare_integration_service(),
     )
 
