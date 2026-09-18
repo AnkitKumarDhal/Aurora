@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  AlertTriangle,
-  Bot,
-  CheckCircle,
-  Clock,
-  Mic,
-  MicOff,
-  User,
-} from "lucide-react";
+import { submitConversationTurn } from "@/api/conversation";
+import { Bot, Mic, MicOff, User } from "lucide-react";
 import {
   getSpeechRecognitionConstructor,
   type SpeechRecognitionErrorEvent,
@@ -17,6 +10,7 @@ import {
 } from "@/lib/speechRecognition";
 
 interface VoiceAIConsultationProps {
+  sessionId: string;
   onNext: () => void;
   language: "en" | "hi";
 }
@@ -28,6 +22,7 @@ interface Message {
 }
 
 export function VoiceAIConsultation({
+  sessionId,
   onNext,
   language,
 }: VoiceAIConsultationProps) {
@@ -41,90 +36,84 @@ export function VoiceAIConsultation({
         : "Hello! I am Aurora AI. Please describe your symptoms.",
     },
   ]);
-  const [triageLevel, setTriageLevel] = useState<
-    "none" | "green" | "yellow" | "red"
-  >("none");
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const messageCount = useRef(0);
 
   const handleUserMessage = useCallback(
-    (text: string) => {
-      const userMsg: Message = {
-        id: Date.now(),
-        sender: "user",
-        text,
-      };
+    async (text: string) => {
+      const content = text.trim();
 
-      setMessages((prev) => [...prev, userMsg]);
-      messageCount.current += 1;
+      if (!content || isSaving) {
+        return;
+      }
 
-      const lowerText = text.toLowerCase();
+      setError(null);
+      setIsSaving(true);
 
-      const isRed =
-        lowerText.includes("chest pain") ||
-        lowerText.includes("heart") ||
-        lowerText.includes("bleeding") ||
-        lowerText.includes("can't breathe") ||
-        lowerText.includes("severe") ||
-        lowerText.includes("छाती") ||
-        lowerText.includes("सांस");
-
-      const isYellow =
-        lowerText.includes("fever") ||
-        lowerText.includes("cough") ||
-        lowerText.includes("pain") ||
-        lowerText.includes("बुखार") ||
-        lowerText.includes("दर्द");
-
-      setTriageLevel((currentLevel) => {
-        if (isRed) {
-          return "red";
-        }
-
-        if (isYellow && currentLevel === "none") {
-          return "yellow";
-        }
-
-        if (!isYellow && currentLevel === "none") {
-          return "green";
-        }
-
-        return currentLevel;
-      });
-
-      setTimeout(() => {
-        const aiQuestions = [
-          isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
-          isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
-          isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
-          isHi
-            ? "क्या आपको कोई पुरानी बीमारी है?"
-            : "Do you have any chronic illnesses?",
-        ];
-
-        const questionIndex = Math.min(
-          messageCount.current - 1,
-          aiQuestions.length - 1,
+      try {
+        await submitConversationTurn(
+          sessionId,
+          "AUDIO",
+          content,
+          isHi ? "hi" : "en",
         );
 
-        const aiResponse: Message = {
-          id: Date.now() + 1,
-          sender: "ai",
-          text: aiQuestions[questionIndex],
+        const userMessage: Message = {
+          id: Date.now(),
+          sender: "user",
+          text: content,
         };
 
-        setMessages((prev) => [...prev, aiResponse]);
-      }, 1500);
+        setMessages((previous) => [...previous, userMessage]);
+        messageCount.current += 1;
+
+        window.setTimeout(() => {
+          const questions = [
+            isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
+            isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
+            isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
+            isHi
+              ? "क्या आपको कोई पुरानी बीमारी है?"
+              : "Do you have any chronic illnesses?",
+            isHi
+              ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
+              : "Thank you. You can now proceed to upload your reports.",
+          ];
+
+          const questionIndex = Math.min(
+            messageCount.current - 1,
+            questions.length - 1,
+          );
+
+          const aiResponse: Message = {
+            id: Date.now() + 1,
+            sender: "ai",
+            text: questions[questionIndex],
+          };
+
+          setMessages((previous) => [...previous, aiResponse]);
+          setIsSaving(false);
+        }, 1500);
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to save your response",
+        );
+        setIsSaving(false);
+      }
     },
-    [isHi],
+    [isHi, isSaving, sessionId],
   );
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isSaving, currentTranscript]);
 
   useEffect(() => {
     const SpeechRecognition = getSpeechRecognitionConstructor();
@@ -143,10 +132,14 @@ export function VoiceAIConsultation({
       let finalTranscript = "";
       let interimTranscript = "";
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
+      for (
+        let index = event.resultIndex;
+        index < event.results.length;
+        index += 1
+      ) {
+        const transcript = event.results[index][0].transcript;
 
-        if (event.results[i].isFinal) {
+        if (event.results[index].isFinal) {
           finalTranscript += transcript;
         } else {
           interimTranscript += transcript;
@@ -155,8 +148,8 @@ export function VoiceAIConsultation({
 
       setCurrentTranscript(interimTranscript);
 
-      if (finalTranscript) {
-        handleUserMessage(finalTranscript);
+      if (finalTranscript.trim()) {
+        void handleUserMessage(finalTranscript);
         setCurrentTranscript("");
       }
     };
@@ -164,6 +157,11 @@ export function VoiceAIConsultation({
     recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error("Speech recognition error:", event.error);
       setIsListening(false);
+      setError(
+        isHi
+          ? "वॉयस इनपुट में समस्या हुई। कृपया फिर से प्रयास करें।"
+          : "There was a problem with voice input. Please try again.",
+      );
     };
 
     recognitionInstance.onend = () => {
@@ -181,63 +179,28 @@ export function VoiceAIConsultation({
   const toggleListening = () => {
     const currentRecognition = recognitionRef.current;
 
-    if (isListening) {
-      currentRecognition?.stop();
-      setIsListening(false);
-    } else {
-      if (!currentRecognition) {
-        return;
-      }
-
-      currentRecognition.start();
-      setIsListening(true);
+    if (!currentRecognition || isSaving) {
+      return;
     }
-  };
 
-  const triageConfig = {
-    none: {
-      color: "bg-gray-300",
-      text: isHi ? "विश्लेषण..." : "Analyzing...",
-      icon: null,
-      hidden: true,
-    },
-    green: {
-      color: "bg-[var(--color-success)]",
-      text: isHi ? "नियमित (Routine)" : "Routine",
-      icon: CheckCircle,
-      hidden: false,
-    },
-    yellow: {
-      color: "bg-[var(--color-warning)]",
-      text: isHi ? "तत्काल (Urgent)" : "Urgent",
-      icon: Clock,
-      hidden: false,
-    },
-    red: {
-      color: "bg-[var(--color-danger)] animate-pulse",
-      text: isHi ? "आपातकालीन (Emergency)" : "🚨 EMERGENCY",
-      icon: AlertTriangle,
-      hidden: false,
-    },
-  };
+    if (isListening) {
+      currentRecognition.stop();
+      setIsListening(false);
+      return;
+    }
 
-  const currentTriage = triageConfig[triageLevel];
+    setError(null);
+    currentRecognition.start();
+    setIsListening(true);
+  };
 
   return (
     <div className="flex h-[80vh] w-full flex-col items-center">
-      {!currentTriage.hidden && (
-        <div
-          className={`mb-4 flex w-full max-w-3xl items-center justify-center gap-3 rounded-lg p-3 text-white shadow-lg transition-all duration-500 ${currentTriage.color}`}
-        >
-          {currentTriage.icon && <currentTriage.icon className="h-5 w-5" />}
-          <span className="text-xl font-bold">{currentTriage.text}</span>
-        </div>
-      )}
-
       <div className="mb-4 text-center">
         <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">
           {isHi ? "AI वॉयस परामर्श" : "AI Voice Consultation"}
         </h2>
+
         <p className="text-sm text-[var(--color-text-secondary)]">
           {isHi
             ? "बोलना शुरू करने के लिए माइक बटन दबाएं"
@@ -247,14 +210,14 @@ export function VoiceAIConsultation({
 
       <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
         <div className="mb-4 flex-1 space-y-3 overflow-y-auto pr-2">
-          {messages.map((msg) => (
+          {messages.map((message) => (
             <div
+              key={message.id}
               className={`flex items-start gap-3 ${
-                msg.sender === "user" ? "justify-end" : ""
+                message.sender === "user" ? "justify-end" : ""
               }`}
-              key={msg.id}
             >
-              {msg.sender === "ai" && (
+              {message.sender === "ai" && (
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
                   <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
                 </div>
@@ -262,15 +225,15 @@ export function VoiceAIConsultation({
 
               <div
                 className={`max-w-[80%] rounded-xl p-3 text-base ${
-                  msg.sender === "ai"
+                  message.sender === "ai"
                     ? "rounded-tl-none bg-[var(--color-primary-tint)] text-[var(--color-text-primary)]"
                     : "rounded-tr-none bg-[var(--color-accent-tint)] text-[var(--color-text-primary)]"
                 }`}
               >
-                {msg.text}
+                {message.text}
               </div>
 
-              {msg.sender === "user" && (
+              {message.sender === "user" && (
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-tint)]">
                   <User className="h-4 w-4 text-[var(--color-accent-dark)]" />
                 </div>
@@ -286,8 +249,34 @@ export function VoiceAIConsultation({
             </div>
           )}
 
+          {isSaving && (
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+                <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+              </div>
+
+              <div className="flex gap-1 rounded-xl rounded-tl-none bg-[var(--color-primary-tint)] p-3">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]" />
+                <span
+                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  style={{ animationDelay: "0.2s" }}
+                />
+                <span
+                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  style={{ animationDelay: "0.4s" }}
+                />
+              </div>
+            </div>
+          )}
+
           <div ref={chatEndRef} />
         </div>
+
+        {error && (
+          <div className="mb-3 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-danger)]">
+            {error}
+          </div>
+        )}
 
         <div className="flex flex-col items-center gap-3">
           <button
@@ -296,6 +285,7 @@ export function VoiceAIConsultation({
                 ? "animate-pulse bg-[var(--color-danger)]"
                 : "bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)]"
             }`}
+            disabled={isSaving}
             onClick={toggleListening}
             type="button"
           >
@@ -326,6 +316,7 @@ export function VoiceAIConsultation({
 
       <Button
         className="mt-4 rounded-lg bg-[var(--color-primary-dark)] px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+        disabled={isListening || isSaving}
         onClick={onNext}
       >
         {isHi ? "अगला: रिपोर्ट अपलोड" : "Next: Upload Reports"}

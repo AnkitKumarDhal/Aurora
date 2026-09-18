@@ -226,6 +226,7 @@ export function PatientPage() {
 
         {currentScreen === "ai-voice" && sessionId && (
           <VoiceAIConsultation
+            sessionId={sessionId}
             language={language}
             onNext={() => setCurrentScreen("upload")}
           />
@@ -233,6 +234,7 @@ export function PatientPage() {
 
         {currentScreen === "ai-text" && sessionId && (
           <TextAIConsultation
+            sessionId={sessionId}
             language={language}
             onNext={() => setCurrentScreen("upload")}
           />
@@ -240,6 +242,7 @@ export function PatientPage() {
 
         {currentScreen === "upload" && sessionId && (
           <DocumentUpload
+            sessionId={sessionId}
             language={language}
             onNext={() => setCurrentScreen("waiting")}
           />
