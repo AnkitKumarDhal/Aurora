@@ -259,8 +259,6 @@ export function usePatientFlow() {
       return;
     }
 
-    setCompletionSecondsRemaining(COMPLETION_TIMEOUT_SECONDS);
-
     const timer = window.setInterval(() => {
       setCompletionSecondsRemaining((previous) => {
         const next = Math.max(0, previous - 1);
