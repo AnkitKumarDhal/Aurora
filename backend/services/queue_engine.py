@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-
 from backend.domain.enums import QueueStatus
 from backend.domain.queue import QueueEntry
 
@@ -8,21 +7,30 @@ class QueueEngine:
     WAITING_TIME_BONUS_PER_MINUTE = 0.5
     MAX_WAITING_TIME_BONUS = 30.0
 
-    def effective_priority(self, entry: QueueEntry, now: datetime | None = None) -> float:
+    @staticmethod
+    def _as_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    def effective_priority(
+        self,
+        entry: QueueEntry,
+        now: datetime | None = None,
+    ) -> float:
         if entry.priority_score is None:
             return 0.0
 
         if entry.queued_at is None:
             return float(entry.priority_score)
 
-        current_time = now or datetime.now(timezone.utc)
+        current_time = self._as_utc(now or datetime.now(timezone.utc))
+        queued_at = self._as_utc(entry.queued_at)
 
-        if current_time < entry.queued_at:
+        if current_time < queued_at:
             return float(entry.priority_score)
 
-        waited_minutes = (
-            current_time - entry.queued_at
-        ).total_seconds() / 60.0
+        waited_minutes = (current_time - queued_at).total_seconds() / 60.0
 
         waiting_bonus = min(
             waited_minutes * self.WAITING_TIME_BONUS_PER_MINUTE,
@@ -37,16 +45,18 @@ class QueueEngine:
         now: datetime | None = None,
     ) -> list[QueueEntry]:
         waiting_entries = [
-            entry
-            for entry in entries
-            if entry.status == QueueStatus.WAITING
+            entry for entry in entries if entry.status == QueueStatus.WAITING
         ]
+
+        current_time = self._as_utc(now or datetime.now(timezone.utc))
 
         return sorted(
             waiting_entries,
             key=lambda entry: (
-                -self.effective_priority(entry, now),
-                entry.queued_at or datetime.max.replace(tzinfo=timezone.utc),
+                -self.effective_priority(entry, current_time),
+                self._as_utc(entry.queued_at)
+                if entry.queued_at is not None
+                else datetime.max.replace(tzinfo=timezone.utc),
                 entry.queue_entry_id,
             ),
         )

@@ -10,7 +10,8 @@ class DocumentRepository(BaseRepository[DocumentDocument]):
         return await self.get_one({"document_id": document_id})
 
     async def get_session_documents(self, session_id: str,) -> list[DocumentDocument]:
-        cursor = self.collection.find(
+        collection = self._get_collection()
+        cursor = collection.find(
             {"session_id": session_id},
             sort=[("created_at", 1)],
         )
