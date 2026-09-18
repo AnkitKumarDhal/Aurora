@@ -131,7 +131,7 @@ async def test_verify_unknown_identity() -> None:
 async def test_mock_identity_rejects_unknown_method() -> None:
     result = await MockIdentityProvider().verify(
         "HOSPITAL_ID",
-        "1111-2222-3333",
+        "1111-2222-3333-44",
     )
 
     assert result == IdentityVerificationResult(

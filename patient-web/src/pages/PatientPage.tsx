@@ -1,0 +1,222 @@
+import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { usePatientFlow } from "@/hooks/usePatientFlow";
+import { ConsentScreen } from "@/screens/ConsentScreen";
+import { DocumentUpload } from "@/screens/DocumentUpload";
+import { IdentitySelection } from "@/screens/IdentitySelection";
+import { LanguageSelection } from "@/screens/LanguageSelection";
+import { TextAIConsultation } from "@/screens/TextAIConsultation";
+import { VoiceAIConsultation } from "@/screens/VoiceAIConsultation";
+import { WaitingScreen } from "@/screens/WaitingScreen";
+import { WelcomeScreen } from "@/screens/WelcomeScreen";
+
+export function PatientPage() {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  const {
+    currentScreen,
+    language,
+    sessionId,
+    isCreatingSession,
+    sessionError,
+    isVerifying,
+    verificationError,
+    isRecordingConsent,
+    consentError,
+    handleLanguageSelect,
+    handleStart,
+    handleIdentityVerification,
+    handleConsentGrant,
+    handleConsentDecline,
+    resetFlow,
+    setCurrentScreen,
+  } = usePatientFlow();
+
+  useEffect(() => {
+    window.document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] transition-colors duration-300">
+      <header className="flex items-center justify-between border-b border-[var(--color-border)] p-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]">
+            <span className="text-sm font-bold text-white">A</span>
+          </div>
+
+          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+            Aurora
+          </h1>
+        </div>
+
+        <Button
+          className="rounded-full border-[var(--color-border)] bg-[var(--color-surface)]"
+          onClick={toggleTheme}
+          size="icon"
+          variant="outline"
+        >
+          {theme === "light" ? (
+            <Moon className="h-4 w-4" />
+          ) : (
+            <Sun className="h-4 w-4" />
+          )}
+        </Button>
+      </header>
+
+      <main className="container mx-auto max-w-5xl p-6 md:p-12">
+        {currentScreen === "language" && (
+          <LanguageSelection onNext={handleLanguageSelect} />
+        )}
+
+        {currentScreen === "welcome" && (
+          <div className="relative">
+            {sessionError && (
+              <div className="mb-6 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-4 text-center text-[var(--color-danger)]">
+                {sessionError}
+              </div>
+            )}
+
+            <WelcomeScreen language={language} onNext={handleStart} />
+
+            {isCreatingSession && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
+                <div className="rounded-full bg-[var(--color-primary-tint)] px-5 py-3 text-sm font-semibold text-[var(--color-primary-dark)] shadow-lg">
+                  Starting your session...
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentScreen === "identity" && sessionId && (
+          <IdentitySelection
+            language={language}
+            isVerifying={isVerifying}
+            error={verificationError}
+            onNext={handleIdentityVerification}
+          />
+        )}
+
+        {currentScreen === "consent" && sessionId && (
+          <ConsentScreen
+            language={language}
+            isSubmitting={isRecordingConsent}
+            error={consentError}
+            onDecline={handleConsentDecline}
+            onNext={handleConsentGrant}
+          />
+        )}
+
+        {currentScreen === "ai-mode" && (
+          <div className="flex h-[75vh] flex-col items-center justify-center">
+            <div className="mb-12 space-y-4 text-center">
+              <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+                {language === "hi"
+                  ? "कैसे परामर्श करना चाहेंगे?"
+                  : "How would you like to consult?"}
+              </h2>
+
+              <p className="text-xl text-[var(--color-text-secondary)]">
+                {language === "hi"
+                  ? "AI सहायक के साथ बातचीत का अपना तरीका चुनें"
+                  : "Choose your preferred way to interact with AI"}
+              </p>
+            </div>
+
+            <div className="grid w-full max-w-4xl grid-cols-1 gap-8 px-4 md:grid-cols-2">
+              <button
+                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
+                onClick={() => setCurrentScreen("ai-voice")}
+                type="button"
+              >
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+                  <svg
+                    className="h-10 w-10 text-[var(--color-primary-dark)]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
+                  </svg>
+                </div>
+
+                <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+                  {language === "hi" ? "वॉयस" : "Voice"}
+                </div>
+
+                <div className="text-lg text-[var(--color-text-secondary)]">
+                  {language === "hi" ? "बोलकर बताएं" : "Speak naturally"}
+                </div>
+              </button>
+
+              <button
+                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
+                onClick={() => setCurrentScreen("ai-text")}
+                type="button"
+              >
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+                  <svg
+                    className="h-10 w-10 text-[var(--color-primary-dark)]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
+                  </svg>
+                </div>
+
+                <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+                  {language === "hi" ? "टेक्स्ट" : "Text"}
+                </div>
+
+                <div className="text-lg text-[var(--color-text-secondary)]">
+                  {language === "hi" ? "टाइप करके बताएं" : "Type your symptoms"}
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {currentScreen === "ai-voice" && sessionId && (
+          <VoiceAIConsultation
+            language={language}
+            onNext={() => setCurrentScreen("upload")}
+          />
+        )}
+
+        {currentScreen === "ai-text" && sessionId && (
+          <TextAIConsultation
+            language={language}
+            onNext={() => setCurrentScreen("upload")}
+          />
+        )}
+
+        {currentScreen === "upload" && sessionId && (
+          <DocumentUpload
+            language={language}
+            onNext={() => setCurrentScreen("waiting")}
+          />
+        )}
+
+        {currentScreen === "waiting" && (
+          <WaitingScreen language={language} onReset={resetFlow} />
+        )}
+      </main>
+    </div>
+  );
+}
