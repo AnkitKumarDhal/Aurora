@@ -1,20 +1,16 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowLeft,
-  Delete,
-  Fingerprint,
-  ShieldCheck,
-  User,
-} from "lucide-react";
+import { Delete, Fingerprint, ShieldCheck, User } from "lucide-react";
+import { PatientBackButton } from "@/components/PatientBackButton";
 
 interface IdentitySelectionProps {
   onNext: (
     identityType: "abha" | "aadhaar",
     number: string,
-  ) => void | Promise<void>;
+  ) => Promise<boolean>;
   onVerifyOtp: (otp: string) => void | Promise<void>;
+  onBack: () => void | Promise<void>;
   language: "en" | "hi";
   isVerifying?: boolean;
   error?: string | null;
@@ -25,6 +21,7 @@ interface IdentitySelectionProps {
 export function IdentitySelection({
   onNext,
   onVerifyOtp,
+  onBack,
   language,
   isVerifying = false,
   error = null,
@@ -55,7 +52,12 @@ export function IdentitySelection({
       return;
     }
 
-    await onNext(selectedId, idNumber);
+    const success = await onNext(selectedId, idNumber);
+
+    if (!success) {
+      return;
+    }
+
     setShowOtp(true);
     setOtpNumber("");
   };
@@ -79,9 +81,14 @@ export function IdentitySelection({
       return;
     }
 
-    setShowInput(false);
-    setSelectedId(null);
-    setIdNumber("");
+    if (showInput) {
+      setShowInput(false);
+      setSelectedId(null);
+      setIdNumber("");
+      return;
+    }
+
+    void onBack();
   };
 
   const handleNumberInput = (num: string) => {
@@ -129,15 +136,13 @@ export function IdentitySelection({
 
   if (showOtp && otpChallengeId) {
     return (
-      <div className="flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
-        <button
-          className="absolute left-8 top-8 rounded-full p-2 transition-colors hover:bg-[var(--color-surface-alt)]"
+      <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
+        <PatientBackButton
+          className="absolute left-0 top-0 z-20"
           disabled={isVerifying}
+          language={language}
           onClick={handleBack}
-          type="button"
-        >
-          <ArrowLeft className="h-6 w-6 text-[var(--color-text-secondary)]" />
-        </button>
+        />
 
         <div className="mb-4 space-y-2 text-center">
           <div className="mb-2 flex justify-center">
@@ -255,15 +260,13 @@ export function IdentitySelection({
     const maxLength = selectedId === "abha" ? 14 : 12;
 
     return (
-      <div className="flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
-        <button
-          className="absolute left-8 top-8 rounded-full p-2 transition-colors hover:bg-[var(--color-surface-alt)]"
+      <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
+        <PatientBackButton
+          className="absolute left-0 top-0 z-20"
           disabled={isVerifying}
+          language={language}
           onClick={handleBack}
-          type="button"
-        >
-          <ArrowLeft className="h-6 w-6 text-[var(--color-text-secondary)]" />
-        </button>
+        />
 
         <div className="mb-8 space-y-2 text-center">
           <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
@@ -368,7 +371,14 @@ export function IdentitySelection({
   }
 
   return (
-    <div className="flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden md:h-[calc(100svh-11rem)]">
+    <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
+      <PatientBackButton
+        className="absolute left-0 top-0 z-20"
+        disabled={isVerifying}
+        language={language}
+        onClick={onBack}
+      />
+
       <div className="mb-12 space-y-4 text-center">
         <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
           {isHi ? "पहचान का तरीका चुनें" : "Select Identification Method"}

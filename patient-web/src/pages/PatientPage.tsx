@@ -10,6 +10,7 @@ import { TextAIConsultation } from "@/screens/TextAIConsultation";
 import { VoiceAIConsultation } from "@/screens/VoiceAIConsultation";
 import { WaitingScreen } from "@/screens/WaitingScreen";
 import { WelcomeScreen } from "@/screens/WelcomeScreen";
+import { PatientBackButton } from "@/components/PatientBackButton";
 
 export function PatientPage() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -30,8 +31,10 @@ export function PatientPage() {
     isRecordingConsent,
     consentError,
     isRestoringSession,
+    isNavigatingBack,
     handleLanguageSelect,
     handleStart,
+    handleBack,
     handleIdentityVerification,
     handleOtpVerification,
     handleConsentGrant,
@@ -68,6 +71,11 @@ export function PatientPage() {
     );
   }
 
+  const showBackButton =
+    currentScreen !== "language" &&
+    currentScreen !== "identity" &&
+    currentScreen !== "waiting";
+
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] transition-colors duration-300">
       <header className="flex items-center justify-between border-b border-[var(--color-border)] p-6">
@@ -95,7 +103,16 @@ export function PatientPage() {
         </Button>
       </header>
 
-      <main className="container mx-auto max-w-5xl p-6 md:p-12">
+      <main className="relative container mx-auto max-w-5xl p-6 md:p-12">
+        {showBackButton && (
+          <PatientBackButton
+            className="absolute left-6 top-6 z-20 md:left-12 md:top-12"
+            disabled={isNavigatingBack || isCreatingSession || isVerifying}
+            language={language}
+            onClick={handleBack}
+          />
+        )}
+
         {currentScreen === "language" && (
           <LanguageSelection onNext={handleLanguageSelect} />
         )}
@@ -129,6 +146,7 @@ export function PatientPage() {
             error={verificationError}
             otpChallengeId={otpChallengeId}
             otpDemoCode={otpDemoCode}
+            onBack={handleBack}
             onNext={handleIdentityVerification}
             onVerifyOtp={handleOtpVerification}
           />

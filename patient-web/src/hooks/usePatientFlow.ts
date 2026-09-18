@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getConsentInformation, recordConsent } from "@/api/consent";
-import { getSession, createSession } from "@/api/sessions";
+import { createSession, getSession } from "@/api/sessions";
 import { requestIdentityOtp, verifyPatientOtp } from "@/api/verification";
 
 const SESSION_STORAGE_KEY = "aurora.patient.session_id";
@@ -70,6 +70,7 @@ export function usePatientFlow() {
   const [isRecordingConsent, setIsRecordingConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const consentSubmissionLock = useRef(false);
 
   const resetFlow = () => {
@@ -91,6 +92,7 @@ export function usePatientFlow() {
     setIsCreatingSession(false);
     setIsVerifying(false);
     setIsRecordingConsent(false);
+    setIsNavigatingBack(false);
   };
 
   useEffect(() => {
@@ -208,12 +210,95 @@ export function usePatientFlow() {
     }
   };
 
+  const handleBack = async () => {
+    if (isNavigatingBack || isCreatingSession || isVerifying) {
+      return;
+    }
+
+    if (currentScreen === "language") {
+      return;
+    }
+
+    if (!sessionId) {
+      if (currentScreen === "welcome") {
+        setCurrentScreen("language");
+      }
+
+      return;
+    }
+
+    setIsNavigatingBack(true);
+
+    try {
+      const session = await getSession(sessionId);
+
+      switch (currentScreen) {
+        case "welcome":
+          setCurrentScreen("language");
+          break;
+
+        case "identity":
+          if (
+            session.status === "CREATED" ||
+            session.status === "IDENTIFYING"
+          ) {
+            setCurrentScreen("welcome");
+          }
+          break;
+
+        case "consent":
+          if (
+            session.status === "IDENTIFYING" &&
+            session.consent_status === "PENDING"
+          ) {
+            setCurrentScreen("identity");
+          }
+          break;
+
+        case "ai-mode":
+          if (session.status === "CONSENTED") {
+            setCurrentScreen("consent");
+          }
+          break;
+
+        case "ai-voice":
+        case "ai-text":
+          if (
+            session.status === "CONSENTED" ||
+            session.status === "HISTORY_IN_PROGRESS"
+          ) {
+            setCurrentScreen("ai-mode");
+          }
+          break;
+
+        case "upload":
+          if (session.status === "HISTORY_IN_PROGRESS") {
+            setCurrentScreen("ai-mode");
+          }
+          break;
+
+        case "waiting":
+          if (session.status === "DOCUMENT_PROCESSING") {
+            setCurrentScreen("upload");
+          }
+          break;
+
+        default:
+          break;
+      }
+    } catch {
+      return;
+    } finally {
+      setIsNavigatingBack(false);
+    }
+  };
+
   const handleIdentityVerification = async (
     selectedIdentityType: "abha" | "aadhaar",
     identifier: string,
-  ) => {
+  ): Promise<boolean> => {
     if (!sessionId || isVerifying) {
-      return;
+      return false;
     }
 
     setVerificationError(null);
@@ -230,10 +315,14 @@ export function usePatientFlow() {
       setIdentityIdentifier(identifier);
       setOtpChallengeId(challenge.challenge_id);
       setOtpDemoCode(challenge.demo_otp);
+
+      return true;
     } catch (error) {
       setVerificationError(
         error instanceof Error ? error.message : "Unable to send OTP",
       );
+
+      return false;
     } finally {
       setIsVerifying(false);
     }
@@ -371,8 +460,10 @@ export function usePatientFlow() {
     isRecordingConsent,
     consentError,
     isRestoringSession,
+    isNavigatingBack,
     handleLanguageSelect,
     handleStart,
+    handleBack,
     handleIdentityVerification,
     handleOtpVerification,
     handleConsentGrant,
