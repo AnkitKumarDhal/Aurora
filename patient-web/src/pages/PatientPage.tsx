@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, RefreshCw, Sun, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PatientBackButton } from "@/components/PatientBackButton";
 import { usePatientFlow } from "@/hooks/usePatientFlow";
 import { ConsentScreen } from "@/screens/ConsentScreen";
 import { DocumentUpload } from "@/screens/DocumentUpload";
 import { IdentitySelection } from "@/screens/IdentitySelection";
 import { LanguageSelection } from "@/screens/LanguageSelection";
+import { ThankYouScreen } from "@/screens/ThankYouScreen";
 import { TextAIConsultation } from "@/screens/TextAIConsultation";
 import { VoiceAIConsultation } from "@/screens/VoiceAIConsultation";
 import { WaitingScreen } from "@/screens/WaitingScreen";
@@ -17,25 +19,34 @@ export function PatientPage() {
   const {
     currentScreen,
     language,
-    sessionId,
-    visitType,
+    draftId,
     otpChallengeId,
     otpDemoCode,
     consentVersion,
     consentText,
-    isCreatingSession,
-    sessionError,
     isVerifying,
     verificationError,
-    isRecordingConsent,
+    isLoadingConsent,
     consentError,
-    isRestoringSession,
+    isSubmittingRegistration,
+    registrationError,
+    registrationSubmitted,
+    isStartingNewPatient,
+    idleSecondsRemaining,
+    completionSecondsRemaining,
+    showInactivityWarning,
+    registerActivity,
     handleLanguageSelect,
     handleStart,
+    handleBack,
+    handleNewPatient,
     handleIdentityVerification,
     handleOtpVerification,
     handleConsentGrant,
     handleConsentDecline,
+    handleConversationTurn,
+    handleFinalizeRegistration,
+    handleContinueToWaiting,
     resetFlow,
     setCurrentScreen,
   } = usePatientFlow();
@@ -48,118 +59,156 @@ export function PatientPage() {
     setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
   };
 
-  if (isRestoringSession) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] text-[var(--color-text-primary)]">
-        <div className="rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-10 py-8 text-center shadow-lg">
-          <div className="mb-3 text-2xl font-bold">
-            {language === "hi"
-              ? "पिछला सत्र पुनर्स्थापित हो रहा है..."
-              : "Restoring your session..."}
-          </div>
+  const showBackButton =
+    currentScreen === "welcome" ||
+    currentScreen === "ai-voice" ||
+    currentScreen === "ai-text" ||
+    currentScreen === "upload";
 
-          <div className="text-lg text-[var(--color-text-secondary)]">
-            {language === "hi"
-              ? "कृपया कुछ क्षण प्रतीक्षा करें।"
-              : "Please wait a moment."}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const headerActionDisabled = isSubmittingRegistration || isStartingNewPatient;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] transition-colors duration-300">
-      <header className="flex items-center justify-between border-b border-[var(--color-border)] p-6">
+    <div className="min-h-screen bg-bg text-text-primary transition-colors duration-300">
+      <header className="flex items-center justify-between border-b border-border p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
             <span className="text-sm font-bold text-white">A</span>
           </div>
 
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+          <h1 className="text-xl font-semibold text-text-primary">
             Aurora
           </h1>
         </div>
 
-        <Button
-          className="rounded-full border-[var(--color-border)] bg-[var(--color-surface)]"
-          onClick={toggleTheme}
-          size="icon"
-          variant="outline"
-        >
-          {theme === "light" ? (
-            <Moon className="h-4 w-4" />
-          ) : (
-            <Sun className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            className="rounded-full border-border bg-surface px-5"
+            disabled={headerActionDisabled}
+            onClick={() => {
+              void handleNewPatient();
+            }}
+            variant="outline"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            {isStartingNewPatient
+              ? language === "hi"
+                ? "रीसेट हो रहा है..."
+                : "Resetting..."
+              : language === "hi"
+                ? "नया रोगी"
+                : "New Patient"}
+          </Button>
+
+          <Button
+            className="rounded-full border-border bg-surface"
+            onClick={toggleTheme}
+            size="icon"
+            variant="outline"
+          >
+            {theme === "light" ? (
+              <Moon className="h-4 w-4" />
+            ) : (
+              <Sun className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </header>
 
-      <main className="container mx-auto max-w-5xl p-6 md:p-12">
+      <main className="relative container mx-auto max-w-5xl p-6 md:p-12">
+        {showBackButton && (
+          <PatientBackButton
+            className="absolute left-6 top-6 z-20 md:left-12 md:top-12"
+            language={language}
+            onClick={handleBack}
+          />
+        )}
+
         {currentScreen === "language" && (
           <LanguageSelection onNext={handleLanguageSelect} />
         )}
 
         {currentScreen === "welcome" && (
-          <div className="relative">
-            {sessionError && (
-              <div className="mb-6 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-4 text-center text-[var(--color-danger)]">
-                {sessionError}
-              </div>
-            )}
-
-            <WelcomeScreen language={language} onNext={handleStart} />
-
-            {isCreatingSession && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
-                <div className="rounded-full bg-[var(--color-primary-tint)] px-5 py-3 text-sm font-semibold text-[var(--color-primary-dark)] shadow-lg">
-                  {language === "hi"
-                    ? "सत्र शुरू हो रहा है..."
-                    : "Starting your session..."}
-                </div>
-              </div>
-            )}
-          </div>
+          <WelcomeScreen language={language} onNext={handleStart} />
         )}
 
-        {currentScreen === "identity" && sessionId && (
+        {currentScreen === "identity" && draftId && (
           <IdentitySelection
             language={language}
             isVerifying={isVerifying}
             error={verificationError}
             otpChallengeId={otpChallengeId}
             otpDemoCode={otpDemoCode}
+            onBack={handleBack}
             onNext={handleIdentityVerification}
             onVerifyOtp={handleOtpVerification}
           />
         )}
 
         {currentScreen === "consent" &&
-          sessionId &&
-          consentVersion &&
-          consentText && (
+          (isLoadingConsent ? (
+            <div className="flex min-h-[75vh] items-center justify-center">
+              <div className="rounded-2xl border-2 border-border bg-surface px-10 py-8 text-center shadow-lg">
+                <div className="mb-3 text-2xl font-bold">
+                  {language === "hi"
+                    ? "सहमति जानकारी लोड हो रही है..."
+                    : "Loading consent information..."}
+                </div>
+
+                <div className="text-lg text-text-secondary">
+                  {language === "hi"
+                    ? "कृपया कुछ क्षण प्रतीक्षा करें।"
+                    : "Please wait a moment."}
+                </div>
+              </div>
+            </div>
+          ) : consentVersion && consentText ? (
             <ConsentScreen
               language={language}
               consentText={consentText}
               consentVersion={consentVersion}
-              visitType={visitType}
-              isSubmitting={isRecordingConsent}
               error={consentError}
               onDecline={handleConsentDecline}
               onNext={handleConsentGrant}
             />
-          )}
+          ) : (
+            <div className="flex min-h-[75vh] items-center justify-center px-4">
+              <div className="max-w-xl rounded-2xl border-2 border-danger bg-surface p-8 text-center shadow-lg">
+                <h2 className="mb-3 text-2xl font-bold text-text-primary">
+                  {language === "hi"
+                    ? "सहमति जानकारी उपलब्ध नहीं है"
+                    : "Consent information is unavailable"}
+                </h2>
+
+                <p className="mb-6 text-lg text-text-secondary">
+                  {consentError ??
+                    (language === "hi"
+                      ? "कृपया फिर से प्रयास करें।"
+                      : "Please try again.")}
+                </p>
+
+                <Button
+                  className="rounded-xl bg-primary-dark px-8 py-5 text-lg text-white shadow-lg hover:bg-text-primary"
+                  onClick={() => {
+                    void resetFlow();
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-5 w-5" />
+                  {language === "hi" ? "फिर से शुरू करें" : "Start Again"}
+                </Button>
+              </div>
+            </div>
+          ))}
 
         {currentScreen === "ai-mode" && (
           <div className="flex h-[75vh] flex-col items-center justify-center">
             <div className="mb-12 space-y-4 text-center">
-              <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+              <h2 className="text-4xl font-bold text-text-primary">
                 {language === "hi"
                   ? "कैसे परामर्श करना चाहेंगे?"
                   : "How would you like to consult?"}
               </h2>
 
-              <p className="text-xl text-[var(--color-text-secondary)]">
+              <p className="text-xl text-text-secondary">
                 {language === "hi"
                   ? "AI सहायक के साथ बातचीत का अपना तरीका चुनें"
                   : "Choose your preferred way to interact with AI"}
@@ -168,13 +217,16 @@ export function PatientPage() {
 
             <div className="grid w-full max-w-4xl grid-cols-1 gap-8 px-4 md:grid-cols-2">
               <button
-                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
-                onClick={() => setCurrentScreen("ai-voice")}
+                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface transition-all hover:border-primary"
+                onClick={() => {
+                  registerActivity();
+                  setCurrentScreen("ai-voice");
+                }}
                 type="button"
               >
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-tint">
                   <svg
-                    className="h-10 w-10 text-[var(--color-primary-dark)]"
+                    className="h-10 w-10 text-primary-dark"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -188,29 +240,32 @@ export function PatientPage() {
                   </svg>
                 </div>
 
-                <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+                <div className="text-3xl font-semibold text-text-primary">
                   {language === "hi" ? "वॉयस" : "Voice"}
                 </div>
 
-                <div className="text-lg text-[var(--color-text-secondary)]">
+                <div className="text-lg text-text-secondary">
                   {language === "hi" ? "बोलकर बताएं" : "Speak naturally"}
                 </div>
               </button>
 
               <button
-                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
-                onClick={() => setCurrentScreen("ai-text")}
+                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface transition-all hover:border-primary"
+                onClick={() => {
+                  registerActivity();
+                  setCurrentScreen("ai-text");
+                }}
                 type="button"
               >
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-tint">
                   <svg
-                    className="h-10 w-10 text-[var(--color-primary-dark)]"
+                    className="h-10 w-10 text-primary-dark"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path
-                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                      d="M8 10h.01M12 10h.01M16 10.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
@@ -218,11 +273,11 @@ export function PatientPage() {
                   </svg>
                 </div>
 
-                <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+                <div className="text-3xl font-semibold text-text-primary">
                   {language === "hi" ? "टेक्स्ट" : "Text"}
                 </div>
 
-                <div className="text-lg text-[var(--color-text-secondary)]">
+                <div className="text-lg text-text-secondary">
                   {language === "hi" ? "टाइप करके बताएं" : "Type your symptoms"}
                 </div>
               </button>
@@ -230,34 +285,63 @@ export function PatientPage() {
           </div>
         )}
 
-        {currentScreen === "ai-voice" && sessionId && (
+        {currentScreen === "ai-voice" && draftId && (
           <VoiceAIConsultation
-            sessionId={sessionId}
+            draftId={draftId}
             language={language}
+            onActivity={registerActivity}
+            onConversationTurn={handleConversationTurn}
             onNext={() => setCurrentScreen("upload")}
           />
         )}
 
-        {currentScreen === "ai-text" && sessionId && (
+        {currentScreen === "ai-text" && draftId && (
           <TextAIConsultation
-            sessionId={sessionId}
+            draftId={draftId}
             language={language}
+            onConversationTurn={handleConversationTurn}
             onNext={() => setCurrentScreen("upload")}
           />
         )}
 
-        {currentScreen === "upload" && sessionId && (
+        {currentScreen === "upload" && draftId && (
           <DocumentUpload
-            sessionId={sessionId}
+            draftId={draftId}
             language={language}
-            onNext={() => setCurrentScreen("waiting")}
+            onActivity={registerActivity}
+            onNext={() => setCurrentScreen("thank-you")}
+          />
+        )}
+
+        {currentScreen === "thank-you" && (
+          <ThankYouScreen
+            language={language}
+            isSubmitting={isSubmittingRegistration}
+            submitted={registrationSubmitted}
+            error={registrationError}
+            completionSecondsRemaining={completionSecondsRemaining}
+            onSubmit={handleFinalizeRegistration}
+            onContinue={handleContinueToWaiting}
+            onReset={resetFlow}
           />
         )}
 
         {currentScreen === "waiting" && (
-          <WaitingScreen language={language} onReset={resetFlow} />
+          <WaitingScreen
+            language={language}
+            onReset={resetFlow}
+            timeLeft={completionSecondsRemaining}
+          />
         )}
       </main>
+
+      {showInactivityWarning && currentScreen !== "waiting" && (
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full border-2 border-warning bg-surface px-6 py-3 text-center text-sm font-semibold text-text-primary shadow-xl">
+          {language === "hi"
+            ? `यह कियोस्क ${idleSecondsRemaining} सेकंड में निष्क्रियता के कारण रीसेट होगा`
+            : `This kiosk will reset in ${idleSecondsRemaining} seconds due to inactivity`}
+        </div>
+      )}
     </div>
   );
 }

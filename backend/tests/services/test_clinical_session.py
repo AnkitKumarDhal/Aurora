@@ -119,3 +119,51 @@ async def test_transition_session_rejects_invalid_transition(service: ClinicalSe
     with pytest.raises(ValueError, match="Invalid clinical session transition"):
         await service.transition_session("session-1", SessionStatus.IN_CONSULTATION)
     repository.update_session.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_abandon_session(service: ClinicalSessionService, repository: AsyncMock) -> None:
+    session = make_session()
+    session.status = SessionStatus.HISTORY_IN_PROGRESS
+    repository.get_session.return_value = make_document(session)
+
+    result = await service.abandon_session("session-1")
+
+    assert result is not None
+    assert result.status == SessionStatus.ABANDONED
+    repository.update_session.assert_awaited_once()
+
+    session_id, updates = repository.update_session.await_args.args
+    assert session_id == "session-1"
+    assert updates["status"] == SessionStatus.ABANDONED
+
+
+@pytest.mark.asyncio
+async def test_abandon_session_rejects_queued_session(
+    service: ClinicalSessionService,
+    repository: AsyncMock,
+) -> None:
+    session = make_session()
+    session.status = SessionStatus.QUEUED
+    repository.get_session.return_value = make_document(session)
+
+    with pytest.raises(
+        ValueError,
+        match="Session cannot be abandoned in the current state",
+    ):
+        await service.abandon_session("session-1")
+
+    repository.update_session.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_abandon_session_returns_none_when_missing(
+    service: ClinicalSessionService,
+    repository: AsyncMock,
+) -> None:
+    repository.get_session.return_value = None
+
+    result = await service.abandon_session("missing-session")
+
+    assert result is None
+    repository.update_session.assert_not_awaited()

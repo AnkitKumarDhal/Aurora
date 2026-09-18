@@ -5,6 +5,14 @@ from backend.models.clinical_session import ClinicalSessionDocument
 
 
 class ClinicalSessionService:
+    ABANDONABLE_STATUSES = {
+        SessionStatus.CREATED,
+        SessionStatus.IDENTIFYING,
+        SessionStatus.CONSENTED,
+        SessionStatus.HISTORY_IN_PROGRESS,
+        SessionStatus.DOCUMENT_PROCESSING,
+    }
+
     def __init__(self, repository: ClinicalSessionRepository) -> None:
         self.repository = repository
 
@@ -75,6 +83,28 @@ class ClinicalSessionService:
         )
 
         return session
+
+    async def abandon_session(
+        self,
+        session_id: str,
+    ) -> ClinicalSession | None:
+        session = await self.get_session(session_id)
+
+        if session is None:
+            return None
+
+        if session.status == SessionStatus.ABANDONED:
+            return session
+
+        if session.status not in self.ABANDONABLE_STATUSES:
+            raise ValueError(
+                "Session cannot be abandoned in the current state",
+            )
+
+        return await self.transition_session(
+            session_id,
+            SessionStatus.ABANDONED,
+        )
 
     async def set_verification_status(
         self,

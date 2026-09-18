@@ -8,41 +8,10 @@ export interface ConsentInformation {
   supported_languages: string[];
 }
 
-export interface ConsentResponse {
-  version: string;
-  consent_status: string;
-  recorded_at: string;
-}
-
-export async function getConsentInformation(
-  sessionId: string,
-): Promise<ConsentInformation> {
-  const response = await apiRequest<{ data: ConsentInformation }>(
-    `/sessions/${encodeURIComponent(sessionId)}/consent`,
-  );
-
-  return response.data;
-}
-
-export async function recordConsent(
-  sessionId: string,
-  version: string,
-  granted: boolean,
-  method: string,
-  identifier: string,
-): Promise<ConsentResponse> {
-  const response = await apiRequest<{ data: ConsentResponse }>(
-    `/sessions/${encodeURIComponent(sessionId)}/consent`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        version,
-        granted,
-        method,
-        identifier,
-      }),
-    },
-  );
+export async function getConsentInformation(): Promise<ConsentInformation> {
+  const response = await apiRequest<{
+    data: ConsentInformation;
+  }>("/consent-information");
 
   return response.data;
 }

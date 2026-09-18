@@ -35,3 +35,16 @@ export async function getSession(sessionId: string): Promise<ClinicalSession> {
 
   return response.data;
 }
+
+export async function abandonSession(
+  sessionId: string,
+): Promise<ClinicalSession> {
+  const response = await apiRequest<{ data: ClinicalSession }>(
+    `/sessions/${encodeURIComponent(sessionId)}/abandon`,
+    {
+      method: "POST",
+    },
+  );
+
+  return response.data;
+}

@@ -54,3 +54,25 @@ async def get_session(
         )
 
     return {"data": _to_response(session).model_dump(mode="json")}
+
+
+@router.post("/{session_id}/abandon", response_model=dict)
+async def abandon_session(
+    session_id: str,
+    service: ClinicalSessionService = Depends(get_clinical_session_service),
+) -> dict:
+    try:
+        session = await service.abandon_session(session_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Clinical session not found",
+        )
+
+    return {"data": _to_response(session).model_dump(mode="json")}

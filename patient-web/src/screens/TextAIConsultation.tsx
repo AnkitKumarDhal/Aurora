@@ -1,150 +1,171 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { getSession } from "@/api/sessions";
-import { submitConversationTurn } from "@/api/conversation";
 import { Bot, Send, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { loadPatientDraft } from "@/lib/patientDraft";
 
 interface TextAIConsultationProps {
-  sessionId: string;
+  draftId: string;
   onNext: () => void;
+  onConversationTurn: (
+    inputType: "TEXT",
+    content: string,
+    language: string,
+  ) => boolean;
   language: "en" | "hi";
 }
 
 interface Message {
-  id: number;
+  id: string;
   sender: "ai" | "user";
   text: string;
 }
 
+function getInitialMessages(draftId: string, isHi: boolean): Message[] {
+  const initialMessage: Message = {
+    id: "initial",
+    sender: "ai",
+    text: isHi
+      ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
+      : "Hello! I am Aurora AI. Please describe your symptoms.",
+  };
+
+  const draft = loadPatientDraft();
+
+  if (!draft || draft.draft_id !== draftId) {
+    return [initialMessage];
+  }
+
+  const existingTurns = draft.conversation_turns.filter(
+    (turn) => turn.input_type === "TEXT",
+  );
+
+  if (existingTurns.length === 0) {
+    return [initialMessage];
+  }
+
+  return [
+    initialMessage,
+    ...existingTurns.map((turn) => ({
+      id: turn.local_id,
+      sender: "user" as const,
+      text: turn.content,
+    })),
+  ];
+}
+
+function getInitialMessageCount(draftId: string): number {
+  const draft = loadPatientDraft();
+
+  if (!draft || draft.draft_id !== draftId) {
+    return 0;
+  }
+
+  return draft.conversation_turns.filter((turn) => turn.input_type === "TEXT")
+    .length;
+}
+
 export function TextAIConsultation({
-  sessionId,
+  draftId,
   onNext,
+  onConversationTurn,
   language,
 }: TextAIConsultationProps) {
   const isHi = language === "hi";
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      sender: "ai",
-      text: isHi
-        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
-        : "Hello! I am Aurora AI. Please describe your symptoms.",
-    },
-  ]);
+  const initialMessageCount = getInitialMessageCount(draftId);
+
+  const [messages, setMessages] = useState<Message[]>(() =>
+    getInitialMessages(draftId, isHi),
+  );
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [canContinue, setCanContinue] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [canContinue, setCanContinue] = useState(initialMessageCount > 0);
   const [error, setError] = useState<string | null>(null);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const messageCount = useRef(0);
-
-  useEffect(() => {
-    let active = true;
-
-    const restoreHistoryState = async () => {
-      try {
-        const session = await getSession(sessionId);
-
-        if (active && session.status === "HISTORY_IN_PROGRESS") {
-          setCanContinue(true);
-        }
-      } catch {
-        return;
-      }
-    };
-
-    void restoreHistoryState();
-
-    return () => {
-      active = false;
-    };
-  }, [sessionId]);
+  const messageCount = useRef(initialMessageCount);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [messages, isThinking]);
 
-  const handleSend = async () => {
+  const handleSend = () => {
     const content = input.trim();
 
-    if (!content || isTyping) {
+    if (!content || isThinking) {
       return;
     }
 
     setError(null);
-    setIsTyping(true);
+    setIsThinking(true);
 
-    try {
-      await submitConversationTurn(
-        sessionId,
-        "TEXT",
-        content,
-        isHi ? "hi" : "en",
-      );
+    const saved = onConversationTurn("TEXT", content, isHi ? "hi" : "en");
 
-      const userMessage: Message = {
-        id: Date.now(),
+    if (!saved) {
+      setError("Unable to save your response locally.");
+      setIsThinking(false);
+      return;
+    }
+
+    messageCount.current += 1;
+
+    setMessages((previous) => [
+      ...previous,
+      {
+        id: `user-${messageCount.current}`,
         sender: "user",
         text: content,
-      };
+      },
+    ]);
 
-      setMessages((previous) => [...previous, userMessage]);
-      setInput("");
-      setCanContinue(true);
-      messageCount.current += 1;
+    setInput("");
+    setCanContinue(true);
 
-      window.setTimeout(() => {
-        const questions = [
-          isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
-          isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
-          isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
-          isHi
-            ? "क्या आपको कोई पुरानी बीमारी है?"
-            : "Do you have any chronic illnesses?",
-          isHi
-            ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
-            : "Thank you. You can now proceed to upload your reports.",
-        ];
+    window.setTimeout(() => {
+      const questions = [
+        isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
+        isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
+        isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
+        isHi
+          ? "क्या आपको कोई पुरानी बीमारी है?"
+          : "Do you have any chronic illnesses?",
+        isHi
+          ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
+          : "Thank you. You can now proceed to upload your reports.",
+      ];
 
-        const questionIndex = Math.min(
-          messageCount.current - 1,
-          questions.length - 1,
-        );
+      const questionIndex = Math.min(
+        messageCount.current - 1,
+        questions.length - 1,
+      );
 
-        const aiResponse: Message = {
-          id: Date.now() + 1,
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: `ai-${messageCount.current}`,
           sender: "ai",
           text: questions[questionIndex],
-        };
+        },
+      ]);
 
-        setMessages((previous) => [...previous, aiResponse]);
-        setIsTyping(false);
-      }, 1500);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to save your response",
-      );
-      setIsTyping(false);
-    }
+      setIsThinking(false);
+    }, 1500);
   };
 
   return (
     <div className="flex h-[80vh] w-full flex-col items-center">
       <div className="mb-4 text-center">
-        <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">
+        <h2 className="text-2xl font-bold text-text-primary">
           {isHi ? "AI टेक्स्ट परामर्श" : "AI Text Consultation"}
         </h2>
 
-        <p className="text-sm text-[var(--color-text-secondary)]">
+        <p className="text-sm text-text-secondary">
           {isHi
             ? "अपने लक्षण टाइप करें और एंटर दबाएं"
             : "Type your symptoms and press Enter"}
         </p>
       </div>
 
-      <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+      <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex-1 space-y-3 overflow-y-auto pr-2">
           {messages.map((message) => (
             <div
@@ -154,43 +175,43 @@ export function TextAIConsultation({
               }`}
             >
               {message.sender === "ai" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-                  <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                  <Bot className="h-4 w-4 text-primary-dark" />
                 </div>
               )}
 
               <div
                 className={`max-w-[80%] rounded-xl p-3 text-base ${
                   message.sender === "ai"
-                    ? "rounded-tl-none bg-[var(--color-primary-tint)] text-[var(--color-text-primary)]"
-                    : "rounded-tr-none bg-[var(--color-accent-tint)] text-[var(--color-text-primary)]"
+                    ? "rounded-tl-none bg-primary-tint text-text-primary"
+                    : "rounded-tr-none bg-accent-tint text-text-primary"
                 }`}
               >
                 {message.text}
               </div>
 
               {message.sender === "user" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-tint)]">
-                  <User className="h-4 w-4 text-[var(--color-accent-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-tint">
+                  <User className="h-4 w-4 text-accent-dark" />
                 </div>
               )}
             </div>
           ))}
 
-          {isTyping && (
+          {isThinking && (
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-                <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                <Bot className="h-4 w-4 text-primary-dark" />
               </div>
 
-              <div className="flex gap-1 rounded-xl rounded-tl-none bg-[var(--color-primary-tint)] p-3">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]" />
+              <div className="flex gap-1 rounded-xl rounded-tl-none bg-primary-tint p-3">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
                 <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.2s" }}
                 />
                 <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.4s" }}
                 />
               </div>
@@ -201,19 +222,19 @@ export function TextAIConsultation({
         </div>
 
         {error && (
-          <div className="mb-3 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-3 rounded-xl border-2 border-danger bg-surface px-4 py-3 text-sm font-semibold text-danger">
             {error}
           </div>
         )}
 
         <div className="flex gap-3">
           <input
-            className="flex-1 rounded-lg border-2 border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-lg text-[var(--color-text-primary)] focus:border-[var(--color-primary)] focus:outline-none"
-            disabled={isTyping}
+            className="flex-1 rounded-lg border-2 border-border bg-bg p-4 text-lg text-text-primary focus:border-primary focus:outline-none"
+            disabled={isThinking}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
-                void handleSend();
+                handleSend();
               }
             }}
             placeholder={
@@ -223,11 +244,9 @@ export function TextAIConsultation({
           />
 
           <Button
-            className="rounded-lg bg-[var(--color-primary-dark)] px-6 py-4 text-lg text-white shadow-lg hover:bg-[var(--color-text-primary)]"
-            disabled={isTyping || !input.trim()}
-            onClick={() => {
-              void handleSend();
-            }}
+            className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg hover:bg-text-primary"
+            disabled={isThinking || !input.trim()}
+            onClick={handleSend}
           >
             <Send className="h-5 w-5" />
           </Button>
@@ -235,8 +254,8 @@ export function TextAIConsultation({
       </div>
 
       <Button
-        className="mt-4 rounded-lg bg-[var(--color-primary-dark)] px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
-        disabled={isTyping || !canContinue}
+        className="mt-4 rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
+        disabled={isThinking || !canContinue}
         onClick={onNext}
       >
         {isHi ? "अगला: रिपोर्ट अपलोड" : "Next: Upload Reports"}

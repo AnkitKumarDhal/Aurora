@@ -123,12 +123,13 @@ class ConsentService:
 
         return session.consent_status
 
-    def get_information(self) -> dict:
+    @staticmethod
+    def get_information() -> dict:
         return {
-            "version": self.CONSENT_VERSION,
-            "text": self.CONSENT_TEXT,
+            "version": ConsentService.CONSENT_VERSION,
+            "text": ConsentService.CONSENT_TEXT,
             "audio_available": True,
-            "supported_languages": self.SUPPORTED_LANGUAGES,
+            "supported_languages": ConsentService.SUPPORTED_LANGUAGES,
         }
 
     def _validate_version(self, version: str) -> None:

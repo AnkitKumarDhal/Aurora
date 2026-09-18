@@ -91,3 +91,48 @@ async def test_get_session_not_found(service: AsyncMock) -> None:
         response = await client.get("/api/v1/sessions/missing")
 
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_abandon_session(service: AsyncMock) -> None:
+    timestamp = datetime.now(timezone.utc)
+    session = ClinicalSession(
+        session_id="sess_test",
+        patient_id="patient_test",
+        department_id="general-medicine",
+        status="ABANDONED",
+        created_at=timestamp,
+        updated_at=timestamp,
+    )
+    service.abandon_session.return_value = session
+
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/api/v1/sessions/sess_test/abandon",
+        )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["status"] == "ABANDONED"
+    service.abandon_session.assert_awaited_once_with("sess_test")
+
+
+@pytest.mark.asyncio
+async def test_abandon_session_not_found(service: AsyncMock) -> None:
+    service.abandon_session.return_value = None
+
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/api/v1/sessions/missing/abandon",
+        )
+
+    assert response.status_code == 404

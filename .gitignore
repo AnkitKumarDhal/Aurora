@@ -45,6 +45,7 @@ build/
 .nuxt/
 .vite/
 .turbo/
+*.tsbuildinfo
 
 # Frontend environment
 !.env.example
@@ -109,3 +110,4 @@ docker-compose.override.yml
 
 Aurora-source.zip
 doc-ui.html
+admin-ui.html

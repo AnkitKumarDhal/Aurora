@@ -1,26 +1,32 @@
 import { useEffect, useRef, useState } from "react";
-import { uploadDocument } from "@/api/documents";
 import { Button } from "@/components/ui/button";
 import { Camera, Check, Loader2, RotateCcw, X } from "lucide-react";
+import {
+  savePatientDraftDocument,
+  type PatientDraftDocument,
+} from "@/lib/patientDraft";
 
 interface DocumentUploadProps {
-  sessionId: string;
+  draftId: string;
   onNext: () => void;
   language: "en" | "hi";
+  onActivity: () => void;
 }
 
 export function DocumentUpload({
-  sessionId,
+  draftId,
   onNext,
   language,
+  onActivity,
 }: DocumentUploadProps) {
   const isHi = language === "hi";
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const cameraRequestId = useRef(0);
@@ -101,6 +107,8 @@ export function DocumentUpload({
   };
 
   const openCamera = async () => {
+    onActivity();
+
     const requestId = cameraRequestId.current + 1;
     cameraRequestId.current = requestId;
     setError(null);
@@ -139,6 +147,8 @@ export function DocumentUpload({
   };
 
   const captureImage = () => {
+    onActivity();
+
     const video = videoRef.current;
 
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
@@ -147,6 +157,7 @@ export function DocumentUpload({
     }
 
     const canvas = document.createElement("canvas");
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
@@ -177,8 +188,10 @@ export function DocumentUpload({
             type: "image/png",
           }),
         );
+
         setCapturedImage(URL.createObjectURL(blob));
         setError(null);
+
         stopCamera();
       },
       "image/png",
@@ -187,36 +200,52 @@ export function DocumentUpload({
   };
 
   const retakeImage = () => {
+    onActivity();
     setCapturedImage(null);
     setCapturedFile(null);
     setError(null);
   };
 
-  const confirmUpload = async () => {
-    if (!capturedFile || isUploading) {
+  const confirmSave = async () => {
+    if (!capturedFile || isSaving) {
       return;
     }
 
+    onActivity();
     stopCamera();
     setError(null);
-    setIsUploading(true);
+    setIsSaving(true);
 
     try {
-      await uploadDocument(sessionId, capturedFile, "OTHER");
+      const document: PatientDraftDocument = await savePatientDraftDocument(
+        draftId,
+        capturedFile,
+        "OTHER",
+      );
+
+      if (!document) {
+        throw new Error("Unable to save the report locally.");
+      }
+
       setUploadedCount((count) => count + 1);
       setCapturedImage(null);
       setCapturedFile(null);
-    } catch (uploadError) {
+    } catch (saveError) {
       setError(
-        uploadError instanceof Error
-          ? uploadError.message
+        saveError instanceof Error
+          ? saveError.message
           : isHi
-            ? "रिपोर्ट अपलोड नहीं हो सकी।"
-            : "Unable to upload the report.",
+            ? "रिपोर्ट स्थानीय रूप से सहेजी नहीं जा सकी।"
+            : "Unable to save the report locally.",
       );
     } finally {
-      setIsUploading(false);
+      setIsSaving(false);
     }
+  };
+
+  const handleNext = () => {
+    onActivity();
+    onNext();
   };
 
   if (isCameraOpen) {
@@ -238,7 +267,10 @@ export function DocumentUpload({
 
           <button
             className="absolute right-6 top-6 rounded-full bg-black bg-opacity-50 p-3 text-white hover:bg-opacity-70"
-            onClick={stopCamera}
+            onClick={() => {
+              onActivity();
+              stopCamera();
+            }}
             type="button"
           >
             <X className="h-6 w-6" />
@@ -266,18 +298,18 @@ export function DocumentUpload({
 
   if (capturedImage) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-[var(--color-bg)]">
+      <div className="flex min-h-[80vh] w-full flex-col items-center justify-center bg-bg px-4">
         <div className="mb-6 space-y-4 text-center">
-          <h2 className="text-3xl font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-3xl font-bold text-text-primary">
             {isHi ? "रिपोर्ट स्कैन की गई" : "Report Scanned"}
           </h2>
 
-          <p className="text-xl text-[var(--color-text-secondary)]">
+          <p className="text-xl text-text-secondary">
             {isHi ? "क्या यह ठीक है?" : "Does this look good?"}
           </p>
         </div>
 
-        <div className="mb-8 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-lg">
+        <div className="mb-8 rounded-2xl border-2 border-border bg-surface p-6 shadow-lg">
           <img
             src={capturedImage}
             alt="Captured document"
@@ -286,15 +318,15 @@ export function DocumentUpload({
         </div>
 
         {error && (
-          <div className="mb-5 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-5 rounded-xl border-2 border-danger bg-surface px-6 py-3 text-center text-sm font-semibold text-danger">
             {error}
           </div>
         )}
 
         <div className="flex gap-6">
           <Button
-            className="flex items-center gap-3 rounded-xl border-2 border-[var(--color-border)] px-8 py-6 text-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)]"
-            disabled={isUploading}
+            className="flex items-center gap-3 rounded-xl border-2 border-border px-8 py-6 text-xl text-text-secondary hover:bg-surface-alt"
+            disabled={isSaving}
             onClick={retakeImage}
             variant="outline"
           >
@@ -303,44 +335,44 @@ export function DocumentUpload({
           </Button>
 
           <Button
-            className="flex items-center gap-3 rounded-xl bg-[var(--color-primary-dark)] px-10 py-6 text-xl text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
-            disabled={isUploading}
+            className="flex items-center gap-3 rounded-xl bg-primary-dark px-10 py-6 text-xl text-white shadow-lg transition-all hover:bg-text-primary"
+            disabled={isSaving}
             onClick={() => {
-              void confirmUpload();
+              void confirmSave();
             }}
           >
-            {isUploading ? (
+            {isSaving ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
               <Check className="h-6 w-6" />
             )}
 
-            {isUploading
+            {isSaving
               ? isHi
-                ? "अपलोड हो रहा है..."
-                : "Uploading..."
+                ? "सहेजा जा रहा है..."
+                : "Saving..."
               : isHi
-                ? "पुष्टि करें"
-                : "Upload Report"}
+                ? "स्थानीय रूप से सहेजें"
+                : "Save Locally"}
           </Button>
         </div>
       </div>
     );
   }
 
-  const hasUploadedDocuments = uploadedCount > 0;
+  const hasSavedDocuments = uploadedCount > 0;
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-[var(--color-bg)]">
+    <div className="flex min-h-[80vh] w-full flex-col items-center justify-center bg-bg px-4">
       <div className="mb-12 space-y-4 text-center">
         <div className="mb-6 flex justify-center">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-            <Camera className="h-12 w-12 text-[var(--color-primary-dark)]" />
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary-tint">
+            <Camera className="h-12 w-12 text-primary-dark" />
           </div>
         </div>
 
-        <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
-          {hasUploadedDocuments
+        <h2 className="text-4xl font-bold text-text-primary">
+          {hasSavedDocuments
             ? isHi
               ? "एक और रिपोर्ट जोड़ें"
               : "Add Another Report"
@@ -349,11 +381,11 @@ export function DocumentUpload({
               : "Scan Your Report"}
         </h2>
 
-        <p className="mx-auto max-w-xl text-xl text-[var(--color-text-secondary)]">
-          {hasUploadedDocuments
+        <p className="mx-auto max-w-xl text-xl text-text-secondary">
+          {hasSavedDocuments
             ? isHi
-              ? "आप चाहें तो और रिपोर्ट या प्रिस्क्रिप्शन अपलोड कर सकते हैं"
-              : "You can upload more reports or prescriptions if needed"
+              ? "आप चाहें तो और रिपोर्ट या प्रिस्क्रिप्शन जोड़ सकते हैं"
+              : "You can add more reports or prescriptions if needed"
             : isHi
               ? "अपनी पिछली रिपोर्ट या प्रिस्क्रिप्शन को कैमरे से स्कैन करें"
               : "Scan your previous report or prescription using the camera"}
@@ -361,42 +393,42 @@ export function DocumentUpload({
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+        <div className="mb-6 rounded-xl border-2 border-danger bg-surface px-6 py-3 text-center text-sm font-semibold text-danger">
           {error}
         </div>
       )}
 
-      {hasUploadedDocuments && (
-        <div className="mb-6 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-text-secondary)]">
+      {hasSavedDocuments && (
+        <div className="mb-6 rounded-xl border-2 border-border bg-surface px-6 py-3 text-center text-sm font-semibold text-text-secondary">
           {isHi
-            ? `${uploadedCount} रिपोर्ट अपलोड की गई`
-            : `${uploadedCount} report${uploadedCount === 1 ? "" : "s"} uploaded`}
+            ? `${uploadedCount} रिपोर्ट स्थानीय रूप से सहेजी गई`
+            : `${uploadedCount} report${uploadedCount === 1 ? "" : "s"} saved locally`}
         </div>
       )}
 
       <div className="flex flex-col items-center gap-6">
         <Button
-          className="flex min-w-[300px] items-center gap-4 rounded-2xl bg-[var(--color-primary-dark)] px-12 py-8 text-2xl text-white shadow-xl transition-all hover:bg-[var(--color-text-primary)]"
+          className="flex min-w-[300px] items-center gap-4 rounded-2xl bg-primary-dark px-12 py-8 text-2xl text-white shadow-xl transition-all hover:bg-text-primary"
           onClick={() => {
             void openCamera();
           }}
         >
           <Camera className="h-8 w-8" />
-          {hasUploadedDocuments
+          {hasSavedDocuments
             ? isHi
-              ? "एक और रिपोर्ट अपलोड करें"
-              : "Upload Another Report"
+              ? "एक और रिपोर्ट जोड़ें"
+              : "Add Another Report"
             : isHi
               ? "कैमरा खोलें"
               : "Open Camera"}
         </Button>
 
         <Button
-          className="rounded-xl border-2 border-[var(--color-border)] px-8 py-4 text-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)]"
-          onClick={onNext}
+          className="rounded-xl border-2 border-border px-8 py-4 text-lg text-text-secondary hover:bg-surface-alt"
+          onClick={handleNext}
           variant="outline"
         >
-          {hasUploadedDocuments
+          {hasSavedDocuments
             ? isHi
               ? "जारी रखें"
               : "Continue"
@@ -406,7 +438,7 @@ export function DocumentUpload({
         </Button>
       </div>
 
-      <p className="mt-8 text-lg text-[var(--color-text-secondary)]">
+      <p className="mt-8 text-lg text-text-secondary">
         {isHi
           ? "रिपोर्ट को साफ और अच्छी रोशनी में रखें"
           : "Keep report clear and in good lighting"}
