@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getConsentInformation, recordConsent } from "@/api/consent";
-import { createSession } from "@/api/sessions";
+import { getSession, createSession } from "@/api/sessions";
 import { identifyPatient } from "@/api/verification";
+
+const SESSION_STORAGE_KEY = "aurora.patient.session_id";
 
 export type PatientScreen =
   | "language"
@@ -15,6 +17,34 @@ export type PatientScreen =
   | "waiting";
 
 export type PatientVisitType = "FIRST_VISIT" | "RETURNING_VISIT" | null;
+
+function readStoredSessionId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeSessionId(sessionId: string): void {
+  try {
+    window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  } catch {
+    return;
+  }
+}
+
+function clearStoredSessionId(): void {
+  try {
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    return;
+  }
+}
 
 export function usePatientFlow() {
   const [currentScreen, setCurrentScreen] = useState<PatientScreen>("language");
@@ -34,10 +64,15 @@ export function usePatientFlow() {
     null,
   );
   const [consentVersion, setConsentVersion] = useState<string | null>(null);
+  const [consentText, setConsentText] = useState<string | null>(null);
   const [isRecordingConsent, setIsRecordingConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(false);
+  const consentSubmissionLock = useRef(false);
 
-  function resetFlow() {
+  const resetFlow = () => {
+    clearStoredSessionId();
+    consentSubmissionLock.current = false;
     setCurrentScreen("language");
     setLanguage("en");
     setSessionId(null);
@@ -45,25 +80,117 @@ export function usePatientFlow() {
     setIdentityIdentifier(null);
     setVisitType(null);
     setConsentVersion(null);
+    setConsentText(null);
     setSessionError(null);
     setVerificationError(null);
     setConsentError(null);
     setIsCreatingSession(false);
     setIsVerifying(false);
     setIsRecordingConsent(false);
-  }
+  };
 
-  function handleLanguageSelect(selectedLanguage: "en" | "hi") {
+  useEffect(() => {
+    const storedSessionId = readStoredSessionId();
+
+    if (!storedSessionId) {
+      return;
+    }
+
+    let active = true;
+
+    const restoreSession = async () => {
+      setIsRestoringSession(true);
+      setSessionError(null);
+
+      try {
+        const session = await getSession(storedSessionId);
+
+        if (!active) {
+          return;
+        }
+
+        setSessionId(session.session_id);
+
+        if (session.status === "CREATED" || session.status === "IDENTIFYING") {
+          setCurrentScreen("identity");
+          return;
+        }
+
+        if (
+          session.status === "CONSENTED" ||
+          session.status === "HISTORY_IN_PROGRESS"
+        ) {
+          setCurrentScreen("ai-mode");
+          return;
+        }
+
+        if (session.status === "DOCUMENT_PROCESSING") {
+          setCurrentScreen("upload");
+          return;
+        }
+
+        if (
+          session.status === "SUMMARY_READY" ||
+          session.status === "QUEUED" ||
+          session.status === "ASSIGNED" ||
+          session.status === "CALLED" ||
+          session.status === "IN_CONSULTATION" ||
+          session.status === "COMPLETED"
+        ) {
+          setCurrentScreen("waiting");
+          return;
+        }
+
+        clearStoredSessionId();
+        setSessionId(null);
+        setCurrentScreen("language");
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        clearStoredSessionId();
+        setSessionId(null);
+        setCurrentScreen("language");
+        setSessionError(
+          "Your previous session could not be restored. Please start again.",
+        );
+      } finally {
+        if (active) {
+          setIsRestoringSession(false);
+        }
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLanguageSelect = (selectedLanguage: "en" | "hi") => {
     setLanguage(selectedLanguage);
+    setSessionError(null);
     setCurrentScreen("welcome");
-  }
+  };
 
-  async function handleStart() {
+  const handleStart = async () => {
+    if (isCreatingSession) {
+      return;
+    }
+
     setSessionError(null);
     setIsCreatingSession(true);
+    setIdentityType(null);
+    setIdentityIdentifier(null);
+    setVisitType(null);
+    setConsentVersion(null);
+    setConsentText(null);
 
     try {
       const session = await createSession();
+      storeSessionId(session.session_id);
       setSessionId(session.session_id);
       setCurrentScreen("identity");
     } catch (error) {
@@ -73,12 +200,12 @@ export function usePatientFlow() {
     } finally {
       setIsCreatingSession(false);
     }
-  }
+  };
 
-  async function handleIdentityVerification(
+  const handleIdentityVerification = async (
     selectedIdentityType: "abha" | "aadhaar",
     identifier: string,
-  ) {
+  ) => {
     if (!sessionId || isVerifying) {
       return;
     }
@@ -103,6 +230,7 @@ export function usePatientFlow() {
       setIdentityIdentifier(identifier);
       setVisitType(identification.visit_type);
       setConsentVersion(consent.version);
+      setConsentText(consent.text);
       setCurrentScreen("consent");
     } catch (error) {
       setVerificationError(
@@ -111,19 +239,21 @@ export function usePatientFlow() {
     } finally {
       setIsVerifying(false);
     }
-  }
+  };
 
-  async function handleConsentGrant() {
+  const handleConsentGrant = async () => {
     if (
       !sessionId ||
       !consentVersion ||
       !identityType ||
       !identityIdentifier ||
-      isRecordingConsent
+      isRecordingConsent ||
+      consentSubmissionLock.current
     ) {
       return;
     }
 
+    consentSubmissionLock.current = true;
     setConsentError(null);
     setIsRecordingConsent(true);
 
@@ -142,19 +272,26 @@ export function usePatientFlow() {
 
       setCurrentScreen("ai-mode");
     } catch (error) {
+      consentSubmissionLock.current = false;
       setConsentError(
         error instanceof Error ? error.message : "Unable to record consent",
       );
     } finally {
       setIsRecordingConsent(false);
     }
-  }
+  };
 
-  async function handleConsentDecline() {
-    if (!sessionId || !consentVersion || isRecordingConsent) {
+  const handleConsentDecline = async () => {
+    if (
+      !sessionId ||
+      !consentVersion ||
+      isRecordingConsent ||
+      consentSubmissionLock.current
+    ) {
       return;
     }
 
+    consentSubmissionLock.current = true;
     setConsentError(null);
     setIsRecordingConsent(true);
 
@@ -173,6 +310,7 @@ export function usePatientFlow() {
 
       resetFlow();
     } catch (error) {
+      consentSubmissionLock.current = false;
       setConsentError(
         error instanceof Error
           ? error.message
@@ -181,19 +319,22 @@ export function usePatientFlow() {
     } finally {
       setIsRecordingConsent(false);
     }
-  }
+  };
 
   return {
     currentScreen,
     language,
     sessionId,
     visitType,
+    consentVersion,
+    consentText,
     isCreatingSession,
     sessionError,
     isVerifying,
     verificationError,
     isRecordingConsent,
     consentError,
+    isRestoringSession,
     handleLanguageSelect,
     handleStart,
     handleIdentityVerification,

@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { FileText, ShieldCheck } from "lucide-react";
 
 interface ConsentScreenProps {
+  consentText: string;
+  consentVersion: string;
+  visitType: "FIRST_VISIT" | "RETURNING_VISIT" | null;
   onNext: () => void | Promise<void>;
   onDecline: () => void | Promise<void>;
   language: "en" | "hi";
@@ -11,6 +14,9 @@ interface ConsentScreenProps {
 }
 
 export function ConsentScreen({
+  consentText,
+  consentVersion,
+  visitType,
   onNext,
   onDecline,
   language,
@@ -18,6 +24,15 @@ export function ConsentScreen({
   error = null,
 }: ConsentScreenProps) {
   const isHi = language === "hi";
+
+  const visitLabel =
+    visitType === "RETURNING_VISIT"
+      ? isHi
+        ? "पिछली यात्रा से जारी"
+        : "Returning visit"
+      : isHi
+        ? "पहली यात्रा"
+        : "First visit";
 
   return (
     <motion.div
@@ -36,10 +51,14 @@ export function ConsentScreen({
           {isHi ? "रोगी सहमति" : "Patient Consent"}
         </h2>
 
+        <p className="text-lg font-semibold text-[var(--color-primary-dark)]">
+          {visitLabel}
+        </p>
+
         <p className="mx-auto max-w-2xl text-xl text-[var(--color-text-secondary)]">
           {isHi
-            ? "आपको सर्वोत्तम देखभाल प्रदान करने के लिए, औरोरा को आपके चिकित्सा इतिहास तक पहुंच की आवश्यकता है।"
-            : "To provide you with the best care, Aurora needs to access your medical history and share it with the consulting doctor."}
+            ? "कृपया नीचे दी गई सहमति जानकारी की समीक्षा करें।"
+            : "Please review the consent information below before continuing."}
         </p>
       </div>
 
@@ -47,32 +66,14 @@ export function ConsentScreen({
         <div className="flex items-start gap-4">
           <FileText className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--color-text-secondary)]" />
 
-          <div className="space-y-4 text-lg text-[var(--color-text-primary)]">
-            <p>
+          <div className="space-y-6 text-lg text-[var(--color-text-primary)]">
+            <p className="leading-relaxed">{consentText}</p>
+
+            <div className="border-t border-[var(--color-border)] pt-4 text-sm text-[var(--color-text-secondary)]">
               {isHi
-                ? "आगे बढ़कर, आप निम्नलिखित से सहमत होते हैं:"
-                : "By proceeding, you agree to the following:"}
-            </p>
-
-            <ul className="list-inside list-disc space-y-2 text-[var(--color-text-secondary)]">
-              <li>
-                {isHi
-                  ? "औरोरा सुरक्षित रूप से ABHA/आधार के माध्यम से आपके रिकॉर्ड प्राप्त करेगा।"
-                  : "Aurora will securely fetch your records via ABHA/Aadhaar."}
-              </li>
-
-              <li>
-                {isHi
-                  ? "आपका डेटा केवल उपस्थित डॉक्टर के साथ साझा किया जाएगा।"
-                  : "Your data will be shared only with the attending doctor."}
-              </li>
-
-              <li>
-                {isHi
-                  ? "सभी डेटा एन्क्रिप्टेड और HIPAA/DPDP अनुपालन है।"
-                  : "All data is encrypted and HIPAA/DPDP compliant."}
-              </li>
-            </ul>
+                ? `सहमति संस्करण: ${consentVersion}`
+                : `Consent version: ${consentVersion}`}
+            </div>
           </div>
         </div>
       </div>

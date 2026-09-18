@@ -1,5 +1,7 @@
 from uuid import uuid4
 
+from pymongo.errors import DuplicateKeyError
+
 from backend.domain.common import utc_now
 from backend.domain.enums import SessionStatus, VerificationStatus
 from backend.domain.patient import Patient
@@ -163,7 +165,24 @@ class VerificationService:
                 updated_at=timestamp,
             )
 
-            await self.patient_service.create_patient(patient)
+            try:
+                await self.patient_service.create_patient(patient)
+            except DuplicateKeyError:
+                existing_patient = await self._find_existing_patient(
+                    method,
+                    identifier,
+                    result,
+                )
+
+                if existing_patient is None:
+                    raise
+
+                patient = await self.patient_service.update_patient(
+                    existing_patient.patient_id,
+                    {
+                        "storage_consent_granted_at": timestamp,
+                    },
+                ) or existing_patient
 
         await self.healthcare_integration_service.sync_patient(
             patient,

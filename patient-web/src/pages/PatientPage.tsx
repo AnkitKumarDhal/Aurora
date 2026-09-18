@@ -18,12 +18,16 @@ export function PatientPage() {
     currentScreen,
     language,
     sessionId,
+    visitType,
+    consentVersion,
+    consentText,
     isCreatingSession,
     sessionError,
     isVerifying,
     verificationError,
     isRecordingConsent,
     consentError,
+    isRestoringSession,
     handleLanguageSelect,
     handleStart,
     handleIdentityVerification,
@@ -40,6 +44,26 @@ export function PatientPage() {
   const toggleTheme = () => {
     setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
   };
+
+  if (isRestoringSession) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] text-[var(--color-text-primary)]">
+        <div className="rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-10 py-8 text-center shadow-lg">
+          <div className="mb-3 text-2xl font-bold">
+            {language === "hi"
+              ? "पिछला सत्र पुनर्स्थापित हो रहा है..."
+              : "Restoring your session..."}
+          </div>
+
+          <div className="text-lg text-[var(--color-text-secondary)]">
+            {language === "hi"
+              ? "कृपया कुछ क्षण प्रतीक्षा करें।"
+              : "Please wait a moment."}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] transition-colors duration-300">
@@ -86,7 +110,9 @@ export function PatientPage() {
             {isCreatingSession && (
               <div className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
                 <div className="rounded-full bg-[var(--color-primary-tint)] px-5 py-3 text-sm font-semibold text-[var(--color-primary-dark)] shadow-lg">
-                  Starting your session...
+                  {language === "hi"
+                    ? "सत्र शुरू हो रहा है..."
+                    : "Starting your session..."}
                 </div>
               </div>
             )}
@@ -102,15 +128,21 @@ export function PatientPage() {
           />
         )}
 
-        {currentScreen === "consent" && sessionId && (
-          <ConsentScreen
-            language={language}
-            isSubmitting={isRecordingConsent}
-            error={consentError}
-            onDecline={handleConsentDecline}
-            onNext={handleConsentGrant}
-          />
-        )}
+        {currentScreen === "consent" &&
+          sessionId &&
+          consentVersion &&
+          consentText && (
+            <ConsentScreen
+              language={language}
+              consentText={consentText}
+              consentVersion={consentVersion}
+              visitType={visitType}
+              isSubmitting={isRecordingConsent}
+              error={consentError}
+              onDecline={handleConsentDecline}
+              onNext={handleConsentGrant}
+            />
+          )}
 
         {currentScreen === "ai-mode" && (
           <div className="flex h-[75vh] flex-col items-center justify-center">

@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, UserPlus, Star, Sparkles } from "lucide-react";
+import { CheckCircle, RotateCcw, Sparkles, Star } from "lucide-react";
+
+const RESET_SECONDS = 90;
 
 interface WaitingScreenProps {
   onReset: () => void;
@@ -10,28 +12,32 @@ interface WaitingScreenProps {
 
 export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
   const isHi = language === "hi";
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(RESET_SECONDS);
 
   useEffect(() => {
     if (timeLeft <= 0) {
       onReset();
       return;
     }
-    const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, onReset]);
+
+    const timer = window.setTimeout(() => {
+      setTimeLeft((previous) => previous - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [onReset, timeLeft]);
 
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (timeLeft / 60) * circumference;
+  const strokeDashoffset =
+    circumference - (timeLeft / RESET_SECONDS) * circumference;
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-[80vh] relative overflow-hidden">
-      {/* Exploding Stars Animation */}
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(12)].map((_, i) => (
+    <div className="relative flex h-[80vh] w-full flex-col items-center justify-center overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        {[...Array(12)].map((_, index) => (
           <motion.div
-            key={i}
+            key={index}
             className="absolute"
             style={{
               left: "50%",
@@ -41,35 +47,43 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
             animate={{
               opacity: [0, 1, 0],
               scale: [0, 1.5, 0],
-              x: Math.cos((i * 30 * Math.PI) / 180) * 150,
-              y: Math.sin((i * 30 * Math.PI) / 180) * 150,
+              x: Math.cos((index * 30 * Math.PI) / 180) * 150,
+              y: Math.sin((index * 30 * Math.PI) / 180) * 150,
             }}
             transition={{
               duration: 2,
               repeat: Infinity,
               repeatDelay: 3,
-              delay: i * 0.1,
+              delay: index * 0.1,
             }}
           >
-            <Star className="h-6 w-6 text-[var(--color-warning)] fill-[var(--color-warning)]" />
+            <Star className="h-6 w-6 fill-[var(--color-warning)] text-[var(--color-warning)]" />
           </motion.div>
         ))}
       </div>
 
-      {/* Big Animated Checkmark */}
       <motion.div
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+        transition={{
+          type: "spring",
+          stiffness: 200,
+          damping: 15,
+        }}
         className="relative mb-6"
       >
-        <div className="h-32 w-32 rounded-full bg-gradient-to-br from-[var(--color-success)] to-emerald-600 flex items-center justify-center shadow-2xl">
+        <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-success)] to-emerald-600 shadow-2xl">
           <CheckCircle className="h-20 w-20 text-white" strokeWidth={3} />
         </div>
+
         <motion.div
-          className="absolute -top-2 -right-2"
+          className="absolute -right-2 -top-2"
           animate={{ rotate: 360 }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear",
+          }}
         >
           <Sparkles className="h-8 w-8 text-[var(--color-warning)]" />
         </motion.div>
@@ -79,25 +93,24 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="text-4xl font-bold text-[var(--color-text-primary)] mb-3"
+        className="mb-4 text-center text-4xl font-bold text-[var(--color-text-primary)]"
       >
-        {isHi ? "पंजीकरण पूरा हुआ!" : "Registration Complete!"}
+        {isHi ? "प्रक्रिया पूरी हुई" : "Your visit intake is complete"}
       </motion.h2>
 
       <motion.p
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="text-xl text-[var(--color-text-secondary)] mb-8 max-w-2xl text-center"
+        className="mb-8 max-w-3xl text-center text-xl leading-relaxed text-[var(--color-text-secondary)]"
       >
         {isHi
-          ? "आपका पंजीकरण पूरा हो गया है। डॉक्टर जल्द ही आपको बुलाएंगे।"
-          : "Your registration is complete. The doctor will call you shortly."}
+          ? "कृपया ओपीडी में प्रतीक्षा करें। एक स्टाफ सदस्य आएगा, आपका नाम पुकारेगा और आपको अगले चरण के लिए मार्गदर्शन करेगा।"
+          : "Please wait in the OPD. A staff will come and call your name and guide you through the next process."}
       </motion.p>
 
-      {/* Circular Timer */}
-      <div className="relative flex items-center justify-center mb-6">
-        <svg className="transform -rotate-90 w-32 h-32">
+      <div className="relative mb-6 flex items-center justify-center">
+        <svg className="h-32 w-32 -rotate-90 transform">
           <circle
             cx="64"
             cy="64"
@@ -106,6 +119,7 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
             strokeWidth="8"
             fill="transparent"
           />
+
           <circle
             cx="64"
             cy="64"
@@ -119,23 +133,24 @@ export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
             className="transition-all duration-1000 ease-linear"
           />
         </svg>
-        <div className="absolute text-3xl font-bold text-[var(--color-text-primary)] font-mono">
+
+        <div className="absolute font-mono text-3xl font-bold text-[var(--color-text-primary)]">
           {timeLeft}s
         </div>
       </div>
 
-      <p className="text-lg text-[var(--color-text-secondary)] mb-6">
+      <p className="mb-6 text-lg text-[var(--color-text-secondary)]">
         {isHi
-          ? `अगले रोगी के लिए ${timeLeft} सेकंड में रीसेट हो रहा है`
-          : `Resetting for next patient in ${timeLeft} seconds`}
+          ? `कियोस्क ${timeLeft} सेकंड में अगले रोगी के लिए रीसेट होगा`
+          : `This kiosk will reset for the next patient in ${timeLeft} seconds`}
       </p>
 
       <Button
         onClick={onReset}
-        className="px-12 py-6 text-xl rounded-xl bg-[var(--color-primary-dark)] hover:bg-[var(--color-text-primary)] text-white transition-all shadow-lg min-w-[280px] flex items-center gap-3"
+        className="flex min-w-[280px] items-center gap-3 rounded-xl bg-[var(--color-primary-dark)] px-12 py-6 text-xl text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
       >
-        <UserPlus className="h-6 w-6" />
-        {isHi ? "अगला रोगी" : "Next Patient"}
+        <RotateCcw className="h-6 w-6" />
+        {isHi ? "अभी रीसेट करें" : "Reset for Next Patient"}
       </Button>
     </div>
   );

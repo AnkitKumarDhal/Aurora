@@ -5,6 +5,7 @@ async def create_indexes() -> None:
     database = get_database_instance()
     await database.patients.create_index("patient_id", unique=True)
     await database.patients.create_index("abha_reference", unique=True, sparse=True)
+    await database.patients.create_index("aadhaar_reference", unique=True, sparse=True)
     await database.patients.create_index("hospital_reference", unique=True, sparse=True)
     await database.doctors.create_index("doctor_id", unique=True)
     await database.departments.create_index("department_id", unique=True)

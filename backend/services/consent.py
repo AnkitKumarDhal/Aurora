@@ -34,6 +34,12 @@ class ConsentService:
         if session is None:
             raise ValueError("Clinical session not found")
 
+        if (
+            session.status == SessionStatus.CONSENTED
+            and session.consent_status == ConsentStatus.GRANTED
+        ):
+            return session.status
+
         if session.verification_status != VerificationStatus.VERIFIED:
             raise ValueError(
                 "Patient identity must be verified before consent",
