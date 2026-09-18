@@ -12,3 +12,5 @@ class VerificationResponse(BaseModel):
     verification_id: str
     status: VerificationStatus
     patient_id: str | None = None
+    existing_patient: bool = False
+    visit_type: str

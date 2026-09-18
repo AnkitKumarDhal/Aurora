@@ -10,7 +10,9 @@ class PatientDocument(PersistenceModel):
     date_of_birth: date | None = None
     age: int | None = Field(default=None, ge=0)
     abha_reference: str | None = None
+    aadhaar_reference: str | None = None
     hospital_reference: str | None = None
+    storage_consent_granted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     collection_name: ClassVar[str] = "patients"

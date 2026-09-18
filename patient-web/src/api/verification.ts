@@ -1,31 +1,32 @@
 import { apiRequest } from "./client";
 
-export interface VerificationResponse {
+export interface PatientIdentificationResponse {
   verification_id: string;
   status: string;
   patient_id: string | null;
+  existing_patient: boolean;
+  visit_type: "FIRST_VISIT" | "RETURNING_VISIT";
 }
 
-interface VerificationRequest {
+interface IdentificationRequest {
   method: string;
   identifier: string;
 }
 
-export async function verifyPatient(
+export async function identifyPatient(
   sessionId: string,
   method: string,
   identifier: string,
-): Promise<VerificationResponse> {
-  const response = await apiRequest<{ data: VerificationResponse }>(
-    `/sessions/${encodeURIComponent(sessionId)}/verification`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        method,
-        identifier,
-      } satisfies VerificationRequest),
-    },
-  );
+): Promise<PatientIdentificationResponse> {
+  const response = await apiRequest<{
+    data: PatientIdentificationResponse;
+  }>(`/sessions/${encodeURIComponent(sessionId)}/verification`, {
+    method: "POST",
+    body: JSON.stringify({
+      method,
+      identifier,
+    } satisfies IdentificationRequest),
+  });
 
   return response.data;
 }

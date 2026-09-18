@@ -28,6 +28,8 @@ export async function recordConsent(
   sessionId: string,
   version: string,
   granted: boolean,
+  method: string,
+  identifier: string,
 ): Promise<ConsentResponse> {
   const response = await apiRequest<{ data: ConsentResponse }>(
     `/sessions/${encodeURIComponent(sessionId)}/consent`,
@@ -36,6 +38,8 @@ export async function recordConsent(
       body: JSON.stringify({
         version,
         granted,
+        method,
+        identifier,
       }),
     },
   );

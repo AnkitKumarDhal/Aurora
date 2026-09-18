@@ -76,6 +76,39 @@ class ClinicalSessionService:
 
         return session
 
+    async def set_verification_status(
+        self,
+        session_id: str,
+        verification_status: VerificationStatus,
+    ) -> ClinicalSession | None:
+        session = await self.get_session(session_id)
+
+        if session is None:
+            return None
+
+        session.verification_status = verification_status
+        session.touch()
+
+        document = ClinicalSessionDocument(
+            session_id=session.session_id,
+            patient_id=session.patient_id,
+            department_id=session.department_id,
+            status=session.status,
+            verification_status=session.verification_status,
+            consent_status=session.consent_status,
+            started_at=session.started_at,
+            completed_at=session.completed_at,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+        )
+
+        await self.repository.update_session(
+            session_id,
+            document.to_mongo(),
+        )
+
+        return session
+
     async def set_identity(
         self,
         session_id: str,

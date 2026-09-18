@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
+import { getConsentInformation, recordConsent } from "@/api/consent";
 import { createSession } from "@/api/sessions";
-import { recordConsent, getConsentInformation } from "@/api/consent";
-import { verifyPatient } from "@/api/verification";
+import { identifyPatient } from "@/api/verification";
 
 export type PatientScreen =
   | "language"
@@ -14,10 +14,19 @@ export type PatientScreen =
   | "upload"
   | "waiting";
 
+export type PatientVisitType = "FIRST_VISIT" | "RETURNING_VISIT" | null;
+
 export function usePatientFlow() {
   const [currentScreen, setCurrentScreen] = useState<PatientScreen>("language");
   const [language, setLanguage] = useState<"en" | "hi">("en");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [identityType, setIdentityType] = useState<"abha" | "aadhaar" | null>(
+    null,
+  );
+  const [identityIdentifier, setIdentityIdentifier] = useState<string | null>(
+    null,
+  );
+  const [visitType, setVisitType] = useState<PatientVisitType>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -28,12 +37,28 @@ export function usePatientFlow() {
   const [isRecordingConsent, setIsRecordingConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
 
-  const handleLanguageSelect = useCallback((selectedLanguage: "en" | "hi") => {
+  function resetFlow() {
+    setCurrentScreen("language");
+    setLanguage("en");
+    setSessionId(null);
+    setIdentityType(null);
+    setIdentityIdentifier(null);
+    setVisitType(null);
+    setConsentVersion(null);
+    setSessionError(null);
+    setVerificationError(null);
+    setConsentError(null);
+    setIsCreatingSession(false);
+    setIsVerifying(false);
+    setIsRecordingConsent(false);
+  }
+
+  function handleLanguageSelect(selectedLanguage: "en" | "hi") {
     setLanguage(selectedLanguage);
     setCurrentScreen("welcome");
-  }, []);
+  }
 
-  const handleStart = useCallback(async () => {
+  async function handleStart() {
     setSessionError(null);
     setIsCreatingSession(true);
 
@@ -48,46 +73,54 @@ export function usePatientFlow() {
     } finally {
       setIsCreatingSession(false);
     }
-  }, []);
+  }
 
-  const handleIdentityVerification = useCallback(
-    async (identityType: "abha" | "aadhaar", identifier: string) => {
-      if (!sessionId || isVerifying) {
-        return;
+  async function handleIdentityVerification(
+    selectedIdentityType: "abha" | "aadhaar",
+    identifier: string,
+  ) {
+    if (!sessionId || isVerifying) {
+      return;
+    }
+
+    setVerificationError(null);
+    setIsVerifying(true);
+
+    try {
+      const identification = await identifyPatient(
+        sessionId,
+        selectedIdentityType.toUpperCase(),
+        identifier,
+      );
+
+      if (identification.status !== "VERIFIED") {
+        throw new Error("Identity verification failed");
       }
 
-      setVerificationError(null);
-      setIsVerifying(true);
+      const consent = await getConsentInformation(sessionId);
 
-      try {
-        const verification = await verifyPatient(
-          sessionId,
-          identityType.toUpperCase(),
-          identifier,
-        );
+      setIdentityType(selectedIdentityType);
+      setIdentityIdentifier(identifier);
+      setVisitType(identification.visit_type);
+      setConsentVersion(consent.version);
+      setCurrentScreen("consent");
+    } catch (error) {
+      setVerificationError(
+        error instanceof Error ? error.message : "Identity verification failed",
+      );
+    } finally {
+      setIsVerifying(false);
+    }
+  }
 
-        if (verification.status !== "VERIFIED") {
-          throw new Error("Identity verification failed");
-        }
-
-        const consent = await getConsentInformation(sessionId);
-        setConsentVersion(consent.version);
-        setCurrentScreen("consent");
-      } catch (error) {
-        setVerificationError(
-          error instanceof Error
-            ? error.message
-            : "Identity verification failed",
-        );
-      } finally {
-        setIsVerifying(false);
-      }
-    },
-    [isVerifying, sessionId],
-  );
-
-  const handleConsentGrant = useCallback(async () => {
-    if (!sessionId || !consentVersion || isRecordingConsent) {
+  async function handleConsentGrant() {
+    if (
+      !sessionId ||
+      !consentVersion ||
+      !identityType ||
+      !identityIdentifier ||
+      isRecordingConsent
+    ) {
       return;
     }
 
@@ -95,7 +128,13 @@ export function usePatientFlow() {
     setIsRecordingConsent(true);
 
     try {
-      const response = await recordConsent(sessionId, consentVersion, true);
+      const response = await recordConsent(
+        sessionId,
+        consentVersion,
+        true,
+        identityType.toUpperCase(),
+        identityIdentifier,
+      );
 
       if (response.consent_status !== "GRANTED") {
         throw new Error("Consent could not be recorded");
@@ -109,9 +148,9 @@ export function usePatientFlow() {
     } finally {
       setIsRecordingConsent(false);
     }
-  }, [consentVersion, isRecordingConsent, sessionId]);
+  }
 
-  const handleConsentDecline = useCallback(async () => {
+  async function handleConsentDecline() {
     if (!sessionId || !consentVersion || isRecordingConsent) {
       return;
     }
@@ -120,7 +159,13 @@ export function usePatientFlow() {
     setIsRecordingConsent(true);
 
     try {
-      const response = await recordConsent(sessionId, consentVersion, false);
+      const response = await recordConsent(
+        sessionId,
+        consentVersion,
+        false,
+        identityType?.toUpperCase() ?? "",
+        identityIdentifier ?? "",
+      );
 
       if (response.consent_status !== "DENIED") {
         throw new Error("Consent could not be recorded");
@@ -136,25 +181,13 @@ export function usePatientFlow() {
     } finally {
       setIsRecordingConsent(false);
     }
-  }, [consentVersion, isRecordingConsent, sessionId]);
-
-  const resetFlow = useCallback(() => {
-    setCurrentScreen("language");
-    setLanguage("en");
-    setSessionId(null);
-    setConsentVersion(null);
-    setSessionError(null);
-    setVerificationError(null);
-    setConsentError(null);
-    setIsCreatingSession(false);
-    setIsVerifying(false);
-    setIsRecordingConsent(false);
-  }, []);
+  }
 
   return {
     currentScreen,
     language,
     sessionId,
+    visitType,
     isCreatingSession,
     sessionError,
     isVerifying,

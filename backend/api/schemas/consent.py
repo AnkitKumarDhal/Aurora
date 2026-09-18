@@ -8,6 +8,8 @@ from backend.domain.enums import ConsentStatus
 class ConsentRequest(BaseModel):
     version: str = Field(min_length=1)
     granted: bool
+    method: str | None = None
+    identifier: str | None = None
 
 
 class ConsentResponse(BaseModel):

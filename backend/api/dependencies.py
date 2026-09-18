@@ -142,8 +142,11 @@ def get_doctor_queue_service() -> DoctorQueueService:
 
 
 def get_consent_service() -> ConsentService:
+    verification_service = get_verification_service()
+
     return ConsentService(
-        session_service=ClinicalSessionService(ClinicalSessionRepository()),
+        session_service=verification_service.session_service,
+        verification_service=verification_service,
     )
 
 

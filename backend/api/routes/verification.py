@@ -5,7 +5,6 @@ from backend.api.schemas.verification import (
     VerificationRequest,
     VerificationResponse,
 )
-from backend.domain.enums import VerificationStatus
 from backend.services.verification import VerificationService
 
 router = APIRouter(
@@ -21,10 +20,12 @@ async def verify_patient(
     service: VerificationService = Depends(get_verification_service),
 ) -> dict:
     try:
-        verification_id, result = await service.verify(
-            session_id,
-            request.method,
-            request.identifier,
+        verification_id, result, existing_patient = (
+            await service.verify(
+                session_id,
+                request.method,
+                request.identifier,
+            )
         )
     except ValueError as exc:
         raise HTTPException(
@@ -32,10 +33,22 @@ async def verify_patient(
             detail=str(exc),
         ) from exc
 
+    visit_type = (
+        "RETURNING_VISIT"
+        if existing_patient is not None
+        else "FIRST_VISIT"
+    )
+
     response = VerificationResponse(
         verification_id=verification_id,
         status=result.status,
-        patient_id=result.patient_id,
+        patient_id=(
+            existing_patient.patient_id
+            if existing_patient is not None
+            else None
+        ),
+        existing_patient=existing_patient is not None,
+        visit_type=visit_type,
     )
 
     return {"data": response.model_dump(mode="json")}
@@ -56,10 +69,18 @@ async def get_verification(
             detail=str(exc),
         ) from exc
 
+    existing_patient = patient_id is not None
+
     response = VerificationResponse(
         verification_id=verification_id,
         status=verification_status,
         patient_id=patient_id,
+        existing_patient=existing_patient,
+        visit_type=(
+            "RETURNING_VISIT"
+            if existing_patient
+            else "FIRST_VISIT"
+        ),
     )
 
     return {"data": response.model_dump(mode="json")}

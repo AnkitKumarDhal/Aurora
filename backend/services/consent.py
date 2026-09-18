@@ -1,5 +1,10 @@
-from backend.domain.enums import ConsentStatus, SessionStatus, VerificationStatus
+from backend.domain.enums import (
+    ConsentStatus,
+    SessionStatus,
+    VerificationStatus,
+)
 from backend.services.clinical_session import ClinicalSessionService
+from backend.services.verification import VerificationService
 
 
 class ConsentService:
@@ -7,10 +12,21 @@ class ConsentService:
     CONSENT_TEXT = "Consent text approved for the current deployment."
     SUPPORTED_LANGUAGES = ["en", "hi", "od"]
 
-    def __init__(self, session_service: ClinicalSessionService) -> None:
+    def __init__(
+        self,
+        session_service: ClinicalSessionService,
+        verification_service: VerificationService,
+    ) -> None:
         self.session_service = session_service
+        self.verification_service = verification_service
 
-    async def grant(self, session_id: str, version: str) -> SessionStatus:
+    async def grant(
+        self,
+        session_id: str,
+        version: str,
+        method: str,
+        identifier: str,
+    ) -> SessionStatus:
         self._validate_version(version)
 
         session = await self.session_service.get_session(session_id)
@@ -20,10 +36,19 @@ class ConsentService:
 
         if session.verification_status != VerificationStatus.VERIFIED:
             raise ValueError(
-                "Patient identity must be verified before consent")
+                "Patient identity must be verified before consent",
+            )
 
         if session.status != SessionStatus.IDENTIFYING:
-            raise ValueError("Session must be identifying before consent")
+            raise ValueError(
+                "Session must be identifying before consent",
+            )
+
+        await self.verification_service.persist_identity(
+            session_id,
+            method,
+            identifier,
+        )
 
         updated_session = await self.session_service.set_consent(
             session_id,
@@ -31,7 +56,9 @@ class ConsentService:
         )
 
         if updated_session is None:
-            raise ValueError("Clinical session could not be updated")
+            raise ValueError(
+                "Clinical session could not be updated",
+            )
 
         updated_session = await self.session_service.transition_session(
             session_id,
@@ -40,11 +67,16 @@ class ConsentService:
 
         if updated_session is None:
             raise ValueError(
-                "Clinical session could not enter consented state")
+                "Clinical session could not enter consented state",
+            )
 
         return updated_session.status
 
-    async def deny(self, session_id: str, version: str) -> SessionStatus:
+    async def deny(
+        self,
+        session_id: str,
+        version: str,
+    ) -> SessionStatus:
         self._validate_version(version)
 
         session = await self.session_service.get_session(session_id)
@@ -54,10 +86,13 @@ class ConsentService:
 
         if session.verification_status != VerificationStatus.VERIFIED:
             raise ValueError(
-                "Patient identity must be verified before consent")
+                "Patient identity must be verified before consent",
+            )
 
         if session.status != SessionStatus.IDENTIFYING:
-            raise ValueError("Session must be identifying before consent")
+            raise ValueError(
+                "Session must be identifying before consent",
+            )
 
         updated_session = await self.session_service.set_consent(
             session_id,
@@ -65,11 +100,16 @@ class ConsentService:
         )
 
         if updated_session is None:
-            raise ValueError("Clinical session could not be updated")
+            raise ValueError(
+                "Clinical session could not be updated",
+            )
 
         return updated_session.status
 
-    async def get_status(self, session_id: str) -> ConsentStatus:
+    async def get_status(
+        self,
+        session_id: str,
+    ) -> ConsentStatus:
         session = await self.session_service.get_session(session_id)
 
         if session is None:
