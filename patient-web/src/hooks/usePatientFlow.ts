@@ -264,7 +264,7 @@ export function usePatientFlow() {
     }
 
     if (currentScreen === "identity") {
-      setCurrentScreen("welcome");
+      setCurrentScreen("language");
       return;
     }
 
