@@ -136,7 +136,7 @@ export function IdentitySelection({
 
   if (showOtp && otpChallengeId) {
     return (
-      <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
+      <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-bg md:h-[calc(100svh-11rem)]">
         <PatientBackButton
           className="absolute left-0 top-0 z-20"
           disabled={isVerifying}
@@ -146,16 +146,16 @@ export function IdentitySelection({
 
         <div className="mb-4 space-y-2 text-center">
           <div className="mb-2 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-              <ShieldCheck className="h-8 w-8 text-[var(--color-primary-dark)]" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-tint">
+              <ShieldCheck className="h-8 w-8 text-primary-dark" />
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-3xl font-bold text-text-primary">
             {isHi ? "OTP सत्यापन" : "OTP Verification"}
           </h2>
 
-          <p className="text-base text-[var(--color-text-secondary)]">
+          <p className="text-base text-text-secondary">
             {isHi
               ? "आपके पंजीकृत मोबाइल नंबर पर एक OTP भेजा गया है।"
               : "A one-time password has been sent to your registered mobile number."}
@@ -163,21 +163,21 @@ export function IdentitySelection({
         </div>
 
         {otpDemoCode && (
-          <div className="mb-4 rounded-xl border-2 border-[var(--color-primary)] bg-[var(--color-primary-tint)] px-5 py-2.5 text-center">
-            <div className="text-sm font-semibold text-[var(--color-text-secondary)]">
+          <div className="mb-4 rounded-xl border-2 border-primary bg-primary-tint px-5 py-2.5 text-center">
+            <div className="text-sm font-semibold text-text-secondary">
               {isHi ? "डेमो OTP" : "Demo OTP"}
             </div>
 
-            <div className="mt-1 font-mono text-2xl font-bold tracking-widest text-[var(--color-primary-dark)]">
+            <div className="mt-1 font-mono text-2xl font-bold tracking-widest text-primary-dark">
               {otpDemoCode}
             </div>
           </div>
         )}
 
-        <div className="mb-4 w-full max-w-lg rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-lg">
-          <div className="flex min-h-[60px] items-center justify-center text-center font-mono text-3xl font-bold tracking-widest text-[var(--color-text-primary)]">
+        <div className="mb-4 w-full max-w-lg rounded-2xl border-2 border-border bg-surface p-4 shadow-lg">
+          <div className="flex min-h-[60px] items-center justify-center text-center font-mono text-3xl font-bold tracking-widest text-text-primary">
             {displayOtp || (
-              <span className="text-[var(--color-border)]">• • • • • •</span>
+              <span className="text-border">• • • • • •</span>
             )}
           </div>
         </div>
@@ -188,7 +188,7 @@ export function IdentitySelection({
               key={num}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="h-14 w-20 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+              className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
               disabled={isVerifying}
               onClick={() => handleOtpInput(num)}
               type="button"
@@ -200,7 +200,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-14 w-20 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] text-base font-semibold text-[var(--color-danger)] shadow-md transition-all hover:bg-[var(--color-danger)] hover:text-white"
+            className="h-14 w-20 rounded-xl border-2 border-danger bg-surface text-base font-semibold text-danger shadow-md transition-all hover:bg-danger hover:text-white"
             disabled={isVerifying}
             onClick={handleOtpDelete}
             type="button"
@@ -211,7 +211,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-14 w-20 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+            className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
             disabled={isVerifying}
             onClick={() => handleOtpInput("0")}
             type="button"
@@ -222,7 +222,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-14 w-20 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-lg font-semibold text-[var(--color-text-secondary)] shadow-md transition-all hover:bg-[var(--color-warning)] hover:text-white"
+            className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-lg font-semibold text-text-secondary shadow-md transition-all hover:bg-warning hover:text-white"
             disabled={isVerifying}
             onClick={() => setOtpNumber("")}
             type="button"
@@ -232,13 +232,13 @@ export function IdentitySelection({
         </div>
 
         {error && (
-          <div className="mb-3 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-5 py-2.5 text-center text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-3 rounded-xl border-2 border-danger bg-surface px-5 py-2.5 text-center text-sm font-semibold text-danger">
             {error}
           </div>
         )}
 
         <Button
-          className="rounded-xl bg-[var(--color-primary-dark)] px-7 py-3 text-base text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+          className="rounded-xl bg-primary-dark px-7 py-3 text-base text-white shadow-lg transition-all hover:bg-text-primary"
           disabled={isVerifying || otpNumber.length !== 6}
           onClick={() => {
             void handleVerifyOtp();
@@ -260,7 +260,7 @@ export function IdentitySelection({
     const maxLength = selectedId === "abha" ? 14 : 12;
 
     return (
-      <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
+      <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-bg md:h-[calc(100svh-11rem)]">
         <PatientBackButton
           className="absolute left-0 top-0 z-20"
           disabled={isVerifying}
@@ -269,13 +269,13 @@ export function IdentitySelection({
         />
 
         <div className="mb-8 space-y-2 text-center">
-          <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-4xl font-bold text-text-primary">
             {isHi
               ? `${selectedId === "abha" ? "ABHA" : "आधार"} नंबर दर्ज करें`
               : `Enter ${selectedId === "abha" ? "ABHA" : "Aadhaar"} Number`}
           </h2>
 
-          <p className="text-lg text-[var(--color-text-secondary)]">
+          <p className="text-lg text-text-secondary">
             {selectedId === "abha"
               ? isHi
                 ? "14-अंकीय ABHA नंबर"
@@ -286,10 +286,10 @@ export function IdentitySelection({
           </p>
         </div>
 
-        <div className="mb-8 w-full max-w-xl rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-lg">
-          <div className="flex min-h-[70px] items-center justify-center text-center font-mono text-4xl font-bold tracking-widest text-[var(--color-text-primary)]">
+        <div className="mb-8 w-full max-w-xl rounded-2xl border-2 border-border bg-surface p-6 shadow-lg">
+          <div className="flex min-h-[70px] items-center justify-center text-center font-mono text-4xl font-bold tracking-widest text-text-primary">
             {displayNumber || (
-              <span className="text-[var(--color-border)]">
+              <span className="text-border">
                 _ _ _ _ _ _ _ _ _ _ _ _ _ _
               </span>
             )}
@@ -302,7 +302,7 @@ export function IdentitySelection({
               key={num}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+              className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
               disabled={isVerifying}
               onClick={() => handleNumberInput(num)}
               type="button"
@@ -314,7 +314,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] text-base font-semibold text-[var(--color-danger)] shadow-md transition-all hover:bg-[var(--color-danger)] hover:text-white"
+            className="h-16 w-24 rounded-xl border-2 border-danger bg-surface text-base font-semibold text-danger shadow-md transition-all hover:bg-danger hover:text-white"
             disabled={isVerifying}
             onClick={handleClear}
             type="button"
@@ -325,7 +325,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+            className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
             disabled={isVerifying}
             onClick={() => handleNumberInput("0")}
             type="button"
@@ -336,7 +336,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-secondary)] shadow-md transition-all hover:bg-[var(--color-warning)] hover:text-white"
+            className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-secondary shadow-md transition-all hover:bg-warning hover:text-white"
             disabled={isVerifying}
             onClick={handleDelete}
             type="button"
@@ -346,13 +346,13 @@ export function IdentitySelection({
         </div>
 
         {error && (
-          <div className="mb-5 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-5 rounded-xl border-2 border-danger bg-surface px-6 py-3 text-center text-sm font-semibold text-danger">
             {error}
           </div>
         )}
 
         <Button
-          className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+          className="rounded-xl bg-primary-dark px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
           disabled={isVerifying || idNumber.length !== maxLength}
           onClick={() => {
             void handleContinue();
@@ -371,7 +371,7 @@ export function IdentitySelection({
   }
 
   return (
-    <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] md:h-[calc(100svh-11rem)]">
+    <div className="relative flex h-[calc(100svh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-bg md:h-[calc(100svh-11rem)]">
       <PatientBackButton
         className="absolute left-0 top-0 z-20"
         disabled={isVerifying}
@@ -380,11 +380,11 @@ export function IdentitySelection({
       />
 
       <div className="mb-12 space-y-4 text-center">
-        <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+        <h2 className="text-4xl font-bold text-text-primary">
           {isHi ? "पहचान का तरीका चुनें" : "Select Identification Method"}
         </h2>
 
-        <p className="text-xl text-[var(--color-text-secondary)]">
+        <p className="text-xl text-text-secondary">
           {isHi
             ? "आप अपनी पहचान कैसे दर्ज करना चाहेंगे?"
             : "How would you like to identify yourself?"}
@@ -397,8 +397,8 @@ export function IdentitySelection({
           whileTap={{ scale: 0.98 }}
           className={`flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 transition-all duration-200 ${
             selectedId === "abha"
-              ? "border-[var(--color-primary)] bg-[var(--color-primary-tint)] shadow-lg"
-              : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]"
+              ? "border-primary bg-primary-tint shadow-lg"
+              : "border-border bg-surface hover:border-primary"
           }`}
           onClick={() => handleIdSelect("abha")}
           type="button"
@@ -406,16 +406,16 @@ export function IdentitySelection({
           <User
             className={`h-16 w-16 ${
               selectedId === "abha"
-                ? "text-[var(--color-primary-dark)]"
-                : "text-[var(--color-text-secondary)]"
+                ? "text-primary-dark"
+                : "text-text-secondary"
             }`}
           />
 
-          <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+          <div className="text-3xl font-semibold text-text-primary">
             ABHA
           </div>
 
-          <div className="text-lg text-[var(--color-text-secondary)]">
+          <div className="text-lg text-text-secondary">
             {isHi ? "14-अंकीय ABHA नंबर" : "14-digit ABHA Number"}
           </div>
         </motion.button>
@@ -425,8 +425,8 @@ export function IdentitySelection({
           whileTap={{ scale: 0.98 }}
           className={`flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 transition-all duration-200 ${
             selectedId === "aadhaar"
-              ? "border-[var(--color-primary)] bg-[var(--color-primary-tint)] shadow-lg"
-              : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]"
+              ? "border-primary bg-primary-tint shadow-lg"
+              : "border-border bg-surface hover:border-primary"
           }`}
           onClick={() => handleIdSelect("aadhaar")}
           type="button"
@@ -434,16 +434,16 @@ export function IdentitySelection({
           <Fingerprint
             className={`h-16 w-16 ${
               selectedId === "aadhaar"
-                ? "text-[var(--color-primary-dark)]"
-                : "text-[var(--color-text-secondary)]"
+                ? "text-primary-dark"
+                : "text-text-secondary"
             }`}
           />
 
-          <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+          <div className="text-3xl font-semibold text-text-primary">
             {isHi ? "आधार" : "Aadhaar"}
           </div>
 
-          <div className="text-lg text-[var(--color-text-secondary)]">
+          <div className="text-lg text-text-secondary">
             {isHi ? "12-अंकीय आधार" : "12-digit Aadhaar"}
           </div>
         </motion.button>

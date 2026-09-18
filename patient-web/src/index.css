@@ -1,114 +1,127 @@
 @import "tailwindcss";
 
-/* Aurora — Color Palette (Light mode) */
+@theme inline {
+  --color-bg: var(--aurora-bg);
+  --color-surface: var(--aurora-surface);
+  --color-surface-alt: var(--aurora-surface-alt);
+  --color-border: var(--aurora-border);
+
+  --color-text-primary: var(--aurora-text-primary);
+  --color-text-secondary: var(--aurora-text-secondary);
+
+  --color-primary: var(--aurora-primary);
+  --color-primary-dark: var(--aurora-primary-dark);
+  --color-primary-tint: var(--aurora-primary-tint);
+
+  --color-accent: var(--aurora-accent);
+  --color-accent-dark: var(--aurora-accent-dark);
+  --color-accent-tint: var(--aurora-accent-tint);
+
+  --color-danger: var(--aurora-danger);
+  --color-success: var(--aurora-success);
+  --color-warning: var(--aurora-warning);
+}
+
 :root {
-  /* Base surfaces */
-  --color-bg: #FBF5F3;          /* app/page background — blush white */
-  --color-surface: #FFFDFC;     /* cards, kiosk screen surface */
-  --color-surface-alt: #FFFFFF; /* inputs, secondary surfaces */
-  --color-border: #E7E1F3;
+  --aurora-bg: #fbf5f3;
+  --aurora-surface: #fffdfc;
+  --aurora-surface-alt: #ffffff;
+  --aurora-border: #e7e1f3;
 
-  /* Text */
-  --color-text-primary: #3A2E5C;   /* headings, primary text */
-  --color-text-secondary: #8A6D9E; /* subtitles, muted text */
+  --aurora-text-primary: #3a2e5c;
+  --aurora-text-secondary: #8a6d9e;
 
-  /* Primary — lavender */
-  --color-primary: #B8A9DE;
-  --color-primary-dark: #3A2E5C;   /* text-on-primary / high-contrast primary */
-  --color-primary-tint: #EFEAF8;   /* selected states, chips, subtle fills */
+  --aurora-primary: #b8a9de;
+  --aurora-primary-dark: #3a2e5c;
+  --aurora-primary-tint: #efeaf8;
 
-  /* Accent — peach */
-  --color-accent: #F4B8A8;
-  --color-accent-dark: #7A3A28;    /* text-on-accent */
-  --color-accent-tint: #FCEEE9;    /* subtle fills, consent/info boxes */
+  --aurora-accent: #f4b8a8;
+  --aurora-accent-dark: #7a3a28;
+  --aurora-accent-tint: #fceee9;
 
-  /* Status */
-  --color-danger: #C97A6A;
-  --color-success: #6FA97F;
-  --color-warning: #E0A758;
+  --aurora-danger: #c97a6a;
+  --aurora-success: #6fa97f;
+  --aurora-warning: #e0a758;
 
-  /* shadcn/ui CSS Variables (mapping to Aurora palette) */
-  --background: var(--color-bg);
-  --foreground: var(--color-text-primary);
-  
-  --card: var(--color-surface);
-  --card-foreground: var(--color-text-primary);
-  
-  --popover: var(--color-surface);
-  --popover-foreground: var(--color-text-primary);
-  
-  --primary: var(--color-primary);
-  --primary-foreground: var(--color-primary-dark);
-  
-  --secondary: var(--color-accent);
-  --secondary-foreground: var(--color-accent-dark);
-  
-  --muted: var(--color-primary-tint);
-  --muted-foreground: var(--color-text-secondary);
-  
-  --accent: var(--color-accent);
-  --accent-foreground: var(--color-accent-dark);
-  
-  --destructive: var(--color-danger);
-  --destructive-foreground: var(--color-text-primary);
-  
-  --border: var(--color-border);
-  --input: var(--color-border);
-  --ring: var(--color-primary);
-  
+  --background: var(--aurora-bg);
+  --foreground: var(--aurora-text-primary);
+
+  --card: var(--aurora-surface);
+  --card-foreground: var(--aurora-text-primary);
+
+  --popover: var(--aurora-surface);
+  --popover-foreground: var(--aurora-text-primary);
+
+  --primary: var(--aurora-primary);
+  --primary-foreground: var(--aurora-primary-dark);
+
+  --secondary: var(--aurora-accent);
+  --secondary-foreground: var(--aurora-accent-dark);
+
+  --muted: var(--aurora-primary-tint);
+  --muted-foreground: var(--aurora-text-secondary);
+
+  --accent: var(--aurora-accent);
+  --accent-foreground: var(--aurora-accent-dark);
+
+  --destructive: var(--aurora-danger);
+  --destructive-foreground: var(--aurora-text-primary);
+
+  --border: var(--aurora-border);
+  --input: var(--aurora-border);
+  --ring: var(--aurora-primary);
+
   --radius: 0.5rem;
 }
 
-/* Dark mode colors */
 .dark {
-  --color-bg: #1A1625;
-  --color-surface: #252035;
-  --color-surface-alt: #2F2942;
-  --color-border: #3D3652;
-  
-  --color-text-primary: #E8E4F0;
-  --color-text-secondary: #B8A9DE;
-  
-  --color-primary: #7C6EB3;
-  --color-primary-dark: #E8E4F0;
-  --color-primary-tint: #2F2942;
-  
-  --color-accent: #E08B7A;
-  --color-accent-dark: #FCEEE9;
-  --color-accent-tint: #3D2A25;
-  
-  --color-danger: #E08B7A;
-  --color-success: #5A8F6A;
-  --color-warning: #C99345;
+  --aurora-bg: #1a1625;
+  --aurora-surface: #252035;
+  --aurora-surface-alt: #2f2942;
+  --aurora-border: #3d3652;
 
-  /* shadcn/ui Dark mode mapping */
-  --background: var(--color-bg);
-  --foreground: var(--color-text-primary);
-  
-  --card: var(--color-surface);
-  --card-foreground: var(--color-text-primary);
-  
-  --popover: var(--color-surface);
-  --popover-foreground: var(--color-text-primary);
-  
-  --primary: var(--color-primary);
-  --primary-foreground: var(--color-primary-dark);
-  
-  --secondary: var(--color-accent);
-  --secondary-foreground: var(--color-accent-dark);
-  
-  --muted: var(--color-primary-tint);
-  --muted-foreground: var(--color-text-secondary);
-  
-  --accent: var(--color-accent);
-  --accent-foreground: var(--color-accent-dark);
-  
-  --destructive: var(--color-danger);
-  --destructive-foreground: var(--color-text-primary);
-  
-  --border: var(--color-border);
-  --input: var(--color-border);
-  --ring: var(--color-primary);
+  --aurora-text-primary: #e8e4f0;
+  --aurora-text-secondary: #b8a9de;
+
+  --aurora-primary: #7c6eb3;
+  --aurora-primary-dark: #e8e4f0;
+  --aurora-primary-tint: #2f2942;
+
+  --aurora-accent: #e08b7a;
+  --aurora-accent-dark: #fceee9;
+  --aurora-accent-tint: #3d2a25;
+
+  --aurora-danger: #e08b7a;
+  --aurora-success: #5a8f6a;
+  --aurora-warning: #c99345;
+
+  --background: var(--aurora-bg);
+  --foreground: var(--aurora-text-primary);
+
+  --card: var(--aurora-surface);
+  --card-foreground: var(--aurora-text-primary);
+
+  --popover: var(--aurora-surface);
+  --popover-foreground: var(--aurora-text-primary);
+
+  --primary: var(--aurora-primary);
+  --primary-foreground: var(--aurora-primary-dark);
+
+  --secondary: var(--aurora-accent);
+  --secondary-foreground: var(--aurora-accent-dark);
+
+  --muted: var(--aurora-primary-tint);
+  --muted-foreground: var(--aurora-text-secondary);
+
+  --accent: var(--aurora-accent);
+  --accent-foreground: var(--aurora-accent-dark);
+
+  --destructive: var(--aurora-danger);
+  --destructive-foreground: var(--aurora-text-primary);
+
+  --border: var(--aurora-border);
+  --input: var(--aurora-border);
+  --ring: var(--aurora-primary);
 }
 
 * {
@@ -116,7 +129,13 @@
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--aurora-bg);
+  color: var(--aurora-text-primary);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }

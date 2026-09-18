@@ -154,18 +154,18 @@ export function TextAIConsultation({
   return (
     <div className="flex h-[80vh] w-full flex-col items-center">
       <div className="mb-4 text-center">
-        <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">
+        <h2 className="text-2xl font-bold text-text-primary">
           {isHi ? "AI टेक्स्ट परामर्श" : "AI Text Consultation"}
         </h2>
 
-        <p className="text-sm text-[var(--color-text-secondary)]">
+        <p className="text-sm text-text-secondary">
           {isHi
             ? "अपने लक्षण टाइप करें और एंटर दबाएं"
             : "Type your symptoms and press Enter"}
         </p>
       </div>
 
-      <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+      <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex-1 space-y-3 overflow-y-auto pr-2">
           {messages.map((message) => (
             <div
@@ -175,24 +175,24 @@ export function TextAIConsultation({
               }`}
             >
               {message.sender === "ai" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-                  <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                  <Bot className="h-4 w-4 text-primary-dark" />
                 </div>
               )}
 
               <div
                 className={`max-w-[80%] rounded-xl p-3 text-base ${
                   message.sender === "ai"
-                    ? "rounded-tl-none bg-[var(--color-primary-tint)] text-[var(--color-text-primary)]"
-                    : "rounded-tr-none bg-[var(--color-accent-tint)] text-[var(--color-text-primary)]"
+                    ? "rounded-tl-none bg-primary-tint text-text-primary"
+                    : "rounded-tr-none bg-accent-tint text-text-primary"
                 }`}
               >
                 {message.text}
               </div>
 
               {message.sender === "user" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-tint)]">
-                  <User className="h-4 w-4 text-[var(--color-accent-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-tint">
+                  <User className="h-4 w-4 text-accent-dark" />
                 </div>
               )}
             </div>
@@ -200,18 +200,18 @@ export function TextAIConsultation({
 
           {isThinking && (
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-                <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                <Bot className="h-4 w-4 text-primary-dark" />
               </div>
 
-              <div className="flex gap-1 rounded-xl rounded-tl-none bg-[var(--color-primary-tint)] p-3">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]" />
+              <div className="flex gap-1 rounded-xl rounded-tl-none bg-primary-tint p-3">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
                 <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.2s" }}
                 />
                 <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.4s" }}
                 />
               </div>
@@ -222,14 +222,14 @@ export function TextAIConsultation({
         </div>
 
         {error && (
-          <div className="mb-3 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-3 rounded-xl border-2 border-danger bg-surface px-4 py-3 text-sm font-semibold text-danger">
             {error}
           </div>
         )}
 
         <div className="flex gap-3">
           <input
-            className="flex-1 rounded-lg border-2 border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-lg text-[var(--color-text-primary)] focus:border-[var(--color-primary)] focus:outline-none"
+            className="flex-1 rounded-lg border-2 border-border bg-bg p-4 text-lg text-text-primary focus:border-primary focus:outline-none"
             disabled={isThinking}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
@@ -244,7 +244,7 @@ export function TextAIConsultation({
           />
 
           <Button
-            className="rounded-lg bg-[var(--color-primary-dark)] px-6 py-4 text-lg text-white shadow-lg hover:bg-[var(--color-text-primary)]"
+            className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg hover:bg-text-primary"
             disabled={isThinking || !input.trim()}
             onClick={handleSend}
           >
@@ -254,7 +254,7 @@ export function TextAIConsultation({
       </div>
 
       <Button
-        className="mt-4 rounded-lg bg-[var(--color-primary-dark)] px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+        className="mt-4 rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
         disabled={isThinking || !canContinue}
         onClick={onNext}
       >

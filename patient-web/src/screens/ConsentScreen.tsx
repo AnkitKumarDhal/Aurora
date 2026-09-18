@@ -31,30 +31,30 @@ export function ConsentScreen({
     >
       <div className="mb-12 space-y-4 text-center">
         <div className="mb-6 flex justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-            <ShieldCheck className="h-10 w-10 text-[var(--color-primary-dark)]" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-tint">
+            <ShieldCheck className="h-10 w-10 text-primary-dark" />
           </div>
         </div>
 
-        <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+        <h2 className="text-4xl font-bold text-text-primary">
           {isHi ? "रोगी सहमति" : "Patient Consent"}
         </h2>
 
-        <p className="mx-auto max-w-2xl text-xl text-[var(--color-text-secondary)]">
+        <p className="mx-auto max-w-2xl text-xl text-text-secondary">
           {isHi
             ? "कृपया नीचे दी गई सहमति जानकारी की समीक्षा करें।"
             : "Please review the consent information below before continuing."}
         </p>
       </div>
 
-      <div className="mb-12 w-full max-w-3xl rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-sm">
+      <div className="mb-12 w-full max-w-3xl rounded-2xl border-2 border-border bg-surface p-8 shadow-sm">
         <div className="flex items-start gap-4">
-          <FileText className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--color-text-secondary)]" />
+          <FileText className="mt-1 h-6 w-6 flex-shrink-0 text-text-secondary" />
 
-          <div className="space-y-6 text-lg text-[var(--color-text-primary)]">
+          <div className="space-y-6 text-lg text-text-primary">
             <p className="leading-relaxed">{consentText}</p>
 
-            <div className="border-t border-[var(--color-border)] pt-4 text-sm text-[var(--color-text-secondary)]">
+            <div className="border-t border-border pt-4 text-sm text-text-secondary">
               {isHi
                 ? `सहमति संस्करण: ${consentVersion}`
                 : `Consent version: ${consentVersion}`}
@@ -64,7 +64,7 @@ export function ConsentScreen({
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+        <div className="mb-6 rounded-xl border-2 border-danger bg-surface px-6 py-3 text-center text-sm font-semibold text-danger">
           {error}
         </div>
       )}
@@ -75,7 +75,7 @@ export function ConsentScreen({
           onClick={() => {
             void onDecline();
           }}
-          className="min-w-[200px] rounded-xl border-2 border-[var(--color-danger)] bg-transparent px-10 py-6 text-xl text-[var(--color-danger)] transition-all hover:bg-[var(--color-danger)] hover:text-white"
+          className="min-w-[200px] rounded-xl border-2 border-danger bg-transparent px-10 py-6 text-xl text-danger transition-all hover:bg-danger hover:text-white"
         >
           {isHi ? "अस्वीकार करें" : "Decline"}
         </Button>
@@ -85,7 +85,7 @@ export function ConsentScreen({
           onClick={() => {
             void onNext();
           }}
-          className="min-w-[280px] rounded-xl bg-[var(--color-primary-dark)] px-12 py-6 text-xl text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+          className="min-w-[280px] rounded-xl bg-primary-dark px-12 py-6 text-xl text-white shadow-lg transition-all hover:bg-text-primary"
         >
           {isSubmitting
             ? isHi

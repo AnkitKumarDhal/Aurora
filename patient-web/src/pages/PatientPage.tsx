@@ -68,21 +68,21 @@ export function PatientPage() {
   const headerActionDisabled = isSubmittingRegistration || isStartingNewPatient;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)] transition-colors duration-300">
-      <header className="flex items-center justify-between border-b border-[var(--color-border)] p-6">
+    <div className="min-h-screen bg-bg text-text-primary transition-colors duration-300">
+      <header className="flex items-center justify-between border-b border-border p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
             <span className="text-sm font-bold text-white">A</span>
           </div>
 
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+          <h1 className="text-xl font-semibold text-text-primary">
             Aurora
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
           <Button
-            className="rounded-full border-[var(--color-border)] bg-[var(--color-surface)] px-5"
+            className="rounded-full border-border bg-surface px-5"
             disabled={headerActionDisabled}
             onClick={() => {
               void handleNewPatient();
@@ -100,7 +100,7 @@ export function PatientPage() {
           </Button>
 
           <Button
-            className="rounded-full border-[var(--color-border)] bg-[var(--color-surface)]"
+            className="rounded-full border-border bg-surface"
             onClick={toggleTheme}
             size="icon"
             variant="outline"
@@ -147,14 +147,14 @@ export function PatientPage() {
         {currentScreen === "consent" &&
           (isLoadingConsent ? (
             <div className="flex min-h-[75vh] items-center justify-center">
-              <div className="rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-10 py-8 text-center shadow-lg">
+              <div className="rounded-2xl border-2 border-border bg-surface px-10 py-8 text-center shadow-lg">
                 <div className="mb-3 text-2xl font-bold">
                   {language === "hi"
                     ? "सहमति जानकारी लोड हो रही है..."
                     : "Loading consent information..."}
                 </div>
 
-                <div className="text-lg text-[var(--color-text-secondary)]">
+                <div className="text-lg text-text-secondary">
                   {language === "hi"
                     ? "कृपया कुछ क्षण प्रतीक्षा करें।"
                     : "Please wait a moment."}
@@ -172,14 +172,14 @@ export function PatientPage() {
             />
           ) : (
             <div className="flex min-h-[75vh] items-center justify-center px-4">
-              <div className="max-w-xl rounded-2xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] p-8 text-center shadow-lg">
-                <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+              <div className="max-w-xl rounded-2xl border-2 border-danger bg-surface p-8 text-center shadow-lg">
+                <h2 className="mb-3 text-2xl font-bold text-text-primary">
                   {language === "hi"
                     ? "सहमति जानकारी उपलब्ध नहीं है"
                     : "Consent information is unavailable"}
                 </h2>
 
-                <p className="mb-6 text-lg text-[var(--color-text-secondary)]">
+                <p className="mb-6 text-lg text-text-secondary">
                   {consentError ??
                     (language === "hi"
                       ? "कृपया फिर से प्रयास करें।"
@@ -187,7 +187,7 @@ export function PatientPage() {
                 </p>
 
                 <Button
-                  className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-5 text-lg text-white shadow-lg hover:bg-[var(--color-text-primary)]"
+                  className="rounded-xl bg-primary-dark px-8 py-5 text-lg text-white shadow-lg hover:bg-text-primary"
                   onClick={() => {
                     void resetFlow();
                   }}
@@ -202,13 +202,13 @@ export function PatientPage() {
         {currentScreen === "ai-mode" && (
           <div className="flex h-[75vh] flex-col items-center justify-center">
             <div className="mb-12 space-y-4 text-center">
-              <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+              <h2 className="text-4xl font-bold text-text-primary">
                 {language === "hi"
                   ? "कैसे परामर्श करना चाहेंगे?"
                   : "How would you like to consult?"}
               </h2>
 
-              <p className="text-xl text-[var(--color-text-secondary)]">
+              <p className="text-xl text-text-secondary">
                 {language === "hi"
                   ? "AI सहायक के साथ बातचीत का अपना तरीका चुनें"
                   : "Choose your preferred way to interact with AI"}
@@ -217,16 +217,16 @@ export function PatientPage() {
 
             <div className="grid w-full max-w-4xl grid-cols-1 gap-8 px-4 md:grid-cols-2">
               <button
-                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
+                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface transition-all hover:border-primary"
                 onClick={() => {
                   registerActivity();
                   setCurrentScreen("ai-voice");
                 }}
                 type="button"
               >
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-tint">
                   <svg
-                    className="h-10 w-10 text-[var(--color-primary-dark)]"
+                    className="h-10 w-10 text-primary-dark"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -240,26 +240,26 @@ export function PatientPage() {
                   </svg>
                 </div>
 
-                <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+                <div className="text-3xl font-semibold text-text-primary">
                   {language === "hi" ? "वॉयस" : "Voice"}
                 </div>
 
-                <div className="text-lg text-[var(--color-text-secondary)]">
+                <div className="text-lg text-text-secondary">
                   {language === "hi" ? "बोलकर बताएं" : "Speak naturally"}
                 </div>
               </button>
 
               <button
-                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:border-[var(--color-primary)]"
+                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface transition-all hover:border-primary"
                 onClick={() => {
                   registerActivity();
                   setCurrentScreen("ai-text");
                 }}
                 type="button"
               >
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-tint">
                   <svg
-                    className="h-10 w-10 text-[var(--color-primary-dark)]"
+                    className="h-10 w-10 text-primary-dark"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -273,11 +273,11 @@ export function PatientPage() {
                   </svg>
                 </div>
 
-                <div className="text-3xl font-semibold text-[var(--color-text-primary)]">
+                <div className="text-3xl font-semibold text-text-primary">
                   {language === "hi" ? "टेक्स्ट" : "Text"}
                 </div>
 
-                <div className="text-lg text-[var(--color-text-secondary)]">
+                <div className="text-lg text-text-secondary">
                   {language === "hi" ? "टाइप करके बताएं" : "Type your symptoms"}
                 </div>
               </button>
@@ -336,7 +336,7 @@ export function PatientPage() {
       </main>
 
       {showInactivityWarning && currentScreen !== "waiting" && (
-        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full border-2 border-[var(--color-warning)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-text-primary)] shadow-xl">
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full border-2 border-warning bg-surface px-6 py-3 text-center text-sm font-semibold text-text-primary shadow-xl">
           {language === "hi"
             ? `यह कियोस्क ${idleSecondsRemaining} सेकंड में निष्क्रियता के कारण रीसेट होगा`
             : `This kiosk will reset in ${idleSecondsRemaining} seconds due to inactivity`}

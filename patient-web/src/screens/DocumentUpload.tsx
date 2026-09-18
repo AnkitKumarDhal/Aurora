@@ -298,18 +298,18 @@ export function DocumentUpload({
 
   if (capturedImage) {
     return (
-      <div className="flex min-h-[80vh] w-full flex-col items-center justify-center bg-[var(--color-bg)] px-4">
+      <div className="flex min-h-[80vh] w-full flex-col items-center justify-center bg-bg px-4">
         <div className="mb-6 space-y-4 text-center">
-          <h2 className="text-3xl font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-3xl font-bold text-text-primary">
             {isHi ? "रिपोर्ट स्कैन की गई" : "Report Scanned"}
           </h2>
 
-          <p className="text-xl text-[var(--color-text-secondary)]">
+          <p className="text-xl text-text-secondary">
             {isHi ? "क्या यह ठीक है?" : "Does this look good?"}
           </p>
         </div>
 
-        <div className="mb-8 rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-lg">
+        <div className="mb-8 rounded-2xl border-2 border-border bg-surface p-6 shadow-lg">
           <img
             src={capturedImage}
             alt="Captured document"
@@ -318,14 +318,14 @@ export function DocumentUpload({
         </div>
 
         {error && (
-          <div className="mb-5 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-5 rounded-xl border-2 border-danger bg-surface px-6 py-3 text-center text-sm font-semibold text-danger">
             {error}
           </div>
         )}
 
         <div className="flex gap-6">
           <Button
-            className="flex items-center gap-3 rounded-xl border-2 border-[var(--color-border)] px-8 py-6 text-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)]"
+            className="flex items-center gap-3 rounded-xl border-2 border-border px-8 py-6 text-xl text-text-secondary hover:bg-surface-alt"
             disabled={isSaving}
             onClick={retakeImage}
             variant="outline"
@@ -335,7 +335,7 @@ export function DocumentUpload({
           </Button>
 
           <Button
-            className="flex items-center gap-3 rounded-xl bg-[var(--color-primary-dark)] px-10 py-6 text-xl text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+            className="flex items-center gap-3 rounded-xl bg-primary-dark px-10 py-6 text-xl text-white shadow-lg transition-all hover:bg-text-primary"
             disabled={isSaving}
             onClick={() => {
               void confirmSave();
@@ -363,15 +363,15 @@ export function DocumentUpload({
   const hasSavedDocuments = uploadedCount > 0;
 
   return (
-    <div className="flex min-h-[80vh] w-full flex-col items-center justify-center bg-[var(--color-bg)] px-4">
+    <div className="flex min-h-[80vh] w-full flex-col items-center justify-center bg-bg px-4">
       <div className="mb-12 space-y-4 text-center">
         <div className="mb-6 flex justify-center">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-            <Camera className="h-12 w-12 text-[var(--color-primary-dark)]" />
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary-tint">
+            <Camera className="h-12 w-12 text-primary-dark" />
           </div>
         </div>
 
-        <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+        <h2 className="text-4xl font-bold text-text-primary">
           {hasSavedDocuments
             ? isHi
               ? "एक और रिपोर्ट जोड़ें"
@@ -381,7 +381,7 @@ export function DocumentUpload({
               : "Scan Your Report"}
         </h2>
 
-        <p className="mx-auto max-w-xl text-xl text-[var(--color-text-secondary)]">
+        <p className="mx-auto max-w-xl text-xl text-text-secondary">
           {hasSavedDocuments
             ? isHi
               ? "आप चाहें तो और रिपोर्ट या प्रिस्क्रिप्शन जोड़ सकते हैं"
@@ -393,13 +393,13 @@ export function DocumentUpload({
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+        <div className="mb-6 rounded-xl border-2 border-danger bg-surface px-6 py-3 text-center text-sm font-semibold text-danger">
           {error}
         </div>
       )}
 
       {hasSavedDocuments && (
-        <div className="mb-6 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-text-secondary)]">
+        <div className="mb-6 rounded-xl border-2 border-border bg-surface px-6 py-3 text-center text-sm font-semibold text-text-secondary">
           {isHi
             ? `${uploadedCount} रिपोर्ट स्थानीय रूप से सहेजी गई`
             : `${uploadedCount} report${uploadedCount === 1 ? "" : "s"} saved locally`}
@@ -408,7 +408,7 @@ export function DocumentUpload({
 
       <div className="flex flex-col items-center gap-6">
         <Button
-          className="flex min-w-[300px] items-center gap-4 rounded-2xl bg-[var(--color-primary-dark)] px-12 py-8 text-2xl text-white shadow-xl transition-all hover:bg-[var(--color-text-primary)]"
+          className="flex min-w-[300px] items-center gap-4 rounded-2xl bg-primary-dark px-12 py-8 text-2xl text-white shadow-xl transition-all hover:bg-text-primary"
           onClick={() => {
             void openCamera();
           }}
@@ -424,7 +424,7 @@ export function DocumentUpload({
         </Button>
 
         <Button
-          className="rounded-xl border-2 border-[var(--color-border)] px-8 py-4 text-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)]"
+          className="rounded-xl border-2 border-border px-8 py-4 text-lg text-text-secondary hover:bg-surface-alt"
           onClick={handleNext}
           variant="outline"
         >
@@ -438,7 +438,7 @@ export function DocumentUpload({
         </Button>
       </div>
 
-      <p className="mt-8 text-lg text-[var(--color-text-secondary)]">
+      <p className="mt-8 text-lg text-text-secondary">
         {isHi
           ? "रिपोर्ट को साफ और अच्छी रोशनी में रखें"
           : "Keep report clear and in good lighting"}

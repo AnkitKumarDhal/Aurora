@@ -163,17 +163,17 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
 
   const triageConfig = {
     green: {
-      color: "bg-[var(--color-success)]",
+      color: "bg-success",
       text: isHi ? "नियमित (Routine)" : "Routine",
       icon: CheckCircle,
     },
     yellow: {
-      color: "bg-[var(--color-warning)]",
+      color: "bg-warning",
       text: isHi ? "तत्काल (Urgent)" : "Urgent",
       icon: Clock,
     },
     red: {
-      color: "bg-[var(--color-danger)] animate-pulse",
+      color: "bg-danger animate-pulse",
       text: isHi ? "आपातकालीन (Emergency)" : "EMERGENCY",
       icon: AlertTriangle,
     },
@@ -191,12 +191,12 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
       </div>
 
       <div className="mb-4 space-y-1 text-center">
-        <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">
+        <h2 className="text-2xl font-bold text-text-primary">
           {isHi ? "AI परामर्श" : "AI Consultation"}
         </h2>
       </div>
 
-      <div className="flex w-full max-w-4xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+      <div className="flex w-full max-w-4xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex-1 space-y-3 overflow-y-auto pr-2">
           {messages.map((msg) => (
             <div
@@ -204,24 +204,24 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
               key={msg.id}
             >
               {msg.sender === "ai" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-                  <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                  <Bot className="h-4 w-4 text-primary-dark" />
                 </div>
               )}
 
               <div
                 className={`max-w-[75%] rounded-xl p-3 text-base ${
                   msg.sender === "ai"
-                    ? "rounded-tl-none bg-[var(--color-primary-tint)] text-[var(--color-text-primary)]"
-                    : "rounded-tr-none bg-[var(--color-accent-tint)] text-[var(--color-text-primary)]"
+                    ? "rounded-tl-none bg-primary-tint text-text-primary"
+                    : "rounded-tr-none bg-accent-tint text-text-primary"
                 }`}
               >
                 {msg.text}
               </div>
 
               {msg.sender === "user" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-tint)]">
-                  <User className="h-4 w-4 text-[var(--color-accent-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-tint">
+                  <User className="h-4 w-4 text-accent-dark" />
                 </div>
               )}
             </div>
@@ -234,8 +234,8 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
           <button
             className={`rounded-lg border-2 p-4 transition-all ${
               isListening
-                ? "border-[var(--color-danger)] bg-[var(--color-danger)] text-white"
-                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]"
+                ? "border-danger bg-danger text-white"
+                : "border-border bg-surface text-text-secondary hover:border-primary"
             }`}
             onClick={toggleListening}
             type="button"
@@ -248,7 +248,7 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
           </button>
 
           <input
-            className="flex-1 rounded-lg border-2 border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-lg text-[var(--color-text-primary)] focus:border-[var(--color-primary)] focus:outline-none"
+            className="flex-1 rounded-lg border-2 border-border bg-bg p-4 text-lg text-text-primary focus:border-primary focus:outline-none"
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -264,7 +264,7 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
           />
 
           <Button
-            className="rounded-lg bg-[var(--color-primary-dark)] px-6 py-4 text-lg text-white shadow-lg hover:bg-[var(--color-text-primary)]"
+            className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg hover:bg-text-primary"
             onClick={handleSend}
           >
             <Send className="h-5 w-5" />
@@ -272,15 +272,15 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
         </div>
 
         {isListening && (
-          <div className="mt-2 flex items-center gap-2 text-sm text-[var(--color-primary)]">
+          <div className="mt-2 flex items-center gap-2 text-sm text-primary">
             <div className="flex gap-1">
-              <span className="h-4 w-1 rounded-full bg-[var(--color-primary)] animate-pulse" />
+              <span className="h-4 w-1 rounded-full bg-primary animate-pulse" />
               <span
-                className="h-4 w-1 rounded-full bg-[var(--color-primary)] animate-pulse"
+                className="h-4 w-1 rounded-full bg-primary animate-pulse"
                 style={{ animationDelay: "0.1s" }}
               />
               <span
-                className="h-4 w-1 rounded-full bg-[var(--color-primary)] animate-pulse"
+                className="h-4 w-1 rounded-full bg-primary animate-pulse"
                 style={{ animationDelay: "0.2s" }}
               />
             </div>
@@ -290,7 +290,7 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
       </div>
 
       <Button
-        className="mt-4 min-w-[250px] rounded-lg bg-[var(--color-primary-dark)] px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+        className="mt-4 min-w-[250px] rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
         onClick={onNext}
       >
         {isHi ? "अगला: रिपोर्ट अपलोड करें" : "Next: Upload Reports"}

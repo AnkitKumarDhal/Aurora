@@ -263,18 +263,18 @@ export function VoiceAIConsultation({
   return (
     <div className="flex h-[80vh] w-full flex-col items-center">
       <div className="mb-4 text-center">
-        <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">
+        <h2 className="text-2xl font-bold text-text-primary">
           {isHi ? "AI वॉयस परामर्श" : "AI Voice Consultation"}
         </h2>
 
-        <p className="text-sm text-[var(--color-text-secondary)]">
+        <p className="text-sm text-text-secondary">
           {isHi
             ? "बोलना शुरू करने के लिए माइक बटन दबाएं"
             : "Tap the mic button to start speaking"}
         </p>
       </div>
 
-      <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+      <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex-1 space-y-3 overflow-y-auto pr-2">
           {messages.map((message) => (
             <div
@@ -284,24 +284,24 @@ export function VoiceAIConsultation({
               }`}
             >
               {message.sender === "ai" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-                  <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                  <Bot className="h-4 w-4 text-primary-dark" />
                 </div>
               )}
 
               <div
                 className={`max-w-[80%] rounded-xl p-3 text-base ${
                   message.sender === "ai"
-                    ? "rounded-tl-none bg-[var(--color-primary-tint)] text-[var(--color-text-primary)]"
-                    : "rounded-tr-none bg-[var(--color-accent-tint)] text-[var(--color-text-primary)]"
+                    ? "rounded-tl-none bg-primary-tint text-text-primary"
+                    : "rounded-tr-none bg-accent-tint text-text-primary"
                 }`}
               >
                 {message.text}
               </div>
 
               {message.sender === "user" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-tint)]">
-                  <User className="h-4 w-4 text-[var(--color-accent-dark)]" />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-tint">
+                  <User className="h-4 w-4 text-accent-dark" />
                 </div>
               )}
             </div>
@@ -309,7 +309,7 @@ export function VoiceAIConsultation({
 
           {currentTranscript && (
             <div className="flex items-start justify-end gap-3">
-              <div className="max-w-[80%] rounded-xl rounded-tr-none bg-[var(--color-accent-tint)] p-3 text-base italic text-[var(--color-text-secondary)]">
+              <div className="max-w-[80%] rounded-xl rounded-tr-none bg-accent-tint p-3 text-base italic text-text-secondary">
                 {currentTranscript}...
               </div>
             </div>
@@ -317,18 +317,18 @@ export function VoiceAIConsultation({
 
           {isSaving && (
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
-                <Bot className="h-4 w-4 text-[var(--color-primary-dark)]" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
+                <Bot className="h-4 w-4 text-primary-dark" />
               </div>
 
-              <div className="flex gap-1 rounded-xl rounded-tl-none bg-[var(--color-primary-tint)] p-3">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]" />
+              <div className="flex gap-1 rounded-xl rounded-tl-none bg-primary-tint p-3">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
                 <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.2s" }}
                 />
                 <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-text-secondary)]"
+                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.4s" }}
                 />
               </div>
@@ -339,7 +339,7 @@ export function VoiceAIConsultation({
         </div>
 
         {error && (
-          <div className="mb-3 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-danger)]">
+          <div className="mb-3 rounded-xl border-2 border-danger bg-surface px-4 py-3 text-sm font-semibold text-danger">
             {error}
           </div>
         )}
@@ -348,8 +348,8 @@ export function VoiceAIConsultation({
           <button
             className={`flex h-16 w-16 items-center justify-center rounded-full transition-all ${
               isListening
-                ? "animate-pulse bg-[var(--color-danger)]"
-                : "bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)]"
+                ? "animate-pulse bg-danger"
+                : "bg-primary hover:bg-primary-dark"
             }`}
             disabled={isSaving}
             onClick={toggleListening}
@@ -365,8 +365,8 @@ export function VoiceAIConsultation({
           <span
             className={`text-sm ${
               isListening
-                ? "text-[var(--color-danger)]"
-                : "text-[var(--color-text-secondary)]"
+                ? "text-danger"
+                : "text-text-secondary"
             }`}
           >
             {isListening
@@ -381,7 +381,7 @@ export function VoiceAIConsultation({
       </div>
 
       <Button
-        className="mt-4 rounded-lg bg-[var(--color-primary-dark)] px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+        className="mt-4 rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
         disabled={isListening || isSaving || !canContinue}
         onClick={onNext}
       >

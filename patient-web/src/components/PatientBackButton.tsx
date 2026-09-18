@@ -17,7 +17,7 @@ export function PatientBackButton({
   return (
     <Button
       aria-label={language === "hi" ? "वापस जाएं" : "Go back"}
-      className={`rounded-full border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-2.5 text-[var(--color-text-primary)] shadow-sm transition-all hover:bg-[var(--color-surface-alt)] ${className}`}
+      className={`rounded-full border-border bg-surface px-5 py-2.5 text-text-primary shadow-sm transition-all hover:bg-surface-alt ${className}`}
       disabled={disabled}
       onClick={() => {
         void onClick();
