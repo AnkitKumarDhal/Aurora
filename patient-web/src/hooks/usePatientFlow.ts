@@ -263,6 +263,11 @@ export function usePatientFlow() {
       return;
     }
 
+    if (currentScreen === "identity") {
+      setCurrentScreen("welcome");
+      return;
+    }
+
     if (!sessionId) {
       return;
     }
