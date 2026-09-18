@@ -22,49 +22,119 @@ export function DocumentUpload({
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraRequestId = useRef(0);
 
   useEffect(() => {
-    if (isCameraOpen && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
+    if (!isCameraOpen || !videoRef.current || !streamRef.current) {
+      return;
     }
+
+    videoRef.current.srcObject = streamRef.current;
   }, [isCameraOpen]);
+
+  useEffect(() => {
+    return () => {
+      cameraRequestId.current += 1;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
       if (capturedImage) {
         URL.revokeObjectURL(capturedImage);
       }
-
-      streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, [capturedImage]);
 
-  const openCamera = async () => {
-    setError(null);
+  const stopCamera = () => {
+    cameraRequestId.current += 1;
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-        },
-      });
-
-      streamRef.current = stream;
-      setIsCameraOpen(true);
-    } catch {
-      setError(isHi ? "कैमरा खोलने में त्रुटि हुई।" : "Unable to open the camera.");
-    }
-  };
-
-  const closeCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
 
-    streamRef.current = null;
     setIsCameraOpen(false);
+  };
+
+  const getCameraError = (cameraError: unknown) => {
+    if (!(cameraError instanceof DOMException)) {
+      return isHi ? "कैमरा खोलने में त्रुटि हुई।" : "Unable to open the camera.";
+    }
+
+    if (cameraError.name === "NotAllowedError") {
+      return isHi
+        ? "कैमरा अनुमति नहीं मिली। कृपया इस साइट के लिए कैमरा अनुमति दें।"
+        : "Camera permission was denied. Please allow camera access for this site.";
+    }
+
+    if (cameraError.name === "NotFoundError") {
+      return isHi
+        ? "कोई कैमरा नहीं मिला।"
+        : "No camera was found on this device.";
+    }
+
+    if (cameraError.name === "NotReadableError") {
+      return isHi
+        ? "कैमरा किसी अन्य ऐप द्वारा उपयोग किया जा रहा है।"
+        : "The camera is already in use by another application.";
+    }
+
+    if (cameraError.name === "OverconstrainedError") {
+      return isHi
+        ? "यह कैमरा आवश्यक सेटिंग का समर्थन नहीं करता।"
+        : "The available camera does not support the requested settings.";
+    }
+
+    if (cameraError.name === "SecurityError") {
+      return isHi
+        ? "ब्राउज़र ने कैमरा एक्सेस रोक दिया।"
+        : "The browser blocked camera access.";
+    }
+
+    return isHi ? "कैमरा खोलने में त्रुटि हुई।" : "Unable to open the camera.";
+  };
+
+  const openCamera = async () => {
+    const requestId = cameraRequestId.current + 1;
+    cameraRequestId.current = requestId;
+    setError(null);
+
+    try {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Camera access is not supported by this browser.");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: {
+            ideal: "environment",
+          },
+        },
+      });
+
+      if (cameraRequestId.current !== requestId) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      streamRef.current = stream;
+      setIsCameraOpen(true);
+    } catch (cameraError) {
+      if (cameraRequestId.current !== requestId) {
+        return;
+      }
+
+      setError(getCameraError(cameraError));
+    }
   };
 
   const captureImage = () => {
@@ -108,7 +178,7 @@ export function DocumentUpload({
         );
         setCapturedImage(URL.createObjectURL(blob));
         setError(null);
-        closeCamera();
+        stopCamera();
       },
       "image/png",
       0.92,
@@ -116,10 +186,6 @@ export function DocumentUpload({
   };
 
   const retakeImage = () => {
-    if (capturedImage) {
-      URL.revokeObjectURL(capturedImage);
-    }
-
     setCapturedImage(null);
     setCapturedFile(null);
     setError(null);
@@ -130,12 +196,12 @@ export function DocumentUpload({
       return;
     }
 
+    stopCamera();
     setError(null);
     setIsUploading(true);
 
     try {
       await uploadDocument(sessionId, capturedFile, "OTHER");
-
       onNext();
     } catch (uploadError) {
       setError(
@@ -169,7 +235,7 @@ export function DocumentUpload({
 
           <button
             className="absolute right-6 top-6 rounded-full bg-black bg-opacity-50 p-3 text-white hover:bg-opacity-70"
-            onClick={closeCamera}
+            onClick={stopCamera}
             type="button"
           >
             <X className="h-6 w-6" />
