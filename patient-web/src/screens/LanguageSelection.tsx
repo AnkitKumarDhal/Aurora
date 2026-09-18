@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
 interface LanguageSelectionProps {
-  onNext: (language: 'en' | 'hi') => void;
+  onNext: (language: "en" | "hi") => void;
 }
 
 export function LanguageSelection({ onNext }: LanguageSelectionProps) {
-  const [selectedLang, setSelectedLang] = useState<'en' | 'hi' | null>(null);
+  const [selectedLang, setSelectedLang] = useState<"en" | "hi" | null>(null);
 
   const handleContinue = () => {
     if (selectedLang) {
@@ -34,29 +34,37 @@ export function LanguageSelection({ onNext }: LanguageSelectionProps) {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setSelectedLang('en')}
+          onClick={() => setSelectedLang("en")}
           className={`h-64 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
-            selectedLang === 'en'
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary-tint)] shadow-lg'
-              : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]'
+            selectedLang === "en"
+              ? "border-[var(--color-primary)] bg-[var(--color-primary-tint)] shadow-lg"
+              : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]"
           }`}
         >
-          <div className="text-4xl font-semibold text-[var(--color-text-primary)]">English</div>
-          <div className="text-xl text-[var(--color-text-secondary)]">Continue in English</div>
+          <div className="text-4xl font-semibold text-[var(--color-text-primary)]">
+            English
+          </div>
+          <div className="text-xl text-[var(--color-text-secondary)]">
+            Continue in English
+          </div>
         </motion.button>
 
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setSelectedLang('hi')}
+          onClick={() => setSelectedLang("hi")}
           className={`h-64 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
-            selectedLang === 'hi'
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary-tint)] shadow-lg'
-              : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]'
+            selectedLang === "hi"
+              ? "border-[var(--color-primary)] bg-[var(--color-primary-tint)] shadow-lg"
+              : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]"
           }`}
         >
-          <div className="text-4xl font-semibold text-[var(--color-text-primary)]">हिन्दी</div>
-          <div className="text-xl text-[var(--color-text-secondary)]">हिंदी में जारी रखें</div>
+          <div className="text-4xl font-semibold text-[var(--color-text-primary)]">
+            हिन्दी
+          </div>
+          <div className="text-xl text-[var(--color-text-secondary)]">
+            हिंदी में जारी रखें
+          </div>
         </motion.button>
       </div>
 

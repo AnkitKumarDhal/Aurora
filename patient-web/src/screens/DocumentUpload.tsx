@@ -1,14 +1,14 @@
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Camera, RotateCcw, Check, X } from 'lucide-react';
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Camera, RotateCcw, Check, X } from "lucide-react";
 
 interface DocumentUploadProps {
   onNext: () => void;
-  language: 'en' | 'hi';
+  language: "en" | "hi";
 }
 
 export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
-  const isHi = language === 'hi';
+  const isHi = language === "hi";
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -16,20 +16,20 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
 
   const openCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
       });
       streamRef.current = stream;
       setIsCameraOpen(true);
     } catch (err) {
-      console.error('Camera error:', err);
-      alert(isHi ? 'कैमरा खोलने में त्रुटि' : 'Error opening camera');
+      console.error("Camera error:", err);
+      alert(isHi ? "कैमरा खोलने में त्रुटि" : "Error opening camera");
     }
   };
 
   const closeCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
     }
     setIsCameraOpen(false);
   };
@@ -37,13 +37,13 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
   const captureImage = () => {
     if (videoRef.current) {
       const video = videoRef.current;
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.drawImage(video, 0, 0);
-        const imageDataUrl = canvas.toDataURL('image/png');
+        const imageDataUrl = canvas.toDataURL("image/png");
         setCapturedImage(imageDataUrl);
         closeCamera();
       }
@@ -69,7 +69,7 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
           />
-          
+
           {/* Camera Overlay */}
           <div className="absolute inset-0 border-4 border-white border-opacity-30 m-12 rounded-3xl">
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -88,7 +88,7 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
           {/* Instructions */}
           <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-6 py-3 rounded-full">
             <p className="text-lg font-semibold">
-              {isHi ? 'रिपोर्ट को फ्रेम में रखें' : 'Position report in frame'}
+              {isHi ? "रिपोर्ट को फ्रेम में रखें" : "Position report in frame"}
             </p>
           </div>
         </div>
@@ -112,10 +112,10 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
       <div className="flex flex-col items-center justify-center w-full h-screen bg-[var(--color-bg)]">
         <div className="text-center space-y-4 mb-6">
           <h2 className="text-3xl font-bold text-[var(--color-text-primary)]">
-            {isHi ? 'रिपोर्ट स्कैन की गई' : 'Report Scanned'}
+            {isHi ? "रिपोर्ट स्कैन की गई" : "Report Scanned"}
           </h2>
           <p className="text-xl text-[var(--color-text-secondary)]">
-            {isHi ? 'क्या यह ठीक है?' : 'Does this look good?'}
+            {isHi ? "क्या यह ठीक है?" : "Does this look good?"}
           </p>
         </div>
 
@@ -134,14 +134,14 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
             className="px-8 py-6 text-xl rounded-xl border-2 border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)] flex items-center gap-3"
           >
             <RotateCcw className="h-6 w-6" />
-            {isHi ? 'पुनः लें' : 'Retake'}
+            {isHi ? "पुनः लें" : "Retake"}
           </Button>
           <Button
             onClick={confirmUpload}
             className="px-10 py-6 text-xl rounded-xl bg-[var(--color-primary-dark)] hover:bg-[var(--color-text-primary)] text-white transition-all shadow-lg flex items-center gap-3"
           >
             <Check className="h-6 w-6" />
-            {isHi ? 'पुष्टि करें' : 'Confirm'}
+            {isHi ? "पुष्टि करें" : "Confirm"}
           </Button>
         </div>
       </div>
@@ -158,12 +158,12 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
           </div>
         </div>
         <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
-          {isHi ? 'रिपोर्ट स्कैन करें' : 'Scan Your Report'}
+          {isHi ? "रिपोर्ट स्कैन करें" : "Scan Your Report"}
         </h2>
         <p className="text-xl text-[var(--color-text-secondary)] max-w-xl mx-auto">
-          {isHi 
-            ? 'अपनी पिछली रिपोर्ट या प्रिस्क्रिप्शन को कैमरे से स्कैन करें' 
-            : 'Scan your previous report or prescription using the camera'}
+          {isHi
+            ? "अपनी पिछली रिपोर्ट या प्रिस्क्रिप्शन को कैमरे से स्कैन करें"
+            : "Scan your previous report or prescription using the camera"}
         </p>
       </div>
 
@@ -173,7 +173,7 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
           className="px-12 py-8 text-2xl rounded-2xl bg-[var(--color-primary-dark)] hover:bg-[var(--color-text-primary)] text-white transition-all shadow-xl flex items-center gap-4 min-w-[300px]"
         >
           <Camera className="h-8 w-8" />
-          {isHi ? 'कैमरा खोलें' : 'Open Camera'}
+          {isHi ? "कैमरा खोलें" : "Open Camera"}
         </Button>
 
         <Button
@@ -181,12 +181,14 @@ export function DocumentUpload({ onNext, language }: DocumentUploadProps) {
           variant="outline"
           className="px-8 py-4 text-lg rounded-xl border-2 border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)]"
         >
-          {isHi ? 'छोड़ दें' : 'Skip This Step'}
+          {isHi ? "छोड़ दें" : "Skip This Step"}
         </Button>
       </div>
 
       <p className="text-lg text-[var(--color-text-secondary)] mt-8">
-        {isHi ? 'रिपोर्ट को साफ और अच्छी रोशनी में रखें' : 'Keep report clear and in good lighting'}
+        {isHi
+          ? "रिपोर्ट को साफ और अच्छी रोशनी में रखें"
+          : "Keep report clear and in good lighting"}
       </p>
     </div>
   );
