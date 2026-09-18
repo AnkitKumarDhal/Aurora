@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--aurora-bg);
+  --color-surface: var(--aurora-surface);
+  --color-surface-alt: var(--aurora-surface-alt);
+  --color-border: var(--aurora-border);
+  --color-border-strong: var(--aurora-border-strong);
+
+  --color-text-primary: var(--aurora-text-primary);
+  --color-text-secondary: var(--aurora-text-secondary);
+
+  --color-primary: var(--aurora-primary);
+  --color-primary-dark: var(--aurora-primary-dark);
+  --color-primary-tint: var(--aurora-primary-tint);
+
+  --color-accent: var(--aurora-accent);
+  --color-accent-dark: var(--aurora-accent-dark);
+  --color-accent-tint: var(--aurora-accent-tint);
+
+  --color-danger: var(--aurora-danger);
+  --color-success: var(--aurora-success);
+  --color-warning: var(--aurora-warning);
+}
+
+:root {
+  --aurora-bg: #fbf5f3;
+  --aurora-surface: #fffdfc;
+  --aurora-surface-alt: #ffffff;
+  --aurora-border: #e7e1f3;
+  --aurora-border-strong: #d4cbe6;
+
+  --aurora-text-primary: #3a2e5c;
+  --aurora-text-secondary: #8a6d9e;
+
+  --aurora-primary: #b8a9de;
+  --aurora-primary-dark: #3a2e5c;
+  --aurora-primary-tint: #efeaf8;
+
+  --aurora-accent: #f4b8a8;
+  --aurora-accent-dark: #7a3a28;
+  --aurora-accent-tint: #fceee9;
+
+  --aurora-danger: #c97a6a;
+  --aurora-success: #6fa97f;
+  --aurora-warning: #e0a758;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+html,
+body {
+  background: var(--aurora-bg);
+  color: var(--aurora-text-primary);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+select {
+  cursor: pointer;
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
