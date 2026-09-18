@@ -6,11 +6,12 @@ class ConversationRepository(BaseRepository[ConversationTurnDocument]):
     collection_name = ConversationTurnDocument.collection_name
     model = ConversationTurnDocument
 
-    async def get_turn(self, turn_id: str,) -> ConversationTurnDocument | None:
+    async def get_turn(self, turn_id: str) -> ConversationTurnDocument | None:
         return await self.get_one({"turn_id": turn_id})
 
-    async def get_session_turns(self, session_id: str,) -> list[ConversationTurnDocument]:
-        cursor = self.collection.find(
+    async def get_session_turns(self, session_id: str) -> list[ConversationTurnDocument]:
+        collection = self._get_collection()
+        cursor = collection.find(
             {"session_id": session_id},
             sort=[("created_at", 1)],
         )
@@ -20,5 +21,5 @@ class ConversationRepository(BaseRepository[ConversationTurnDocument]):
             async for document in cursor
         ]
 
-    async def create_turn(self, turn: ConversationTurnDocument,) -> ConversationTurnDocument:
+    async def create_turn(self, turn: ConversationTurnDocument) -> ConversationTurnDocument:
         return await self.create(turn)
