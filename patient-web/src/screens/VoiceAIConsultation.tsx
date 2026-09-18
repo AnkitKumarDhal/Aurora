@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getSession } from "@/api/sessions";
 import { submitConversationTurn } from "@/api/conversation";
 import { Bot, Mic, MicOff, User } from "lucide-react";
 import {
@@ -39,6 +40,7 @@ export function VoiceAIConsultation({
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [canContinue, setCanContinue] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -70,6 +72,7 @@ export function VoiceAIConsultation({
         };
 
         setMessages((previous) => [...previous, userMessage]);
+        setCanContinue(true);
         messageCount.current += 1;
 
         window.setTimeout(() => {
@@ -110,6 +113,28 @@ export function VoiceAIConsultation({
     },
     [isHi, isSaving, sessionId],
   );
+
+  useEffect(() => {
+    let active = true;
+
+    const restoreHistoryState = async () => {
+      try {
+        const session = await getSession(sessionId);
+
+        if (active && session.status === "HISTORY_IN_PROGRESS") {
+          setCanContinue(true);
+        }
+      } catch {
+        return;
+      }
+    };
+
+    void restoreHistoryState();
+
+    return () => {
+      active = false;
+    };
+  }, [sessionId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -316,7 +341,7 @@ export function VoiceAIConsultation({
 
       <Button
         className="mt-4 rounded-lg bg-[var(--color-primary-dark)] px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
-        disabled={isListening || isSaving}
+        disabled={isListening || isSaving || !canContinue}
         onClick={onNext}
       >
         {isHi ? "अगला: रिपोर्ट अपलोड" : "Next: Upload Reports"}

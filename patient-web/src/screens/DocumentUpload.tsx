@@ -19,6 +19,7 @@ export function DocumentUpload({
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -202,7 +203,9 @@ export function DocumentUpload({
 
     try {
       await uploadDocument(sessionId, capturedFile, "OTHER");
-      onNext();
+      setUploadedCount((count) => count + 1);
+      setCapturedImage(null);
+      setCapturedFile(null);
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
@@ -325,6 +328,8 @@ export function DocumentUpload({
     );
   }
 
+  const hasUploadedDocuments = uploadedCount > 0;
+
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-[var(--color-bg)]">
       <div className="mb-12 space-y-4 text-center">
@@ -335,19 +340,37 @@ export function DocumentUpload({
         </div>
 
         <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
-          {isHi ? "रिपोर्ट स्कैन करें" : "Scan Your Report"}
+          {hasUploadedDocuments
+            ? isHi
+              ? "एक और रिपोर्ट जोड़ें"
+              : "Add Another Report"
+            : isHi
+              ? "रिपोर्ट स्कैन करें"
+              : "Scan Your Report"}
         </h2>
 
         <p className="mx-auto max-w-xl text-xl text-[var(--color-text-secondary)]">
-          {isHi
-            ? "अपनी पिछली रिपोर्ट या प्रिस्क्रिप्शन को कैमरे से स्कैन करें"
-            : "Scan your previous report or prescription using the camera"}
+          {hasUploadedDocuments
+            ? isHi
+              ? "आप चाहें तो और रिपोर्ट या प्रिस्क्रिप्शन अपलोड कर सकते हैं"
+              : "You can upload more reports or prescriptions if needed"
+            : isHi
+              ? "अपनी पिछली रिपोर्ट या प्रिस्क्रिप्शन को कैमरे से स्कैन करें"
+              : "Scan your previous report or prescription using the camera"}
         </p>
       </div>
 
       {error && (
         <div className="mb-6 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
           {error}
+        </div>
+      )}
+
+      {hasUploadedDocuments && (
+        <div className="mb-6 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-text-secondary)]">
+          {isHi
+            ? `${uploadedCount} रिपोर्ट अपलोड की गई`
+            : `${uploadedCount} report${uploadedCount === 1 ? "" : "s"} uploaded`}
         </div>
       )}
 
@@ -359,7 +382,13 @@ export function DocumentUpload({
           }}
         >
           <Camera className="h-8 w-8" />
-          {isHi ? "कैमरा खोलें" : "Open Camera"}
+          {hasUploadedDocuments
+            ? isHi
+              ? "एक और रिपोर्ट अपलोड करें"
+              : "Upload Another Report"
+            : isHi
+              ? "कैमरा खोलें"
+              : "Open Camera"}
         </Button>
 
         <Button
@@ -367,7 +396,13 @@ export function DocumentUpload({
           onClick={onNext}
           variant="outline"
         >
-          {isHi ? "छोड़ दें" : "Skip This Step"}
+          {hasUploadedDocuments
+            ? isHi
+              ? "जारी रखें"
+              : "Continue"
+            : isHi
+              ? "छोड़ दें"
+              : "Skip This Step"}
         </Button>
       </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getSession } from "@/api/sessions";
 import { submitConversationTurn } from "@/api/conversation";
 import { Bot, Send, User } from "lucide-react";
 
@@ -32,9 +33,32 @@ export function TextAIConsultation({
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [canContinue, setCanContinue] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const messageCount = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+
+    const restoreHistoryState = async () => {
+      try {
+        const session = await getSession(sessionId);
+
+        if (active && session.status === "HISTORY_IN_PROGRESS") {
+          setCanContinue(true);
+        }
+      } catch {
+        return;
+      }
+    };
+
+    void restoreHistoryState();
+
+    return () => {
+      active = false;
+    };
+  }, [sessionId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,6 +90,7 @@ export function TextAIConsultation({
 
       setMessages((previous) => [...previous, userMessage]);
       setInput("");
+      setCanContinue(true);
       messageCount.current += 1;
 
       window.setTimeout(() => {
@@ -211,7 +236,7 @@ export function TextAIConsultation({
 
       <Button
         className="mt-4 rounded-lg bg-[var(--color-primary-dark)] px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
-        disabled={isTyping}
+        disabled={isTyping || !canContinue}
         onClick={onNext}
       >
         {isHi ? "अगला: रिपोर्ट अपलोड" : "Next: Upload Reports"}
