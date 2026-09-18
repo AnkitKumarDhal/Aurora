@@ -6,6 +6,7 @@ from backend.domain.common import utc_now
 from backend.domain.enums import SessionStatus, VerificationStatus
 from backend.domain.patient import Patient
 from backend.integrations.identity import (
+    IdentityOtpChallenge,
     IdentityProvider,
     IdentityVerificationResult,
 )
@@ -31,12 +32,12 @@ class VerificationService:
             healthcare_integration_service
         )
 
-    async def verify(
+    async def request_otp(
         self,
         session_id: str,
         method: str,
         identifier: str,
-    ) -> tuple[str, IdentityVerificationResult, Patient | None]:
+    ) -> IdentityOtpChallenge:
         session = await self.session_service.get_session(session_id)
 
         if session is None:
@@ -58,17 +59,50 @@ class VerificationService:
                 "Session must be identifying for identification",
             )
 
-        result = await self.identity_provider.verify(
+        return await self.identity_provider.request_otp(
+            session_id,
             method,
             identifier,
         )
 
+    async def verify_otp(
+        self,
+        session_id: str,
+        challenge_id: str,
+        otp: str,
+    ) -> tuple[
+        str,
+        IdentityVerificationResult,
+        Patient | None,
+    ]:
+        session = await self.session_service.get_session(session_id)
+
+        if session is None:
+            raise ValueError("Clinical session not found")
+
+        if session.status != SessionStatus.IDENTIFYING:
+            raise ValueError(
+                "Session must be identifying for identification",
+            )
+
+        verification = await self.identity_provider.verify_otp(
+            session_id,
+            challenge_id,
+            otp,
+        )
+
+        result = verification.result
+
         if result.status != VerificationStatus.VERIFIED:
-            return f"ver_{uuid4().hex}", result, None
+            return (
+                f"ver_{uuid4().hex}",
+                result,
+                None,
+            )
 
         existing_patient = await self._find_existing_patient(
-            method,
-            identifier,
+            verification.method,
+            verification.identifier,
             result,
         )
 
@@ -99,13 +133,20 @@ class VerificationService:
                 "Session must be identifying before identity is persisted",
             )
 
-        result = await self.identity_provider.verify(
+        if session.verification_status != VerificationStatus.VERIFIED:
+            raise ValueError(
+                "Patient identity must be verified before persistence",
+            )
+
+        result = await self.identity_provider.lookup(
             method,
             identifier,
         )
 
         if result.status != VerificationStatus.VERIFIED:
-            raise ValueError("Patient identity could not be verified")
+            raise ValueError(
+                "Patient identity could not be resolved",
+            )
 
         existing_patient = await self._find_existing_patient(
             method,

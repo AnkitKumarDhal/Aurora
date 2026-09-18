@@ -11,7 +11,7 @@ from backend.services.verification import VerificationService
 
 
 @pytest.mark.asyncio
-async def test_verify_known_new_identity() -> None:
+async def test_request_otp() -> None:
     session_service = AsyncMock()
     patient_service = AsyncMock()
     healthcare_integration_service = AsyncMock()
@@ -22,15 +22,8 @@ async def test_verify_known_new_identity() -> None:
     identifying_session = AsyncMock()
     identifying_session.status = SessionStatus.IDENTIFYING
 
-    verified_session = AsyncMock()
-    verified_session.status = SessionStatus.IDENTIFYING
-
     session_service.get_session.return_value = session
     session_service.transition_session.return_value = identifying_session
-    session_service.set_verification_status.return_value = verified_session
-
-    patient_service.get_by_identity.return_value = None
-    patient_service.get_patient.return_value = None
 
     service = VerificationService(
         session_service=session_service,
@@ -39,65 +32,108 @@ async def test_verify_known_new_identity() -> None:
         healthcare_integration_service=healthcare_integration_service,
     )
 
-    verification_id, result, existing_patient = await service.verify(
-        "session-1",
-        "ABHA",
-        "11112222333344",
-    )
-
-    assert verification_id.startswith("ver_")
-    assert result.status == VerificationStatus.VERIFIED
-    assert result.patient_id == "patient-demo-001"
-    assert existing_patient is None
-
-    session_service.transition_session.assert_awaited_once_with(
-        "session-1",
-        SessionStatus.IDENTIFYING,
-    )
-    session_service.set_verification_status.assert_awaited_once_with(
-        "session-1",
-        VerificationStatus.VERIFIED,
-    )
-    patient_service.create_patient.assert_not_awaited()
-    healthcare_integration_service.sync_patient.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_verify_existing_identity() -> None:
-    session_service = AsyncMock()
-    patient_service = AsyncMock()
-    healthcare_integration_service = AsyncMock()
-
-    session = AsyncMock()
-    session.status = SessionStatus.IDENTIFYING
-    session_service.get_session.return_value = session
-
-    existing_patient = AsyncMock()
-    existing_patient.patient_id = "patient-demo-001"
-    patient_service.get_by_identity.return_value = existing_patient
-    session_service.set_verification_status.return_value = session
-
-    service = VerificationService(
-        session_service=session_service,
-        patient_service=patient_service,
-        identity_provider=MockIdentityProvider(),
-        healthcare_integration_service=healthcare_integration_service,
-    )
-
-    verification_id, result, found_patient = await service.verify(
+    challenge = await service.request_otp(
         "session-1",
         "ABHA",
         "1111-2222-3333-44",
     )
 
+    assert challenge.challenge_id.startswith("otp_")
+    assert challenge.demo_otp == "123456"
+    assert challenge.masked_destination == "registered mobile number"
+
+    session_service.transition_session.assert_awaited_once_with(
+        "session-1",
+        SessionStatus.IDENTIFYING,
+    )
+
+
+@pytest.mark.asyncio
+async def test_verify_otp_known_new_identity() -> None:
+    session_service = AsyncMock()
+    patient_service = AsyncMock()
+    healthcare_integration_service = AsyncMock()
+
+    session = AsyncMock()
+    session.status = SessionStatus.IDENTIFYING
+    session_service.get_session.return_value = session
+    session_service.set_verification_status.return_value = session
+    patient_service.get_by_identity.return_value = None
+    patient_service.get_patient.return_value = None
+    service = VerificationService(
+        session_service=session_service,
+        patient_service=patient_service,
+        identity_provider=MockIdentityProvider(),
+        healthcare_integration_service=healthcare_integration_service,
+    )
+
+    challenge = await service.request_otp(
+        "session-1",
+        "ABHA",
+        "1111-2222-3333-44",
+    )
+
+    verification_id, result, existing_patient = (
+        await service.verify_otp(
+            "session-1",
+            challenge.challenge_id,
+            "123456",
+        )
+    )
+
     assert verification_id.startswith("ver_")
     assert result.status == VerificationStatus.VERIFIED
     assert result.patient_id == "patient-demo-001"
+    assert existing_patient is None
+
+    session_service.set_verification_status.assert_awaited_once_with(
+        "session-1",
+        VerificationStatus.VERIFIED,
+    )
+    patient_service.create_patient.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_verify_otp_existing_identity() -> None:
+    session_service = AsyncMock()
+    patient_service = AsyncMock()
+    healthcare_integration_service = AsyncMock()
+
+    session = AsyncMock()
+    session.status = SessionStatus.IDENTIFYING
+    session_service.get_session.return_value = session
+    session_service.set_verification_status.return_value = session
+
+    existing_patient = AsyncMock()
+    existing_patient.patient_id = "patient-demo-001"
+
+    patient_service.get_by_identity.return_value = existing_patient
+
+    service = VerificationService(
+        session_service=session_service,
+        patient_service=patient_service,
+        identity_provider=MockIdentityProvider(),
+        healthcare_integration_service=healthcare_integration_service,
+    )
+
+    challenge = await service.request_otp(
+        "session-1",
+        "ABHA",
+        "1111-2222-3333-44",
+    )
+
+    verification_id, result, found_patient = (
+        await service.verify_otp(
+            "session-1",
+            challenge.challenge_id,
+            "123456",
+        )
+    )
+
+    assert verification_id.startswith("ver_")
+    assert result.status == VerificationStatus.VERIFIED
     assert found_patient is existing_patient
 
-    patient_service.create_patient.assert_not_awaited()
-    healthcare_integration_service.sync_patient.assert_not_awaited()
-    session_service.set_identity.assert_not_awaited()
     session_service.set_verification_status.assert_awaited_once_with(
         "session-1",
         VerificationStatus.VERIFIED,
@@ -105,13 +141,103 @@ async def test_verify_existing_identity() -> None:
 
 
 @pytest.mark.asyncio
-async def test_verify_unknown_identity() -> None:
+async def test_verify_otp_rejects_invalid_otp() -> None:
+    provider = MockIdentityProvider()
+
+    challenge = await provider.request_otp(
+        "session-1",
+        "AADHAAR",
+        "1234-5678-9012",
+    )
+
+    with pytest.raises(ValueError, match="Invalid OTP"):
+        await provider.verify_otp(
+            "session-1",
+            challenge.challenge_id,
+            "000000",
+        )
+
+
+@pytest.mark.asyncio
+async def test_verify_otp_rejects_wrong_session() -> None:
+    provider = MockIdentityProvider()
+
+    challenge = await provider.request_otp(
+        "session-1",
+        "ABHA",
+        "11112222333344",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="does not belong to this session",
+    ):
+        await provider.verify_otp(
+            "session-2",
+            challenge.challenge_id,
+            "123456",
+        )
+
+
+@pytest.mark.asyncio
+async def test_mock_identity_accepts_arbitrary_valid_aadhaar() -> None:
+    result = await MockIdentityProvider().lookup(
+        "AADHAAR",
+        "5555-6666-7777",
+    )
+
+    assert result.status == VerificationStatus.VERIFIED
+    assert result.patient_id is not None
+    assert result.aadhaar_reference == "555566667777"
+
+
+@pytest.mark.asyncio
+async def test_mock_identity_accepts_arbitrary_valid_abha() -> None:
+    result = await MockIdentityProvider().lookup(
+        "ABHA",
+        "44443333222211",
+    )
+
+    assert result.status == VerificationStatus.VERIFIED
+    assert result.patient_id is not None
+    assert result.abha_reference == "44443333222211"
+
+
+@pytest.mark.asyncio
+async def test_mock_identity_rejects_invalid_identifier_length() -> None:
+    with pytest.raises(
+        ValueError,
+        match="AADHAAR identifier must contain 12 digits",
+    ):
+        await MockIdentityProvider().request_otp(
+            "session-1",
+            "AADHAAR",
+            "123456",
+        )
+
+
+@pytest.mark.asyncio
+async def test_mock_identity_rejects_unknown_method() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Unsupported identity method",
+    ):
+        await MockIdentityProvider().request_otp(
+            "session-1",
+            "HOSPITAL_ID",
+            "11112222333344",
+        )
+
+
+@pytest.mark.asyncio
+async def test_persist_identity_requires_verified_session() -> None:
     session_service = AsyncMock()
     patient_service = AsyncMock()
     healthcare_integration_service = AsyncMock()
 
     session = AsyncMock()
     session.status = SessionStatus.IDENTIFYING
+    session.verification_status = VerificationStatus.PENDING
     session_service.get_session.return_value = session
 
     service = VerificationService(
@@ -121,20 +247,17 @@ async def test_verify_unknown_identity() -> None:
         healthcare_integration_service=healthcare_integration_service,
     )
 
-    verification_id, result, existing_patient = await service.verify(
-        "session-1",
-        "ABHA",
-        "00000000000000",
-    )
+    with pytest.raises(
+        ValueError,
+        match="Patient identity must be verified before persistence",
+    ):
+        await service.persist_identity(
+            "session-1",
+            "ABHA",
+            "11112222333344",
+        )
 
-    assert verification_id.startswith("ver_")
-    assert result.status == VerificationStatus.FAILED
-    assert result.patient_id is None
-    assert existing_patient is None
-
-    session_service.set_verification_status.assert_not_awaited()
     patient_service.create_patient.assert_not_awaited()
-    healthcare_integration_service.sync_patient.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -145,6 +268,7 @@ async def test_persist_identity_creates_first_visit_patient() -> None:
 
     session = AsyncMock()
     session.status = SessionStatus.IDENTIFYING
+    session.verification_status = VerificationStatus.VERIFIED
     session_service.get_session.return_value = session
     session_service.set_identity.return_value = session
 
@@ -198,6 +322,7 @@ async def test_persist_identity_reuses_returning_patient() -> None:
 
     session = AsyncMock()
     session.status = SessionStatus.IDENTIFYING
+    session.verification_status = VerificationStatus.VERIFIED
     session_service.get_session.return_value = session
     session_service.set_identity.return_value = session
 
@@ -252,27 +377,6 @@ async def test_persist_identity_reuses_returning_patient() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mock_identity_accepts_aadhaar() -> None:
-    result = await MockIdentityProvider().verify(
-        "AADHAAR",
-        "1234-5678-9012",
-    )
-
-    assert result.status == VerificationStatus.VERIFIED
-    assert result.patient_id == "patient-demo-001"
-
-
-@pytest.mark.asyncio
-async def test_mock_identity_rejects_unknown_method() -> None:
-    result = await MockIdentityProvider().verify(
-        "HOSPITAL_ID",
-        "11112222333344",
-    )
-
-    assert result.status == VerificationStatus.FAILED
-
-
-@pytest.mark.asyncio
 async def test_persist_identity_recovers_from_duplicate_patient_creation() -> None:
     session_service = AsyncMock()
     patient_service = AsyncMock()
@@ -280,6 +384,7 @@ async def test_persist_identity_recovers_from_duplicate_patient_creation() -> No
 
     session = AsyncMock()
     session.status = SessionStatus.IDENTIFYING
+    session.verification_status = VerificationStatus.VERIFIED
     session_service.get_session.return_value = session
     session_service.set_identity.return_value = session
 

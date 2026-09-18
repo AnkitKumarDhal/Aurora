@@ -1,45 +1,71 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Fingerprint, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Delete,
+  Fingerprint,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 
 interface IdentitySelectionProps {
   onNext: (
     identityType: "abha" | "aadhaar",
     number: string,
   ) => void | Promise<void>;
+  onVerifyOtp: (otp: string) => void | Promise<void>;
   language: "en" | "hi";
   isVerifying?: boolean;
   error?: string | null;
+  otpChallengeId?: string | null;
+  otpDemoCode?: string | null;
 }
 
 export function IdentitySelection({
   onNext,
+  onVerifyOtp,
   language,
   isVerifying = false,
   error = null,
+  otpChallengeId = null,
+  otpDemoCode = null,
 }: IdentitySelectionProps) {
   const isHi = language === "hi";
   const [selectedId, setSelectedId] = useState<"abha" | "aadhaar" | null>(null);
   const [showInput, setShowInput] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
   const [idNumber, setIdNumber] = useState("");
-  const [useBiometric, setUseBiometric] = useState(false);
+  const [otpNumber, setOtpNumber] = useState("");
 
   const handleIdSelect = (type: "abha" | "aadhaar") => {
     setSelectedId(type);
     setShowInput(true);
+    setShowOtp(false);
+    setIdNumber("");
+    setOtpNumber("");
   };
 
   const handleContinue = async () => {
-    const requiredLength = selectedId === "abha" ? 14 : 12;
-
     if (
-      selectedId &&
-      (idNumber.length >= requiredLength || useBiometric) &&
-      !isVerifying
+      !selectedId ||
+      idNumber.length !== (selectedId === "abha" ? 14 : 12) ||
+      isVerifying
     ) {
-      await onNext(selectedId, idNumber);
+      return;
     }
+
+    await onNext(selectedId, idNumber);
+    setShowOtp(true);
+    setOtpNumber("");
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpNumber.length !== 6 || isVerifying || !otpChallengeId) {
+      return;
+    }
+
+    await onVerifyOtp(otpNumber);
   };
 
   const handleBack = () => {
@@ -47,10 +73,15 @@ export function IdentitySelection({
       return;
     }
 
+    if (showOtp) {
+      setShowOtp(false);
+      setOtpNumber("");
+      return;
+    }
+
     setShowInput(false);
     setSelectedId(null);
     setIdNumber("");
-    setUseBiometric(false);
   };
 
   const handleNumberInput = (num: string) => {
@@ -77,9 +108,151 @@ export function IdentitySelection({
     }
   };
 
-  if (showInput) {
+  const handleOtpInput = (num: string) => {
+    if (!isVerifying && otpNumber.length < 6) {
+      setOtpNumber(otpNumber + num);
+    }
+  };
+
+  const handleOtpDelete = () => {
+    if (!isVerifying) {
+      setOtpNumber(otpNumber.slice(0, -1));
+    }
+  };
+
+  const displayNumber = idNumber.replace(/(\d{4})(?=\d)/g, "$1 ");
+
+  const displayOtp = otpNumber
+    .split("")
+    .map(() => "•")
+    .join(" ");
+
+  if (showOtp && otpChallengeId) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)]">
+        <button
+          className="absolute left-8 top-8 rounded-full p-2 transition-colors hover:bg-[var(--color-surface-alt)]"
+          disabled={isVerifying}
+          onClick={handleBack}
+          type="button"
+        >
+          <ArrowLeft className="h-6 w-6 text-[var(--color-text-secondary)]" />
+        </button>
+
+        <div className="mb-8 space-y-3 text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+              <ShieldCheck className="h-10 w-10 text-[var(--color-primary-dark)]" />
+            </div>
+          </div>
+
+          <h2 className="text-4xl font-bold text-[var(--color-text-primary)]">
+            {isHi ? "OTP सत्यापन" : "OTP Verification"}
+          </h2>
+
+          <p className="text-lg text-[var(--color-text-secondary)]">
+            {isHi
+              ? "आपके पंजीकृत मोबाइल नंबर पर एक OTP भेजा गया है।"
+              : "A one-time password has been sent to your registered mobile number."}
+          </p>
+        </div>
+
+        {otpDemoCode && (
+          <div className="mb-6 rounded-xl border-2 border-[var(--color-primary)] bg-[var(--color-primary-tint)] px-6 py-4 text-center">
+            <div className="text-sm font-semibold text-[var(--color-text-secondary)]">
+              {isHi ? "डेमो OTP" : "Demo OTP"}
+            </div>
+
+            <div className="mt-1 font-mono text-2xl font-bold tracking-widest text-[var(--color-primary-dark)]">
+              {otpDemoCode}
+            </div>
+          </div>
+        )}
+
+        <div className="mb-8 w-full max-w-xl rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-lg">
+          <div className="flex min-h-[70px] items-center justify-center text-center font-mono text-4xl font-bold tracking-widest text-[var(--color-text-primary)]">
+            {displayOtp || (
+              <span className="text-[var(--color-border)]">• • • • • •</span>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-6 grid grid-cols-3 gap-3">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
+            <motion.button
+              key={num}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+              disabled={isVerifying}
+              onClick={() => handleOtpInput(num)}
+              type="button"
+            >
+              {num}
+            </motion.button>
+          ))}
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="h-16 w-24 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] text-base font-semibold text-[var(--color-danger)] shadow-md transition-all hover:bg-[var(--color-danger)] hover:text-white"
+            disabled={isVerifying}
+            onClick={handleOtpDelete}
+            type="button"
+          >
+            <Delete className="mx-auto h-5 w-5" />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-primary)] shadow-md transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]"
+            disabled={isVerifying}
+            onClick={() => handleOtpInput("0")}
+            type="button"
+          >
+            0
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-xl font-semibold text-[var(--color-text-secondary)] shadow-md transition-all hover:bg-[var(--color-warning)] hover:text-white"
+            disabled={isVerifying}
+            onClick={() => setOtpNumber("")}
+            type="button"
+          >
+            Clear
+          </motion.button>
+        </div>
+
+        {error && (
+          <div className="mb-5 rounded-xl border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-6 py-3 text-center text-sm font-semibold text-[var(--color-danger)]">
+            {error}
+          </div>
+        )}
+
+        <Button
+          className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+          disabled={isVerifying || otpNumber.length !== 6}
+          onClick={() => {
+            void handleVerifyOtp();
+          }}
+        >
+          {isVerifying
+            ? isHi
+              ? "सत्यापन..."
+              : "Verifying..."
+            : isHi
+              ? "OTP सत्यापित करें"
+              : "Verify OTP"}
+        </Button>
+      </div>
+    );
+  }
+
+  if (showInput && selectedId) {
     const maxLength = selectedId === "abha" ? 14 : 12;
-    const displayNumber = idNumber.replace(/(\d{4})(?=\d)/g, "$1 ");
 
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)]">
@@ -160,7 +333,7 @@ export function IdentitySelection({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-xl font-semibold text-[var(--color-text-secondary)] shadow-md transition-all hover:bg-[var(--color-warning)] hover:text-white"
+            className="h-16 w-24 rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] text-2xl font-bold text-[var(--color-text-secondary)] shadow-md transition-all hover:bg-[var(--color-warning)] hover:text-white"
             disabled={isVerifying}
             onClick={handleDelete}
             type="button"
@@ -175,36 +348,21 @@ export function IdentitySelection({
           </div>
         )}
 
-        <div className="flex gap-4">
-          <Button
-            className={`rounded-xl px-6 py-4 text-lg transition-all ${
-              useBiometric
-                ? "bg-[var(--color-primary)] text-white shadow-lg"
-                : "border-2 border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)]"
-            }`}
-            disabled={isVerifying}
-            onClick={() => setUseBiometric(!useBiometric)}
-          >
-            <Fingerprint className="mr-2 inline h-5 w-5" />
-            {isHi ? "बायोमेट्रिक" : "Biometric"}
-          </Button>
-
-          <Button
-            className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
-            disabled={
-              isVerifying || (idNumber.length < maxLength && !useBiometric)
-            }
-            onClick={handleContinue}
-          >
-            {isVerifying
-              ? isHi
-                ? "सत्यापन..."
-                : "Verifying..."
-              : isHi
-                ? "जारी रखें"
-                : "Continue"}
-          </Button>
-        </div>
+        <Button
+          className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
+          disabled={isVerifying || idNumber.length !== maxLength}
+          onClick={() => {
+            void handleContinue();
+          }}
+        >
+          {isVerifying
+            ? isHi
+              ? "OTP भेजा जा रहा है..."
+              : "Sending OTP..."
+            : isHi
+              ? "जारी रखें"
+              : "Continue"}
+        </Button>
       </div>
     );
   }
@@ -276,7 +434,7 @@ export function IdentitySelection({
           </div>
 
           <div className="text-lg text-[var(--color-text-secondary)]">
-            {isHi ? "12-अंकीय आधार / बायोमेट्रिक" : "12-digit Aadhaar / Biometric"}
+            {isHi ? "12-अंकीय आधार" : "12-digit Aadhaar"}
           </div>
         </motion.button>
       </div>

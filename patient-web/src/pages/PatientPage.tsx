@@ -19,6 +19,8 @@ export function PatientPage() {
     language,
     sessionId,
     visitType,
+    otpChallengeId,
+    otpDemoCode,
     consentVersion,
     consentText,
     isCreatingSession,
@@ -31,6 +33,7 @@ export function PatientPage() {
     handleLanguageSelect,
     handleStart,
     handleIdentityVerification,
+    handleOtpVerification,
     handleConsentGrant,
     handleConsentDecline,
     resetFlow,
@@ -124,7 +127,10 @@ export function PatientPage() {
             language={language}
             isVerifying={isVerifying}
             error={verificationError}
+            otpChallengeId={otpChallengeId}
+            otpDemoCode={otpDemoCode}
             onNext={handleIdentityVerification}
+            onVerifyOtp={handleOtpVerification}
           />
         )}
 

@@ -2,15 +2,49 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.api.dependencies import get_verification_service
 from backend.api.schemas.verification import (
+    VerificationOtpRequest,
+    VerificationOtpResponse,
     VerificationRequest,
     VerificationResponse,
 )
+from backend.domain.enums import VerificationStatus
 from backend.services.verification import VerificationService
 
 router = APIRouter(
     prefix="/sessions/{session_id}/verification",
     tags=["verification"],
 )
+
+
+@router.post(
+    "/otp",
+    response_model=dict[str, VerificationOtpResponse],
+)
+async def request_verification_otp(
+    session_id: str,
+    request: VerificationOtpRequest,
+    service: VerificationService = Depends(get_verification_service),
+) -> dict[str, VerificationOtpResponse]:
+    try:
+        challenge = await service.request_otp(
+            session_id,
+            request.method,
+            request.identifier,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return {
+        "data": VerificationOtpResponse(
+            challenge_id=challenge.challenge_id,
+            masked_destination=challenge.masked_destination,
+            expires_in_seconds=challenge.expires_in_seconds,
+            demo_otp=challenge.demo_otp,
+        ),
+    }
 
 
 @router.post("", response_model=dict)
@@ -21,15 +55,15 @@ async def verify_patient(
 ) -> dict:
     try:
         verification_id, result, existing_patient = (
-            await service.verify(
+            await service.verify_otp(
                 session_id,
-                request.method,
-                request.identifier,
+                request.challenge_id,
+                request.otp,
             )
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getConsentInformation, recordConsent } from "@/api/consent";
 import { getSession, createSession } from "@/api/sessions";
-import { identifyPatient } from "@/api/verification";
+import { requestIdentityOtp, verifyPatientOtp } from "@/api/verification";
 
 const SESSION_STORAGE_KEY = "aurora.patient.session_id";
 
@@ -57,6 +57,8 @@ export function usePatientFlow() {
     null,
   );
   const [visitType, setVisitType] = useState<PatientVisitType>(null);
+  const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
+  const [otpDemoCode, setOtpDemoCode] = useState<string | null>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -79,6 +81,8 @@ export function usePatientFlow() {
     setIdentityType(null);
     setIdentityIdentifier(null);
     setVisitType(null);
+    setOtpChallengeId(null);
+    setOtpDemoCode(null);
     setConsentVersion(null);
     setConsentText(null);
     setSessionError(null);
@@ -185,6 +189,8 @@ export function usePatientFlow() {
     setIdentityType(null);
     setIdentityIdentifier(null);
     setVisitType(null);
+    setOtpChallengeId(null);
+    setOtpDemoCode(null);
     setConsentVersion(null);
     setConsentText(null);
 
@@ -214,10 +220,38 @@ export function usePatientFlow() {
     setIsVerifying(true);
 
     try {
-      const identification = await identifyPatient(
+      const challenge = await requestIdentityOtp(
         sessionId,
         selectedIdentityType.toUpperCase(),
         identifier,
+      );
+
+      setIdentityType(selectedIdentityType);
+      setIdentityIdentifier(identifier);
+      setOtpChallengeId(challenge.challenge_id);
+      setOtpDemoCode(challenge.demo_otp);
+    } catch (error) {
+      setVerificationError(
+        error instanceof Error ? error.message : "Unable to send OTP",
+      );
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleOtpVerification = async (otp: string) => {
+    if (!sessionId || !otpChallengeId || isVerifying) {
+      return;
+    }
+
+    setVerificationError(null);
+    setIsVerifying(true);
+
+    try {
+      const identification = await verifyPatientOtp(
+        sessionId,
+        otpChallengeId,
+        otp,
       );
 
       if (identification.status !== "VERIFIED") {
@@ -226,11 +260,11 @@ export function usePatientFlow() {
 
       const consent = await getConsentInformation(sessionId);
 
-      setIdentityType(selectedIdentityType);
-      setIdentityIdentifier(identifier);
       setVisitType(identification.visit_type);
       setConsentVersion(consent.version);
       setConsentText(consent.text);
+      setOtpChallengeId(null);
+      setOtpDemoCode(null);
       setCurrentScreen("consent");
     } catch (error) {
       setVerificationError(
@@ -326,6 +360,8 @@ export function usePatientFlow() {
     language,
     sessionId,
     visitType,
+    otpChallengeId,
+    otpDemoCode,
     consentVersion,
     consentText,
     isCreatingSession,
@@ -338,6 +374,7 @@ export function usePatientFlow() {
     handleLanguageSelect,
     handleStart,
     handleIdentityVerification,
+    handleOtpVerification,
     handleConsentGrant,
     handleConsentDecline,
     resetFlow,
