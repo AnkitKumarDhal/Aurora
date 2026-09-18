@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { CheckCircle, RotateCcw, Sparkles, Star } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { motion } from "framer-motion";
+import { CheckCircle, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const RESET_SECONDS = 90;
@@ -8,24 +8,15 @@ const RESET_SECONDS = 90;
 interface WaitingScreenProps {
   onReset: () => void | Promise<void>;
   language: "en" | "hi";
+  timeLeft: number;
 }
 
-export function WaitingScreen({ onReset, language }: WaitingScreenProps) {
+export function WaitingScreen({
+  onReset,
+  language,
+  timeLeft,
+}: WaitingScreenProps) {
   const isHi = language === "hi";
-  const [timeLeft, setTimeLeft] = useState(RESET_SECONDS);
-
-  useEffect(() => {
-    if (timeLeft <= 0) {
-      void onReset();
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setTimeLeft((previous) => previous - 1);
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [onReset, timeLeft]);
 
   const radius = 50;
   const circumference = 2 * Math.PI * radius;

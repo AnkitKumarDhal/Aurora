@@ -68,7 +68,7 @@ async def submit_patient_registration(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to complete patient registration",
+            detail=str(exc),
         ) from exc
 
     return {

@@ -20,6 +20,7 @@ import {
 } from "@/lib/patientDraft";
 
 const IDLE_TIMEOUT_SECONDS = 90;
+const COMPLETION_TIMEOUT_SECONDS = 90;
 
 export type PatientScreen =
   | "language"
@@ -64,6 +65,9 @@ export function usePatientFlow() {
   const [isStartingNewPatient, setIsStartingNewPatient] = useState(false);
   const [idleSecondsRemaining, setIdleSecondsRemaining] =
     useState(IDLE_TIMEOUT_SECONDS);
+  const [completionSecondsRemaining, setCompletionSecondsRemaining] = useState(
+    COMPLETION_TIMEOUT_SECONDS,
+  );
 
   const newPatientResetLock = useRef(false);
   const registrationSubmissionLock = useRef(false);
@@ -95,9 +99,10 @@ export function usePatientFlow() {
     setIsLoadingConsent(false);
     setIsSubmittingRegistration(false);
     setIsStartingNewPatient(false);
+    setIdleSecondsRemaining(IDLE_TIMEOUT_SECONDS);
+    setCompletionSecondsRemaining(COMPLETION_TIMEOUT_SECONDS);
 
     lastActivityAt.current = Date.now();
-    setIdleSecondsRemaining(IDLE_TIMEOUT_SECONDS);
   }, [draftId]);
 
   const registerActivity = useCallback(() => {
@@ -142,6 +147,7 @@ export function usePatientFlow() {
     setConsentError(null);
     setRegistrationError(null);
     setRegistrationSubmitted(false);
+    setCompletionSecondsRemaining(COMPLETION_TIMEOUT_SECONDS);
 
     registerActivity();
     setCurrentScreen("identity");
@@ -209,6 +215,7 @@ export function usePatientFlow() {
   useEffect(() => {
     if (
       currentScreen === "waiting" ||
+      currentScreen === "thank-you" ||
       currentScreen === "language" ||
       isVerifying ||
       isLoadingConsent ||
@@ -246,6 +253,29 @@ export function usePatientFlow() {
     isSubmittingRegistration,
     isVerifying,
   ]);
+
+  useEffect(() => {
+    if (!registrationSubmitted) {
+      return;
+    }
+
+    setCompletionSecondsRemaining(COMPLETION_TIMEOUT_SECONDS);
+
+    const timer = window.setInterval(() => {
+      setCompletionSecondsRemaining((previous) => {
+        const next = Math.max(0, previous - 1);
+
+        if (next <= 0) {
+          window.clearInterval(timer);
+          void resetFlow();
+        }
+
+        return next;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [registrationSubmitted, resetFlow]);
 
   const handleIdentityVerification = useCallback(
     async (
@@ -475,6 +505,7 @@ export function usePatientFlow() {
       setRegistrationSubmitted(true);
       setOtpChallengeId(null);
       setOtpDemoCode(null);
+      setCompletionSecondsRemaining(COMPLETION_TIMEOUT_SECONDS);
 
       try {
         await clearPatientDraftStorage(null);
@@ -527,6 +558,7 @@ export function usePatientFlow() {
     registrationSubmitted,
     isStartingNewPatient,
     idleSecondsRemaining,
+    completionSecondsRemaining,
     showInactivityWarning,
     registerActivity,
     handleLanguageSelect,

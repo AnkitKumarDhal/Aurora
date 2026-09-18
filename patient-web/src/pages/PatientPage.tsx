@@ -33,6 +33,7 @@ export function PatientPage() {
     registrationSubmitted,
     isStartingNewPatient,
     idleSecondsRemaining,
+    completionSecondsRemaining,
     showInactivityWarning,
     registerActivity,
     handleLanguageSelect,
@@ -318,6 +319,7 @@ export function PatientPage() {
             isSubmitting={isSubmittingRegistration}
             submitted={registrationSubmitted}
             error={registrationError}
+            completionSecondsRemaining={completionSecondsRemaining}
             onSubmit={handleFinalizeRegistration}
             onContinue={handleContinueToWaiting}
             onReset={resetFlow}
@@ -325,7 +327,11 @@ export function PatientPage() {
         )}
 
         {currentScreen === "waiting" && (
-          <WaitingScreen language={language} onReset={resetFlow} />
+          <WaitingScreen
+            language={language}
+            onReset={resetFlow}
+            timeLeft={completionSecondsRemaining}
+          />
         )}
       </main>
 

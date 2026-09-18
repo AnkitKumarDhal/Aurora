@@ -7,6 +7,7 @@ interface ThankYouScreenProps {
   isSubmitting: boolean;
   submitted: boolean;
   error: string | null;
+  completionSecondsRemaining: number;
   onSubmit: () => void | Promise<void>;
   onContinue: () => void;
   onReset: () => void | Promise<void>;
@@ -17,6 +18,7 @@ export function ThankYouScreen({
   isSubmitting,
   submitted,
   error,
+  completionSecondsRemaining,
   onSubmit,
   onContinue,
   onReset,
@@ -76,11 +78,19 @@ export function ThankYouScreen({
       )}
 
       {submitted && !error && !isSubmitting && (
-        <p className="text-lg font-medium text-[var(--color-text-secondary)]">
-          {isHi
-            ? "कृपया प्रतीक्षा करें। आपको प्रतीक्षा क्षेत्र में ले जाया जाएगा।"
-            : "Please wait. You will be taken to the waiting area shortly."}
-        </p>
+        <>
+          <p className="mb-3 text-lg font-medium text-[var(--color-text-secondary)]">
+            {isHi
+              ? "आपको प्रतीक्षा क्षेत्र में ले जाया जाएगा।"
+              : "You will be taken to the waiting area shortly."}
+          </p>
+
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            {isHi
+              ? `कियोस्क ${completionSecondsRemaining} सेकंड में अगले रोगी के लिए रीसेट होगा`
+              : `This kiosk will reset for the next patient in ${completionSecondsRemaining} seconds`}
+          </p>
+        </>
       )}
 
       {error && (
