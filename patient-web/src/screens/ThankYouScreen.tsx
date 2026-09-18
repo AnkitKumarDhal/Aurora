@@ -24,6 +24,18 @@ export function ThankYouScreen({
   const isHi = language === "hi";
 
   useEffect(() => {
+    if (!submitted || isSubmitting || error) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      onContinue();
+    }, 5000);
+
+    return () => window.clearTimeout(timer);
+  }, [error, isSubmitting, onContinue, submitted]);
+
+  useEffect(() => {
     if (!submitted && !isSubmitting && !error) {
       void onSubmit();
     }
@@ -63,14 +75,15 @@ export function ThankYouScreen({
         </div>
       )}
 
-      {submitted ? (
-        <Button
-          className="rounded-xl bg-[var(--color-primary-dark)] px-10 py-6 text-xl text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
-          onClick={onContinue}
-        >
-          {isHi ? "प्रतीक्षा क्षेत्र में जाएं" : "Continue to Waiting Area"}
-        </Button>
-      ) : error ? (
+      {submitted && !error && !isSubmitting && (
+        <p className="text-lg font-medium text-[var(--color-text-secondary)]">
+          {isHi
+            ? "कृपया प्रतीक्षा करें। आपको प्रतीक्षा क्षेत्र में ले जाया जाएगा।"
+            : "Please wait. You will be taken to the waiting area shortly."}
+        </p>
+      )}
+
+      {error && (
         <div className="flex gap-4">
           <Button
             className="rounded-xl bg-[var(--color-primary-dark)] px-8 py-5 text-lg text-white shadow-lg transition-all hover:bg-[var(--color-text-primary)]"
@@ -92,7 +105,7 @@ export function ThankYouScreen({
             {isHi ? "रीसेट करें" : "Reset"}
           </Button>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
