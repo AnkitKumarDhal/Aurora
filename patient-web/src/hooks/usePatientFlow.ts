@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getConsentInformation } from "@/api/consent";
+import { getConsentInformation, recordConsent } from "@/api/consent";
+import {
+  prepareInterviewSession,
+  submitInterviewTurn,
+  finalizeInterview,
+  type InterviewTurnResult,
+} from "@/api/interview";
 import {
   submitPatientRegistration,
   type RegistrationResponse,
@@ -8,6 +14,7 @@ import {
   requestPatientVerificationOtp,
   verifyPatientIdentityOtp,
 } from "@/api/patientVerification";
+import { abandonSession } from "@/api/sessions";
 import {
   appendPatientDraftConversationTurn,
   clearPatientDraftStorage,
@@ -75,8 +82,11 @@ export function usePatientFlow() {
 
   const resetFlow = useCallback(async () => {
     const activeDraftId = draftId;
-
     await clearPatientDraftStorage(activeDraftId);
+
+    if (sessionId) {
+      await abandonSession(sessionId).catch(() => undefined);
+    }
 
     newPatientResetLock.current = false;
     registrationSubmissionLock.current = false;
@@ -103,7 +113,7 @@ export function usePatientFlow() {
     setCompletionSecondsRemaining(COMPLETION_TIMEOUT_SECONDS);
 
     lastActivityAt.current = Date.now();
-  }, [draftId]);
+  }, [draftId, sessionId]);
 
   const registerActivity = useCallback(() => {
     lastActivityAt.current = Date.now();
@@ -137,6 +147,7 @@ export function usePatientFlow() {
     savePatientDraft(draft);
 
     setDraftId(draft.draft_id);
+    setSessionId(null);
     setIdentityType(null);
     setIdentityIdentifier(null);
     setOtpChallengeId(null);
@@ -168,15 +179,14 @@ export function usePatientFlow() {
 
     if (currentScreen === "identity") {
       await clearPatientDraftStorage(draftId);
-
       setDraftId(null);
+      setSessionId(null);
       setIdentityType(null);
       setIdentityIdentifier(null);
       setOtpChallengeId(null);
       setOtpDemoCode(null);
       setVerificationError(null);
       setCurrentScreen("language");
-
       return;
     }
 
@@ -197,7 +207,6 @@ export function usePatientFlow() {
 
     newPatientResetLock.current = true;
     setIsStartingNewPatient(true);
-
     await resetFlow();
   }, [isSubmittingRegistration, resetFlow]);
 
@@ -208,7 +217,6 @@ export function usePatientFlow() {
 
     newPatientResetLock.current = true;
     setIsStartingNewPatient(true);
-
     await resetFlow();
   }, [isSubmittingRegistration, resetFlow]);
 
@@ -235,7 +243,6 @@ export function usePatientFlow() {
       );
 
       const remaining = Math.max(0, IDLE_TIMEOUT_SECONDS - elapsedSeconds);
-
       setIdleSecondsRemaining(remaining);
 
       if (remaining <= 0) {
@@ -358,11 +365,23 @@ export function usePatientFlow() {
           throw new Error("Patient draft could not be found");
         }
 
+        if (!identityType || !identityIdentifier) {
+          throw new Error("Identity information is missing");
+        }
+
         savePatientDraft({
           ...draft,
           verification_token: verification.verification_token,
         });
 
+        const preparedSession = await prepareInterviewSession(
+          draftId,
+          verification.verification_token,
+          identityType,
+          identityIdentifier,
+        );
+
+        setSessionId(preparedSession.session_id);
         setOtpChallengeId(null);
         setOtpDemoCode(null);
         setIsLoadingConsent(true);
@@ -383,18 +402,31 @@ export function usePatientFlow() {
         setConsentError(
           error instanceof Error
             ? error.message
-            : "Unable to load consent information",
+            : "Unable to prepare your interview session",
         );
       } finally {
         setIsLoadingConsent(false);
         setIsVerifying(false);
       }
     },
-    [draftId, isVerifying, otpChallengeId, registerActivity],
+    [
+      draftId,
+      identityIdentifier,
+      identityType,
+      isVerifying,
+      otpChallengeId,
+      registerActivity,
+    ],
   );
 
-  const handleConsentGrant = useCallback(() => {
-    if (!draftId || !consentVersion || !identityType || !identityIdentifier) {
+  const handleConsentGrant = useCallback(async () => {
+    if (
+      !draftId ||
+      !sessionId ||
+      !consentVersion ||
+      !identityType ||
+      !identityIdentifier
+    ) {
       return;
     }
 
@@ -408,6 +440,17 @@ export function usePatientFlow() {
     try {
       registerActivity();
 
+      const result = await recordConsent(
+        sessionId,
+        consentVersion,
+        identityType,
+        identityIdentifier,
+      );
+
+      if (result.consent_status !== "GRANTED") {
+        throw new Error("Consent could not be recorded");
+      }
+
       savePatientDraft({
         ...draft,
         consent_version: consentVersion,
@@ -420,7 +463,7 @@ export function usePatientFlow() {
       setConsentError(
         error instanceof Error
           ? error.message
-          : "Unable to save your consent locally",
+          : "Unable to record your consent",
       );
     }
   }, [
@@ -429,6 +472,7 @@ export function usePatientFlow() {
     identityIdentifier,
     identityType,
     registerActivity,
+    sessionId,
   ]);
 
   const handleConsentDecline = useCallback(async () => {
@@ -437,40 +481,60 @@ export function usePatientFlow() {
   }, [registerActivity, resetFlow]);
 
   const handleConversationTurn = useCallback(
-    (
+    async (
       inputType: PatientDraftConversationInputType,
       content: string,
       turnLanguage: string,
-    ): boolean => {
-      if (!draftId) {
-        return false;
+    ): Promise<InterviewTurnResult | null> => {
+      if (!draftId || !sessionId) {
+        return null;
       }
 
       const draft = loadPatientDraft();
 
       if (!draft || draft.draft_id !== draftId) {
-        return false;
+        return null;
       }
 
       try {
-        appendPatientDraftConversationTurn(draft, {
+        const updatedDraft = appendPatientDraftConversationTurn(draft, {
           input_type: inputType,
           content,
           language: turnLanguage,
         });
 
+        const localTurn =
+          updatedDraft.conversation_turns[
+            updatedDraft.conversation_turns.length - 1
+          ];
+
+        if (!localTurn) {
+          return null;
+        }
+
+        const result = await submitInterviewTurn(
+          sessionId,
+          draftId,
+          localTurn.local_id,
+          inputType,
+          content,
+          turnLanguage,
+        );
+
         registerActivity();
-        return true;
+
+        return result;
       } catch {
-        return false;
+        return null;
       }
     },
-    [draftId, registerActivity],
+    [draftId, registerActivity, sessionId],
   );
 
   const handleFinalizeRegistration = useCallback(async () => {
     if (
       !draftId ||
+      !sessionId ||
       registrationSubmissionLock.current ||
       registrationSubmitted
     ) {
@@ -493,6 +557,8 @@ export function usePatientFlow() {
       }
 
       registerActivity();
+
+      await finalizeInterview(sessionId);
 
       const documents = await listPatientDraftDocuments(draftId);
 
@@ -523,7 +589,7 @@ export function usePatientFlow() {
       registrationSubmissionLock.current = false;
       setIsSubmittingRegistration(false);
     }
-  }, [draftId, registerActivity, registrationSubmitted]);
+  }, [draftId, registerActivity, registrationSubmitted, sessionId]);
 
   const handleContinueToWaiting = useCallback(() => {
     if (!registrationSubmitted) {

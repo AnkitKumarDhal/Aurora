@@ -20,6 +20,7 @@ export function PatientPage() {
     currentScreen,
     language,
     draftId,
+    sessionId,
     otpChallengeId,
     otpDemoCode,
     consentVersion,
@@ -75,9 +76,7 @@ export function PatientPage() {
             <span className="text-sm font-bold text-white">A</span>
           </div>
 
-          <h1 className="text-xl font-semibold text-text-primary">
-            Aurora
-          </h1>
+          <h1 className="text-xl font-semibold text-text-primary">Aurora</h1>
         </div>
 
         <div className="flex items-center gap-3">
@@ -285,9 +284,10 @@ export function PatientPage() {
           </div>
         )}
 
-        {currentScreen === "ai-voice" && draftId && (
+        {currentScreen === "ai-voice" && draftId && sessionId && (
           <VoiceAIConsultation
             draftId={draftId}
+            sessionId={sessionId}
             language={language}
             onActivity={registerActivity}
             onConversationTurn={handleConversationTurn}
@@ -295,9 +295,10 @@ export function PatientPage() {
           />
         )}
 
-        {currentScreen === "ai-text" && draftId && (
+        {currentScreen === "ai-text" && draftId && sessionId && (
           <TextAIConsultation
             draftId={draftId}
+            sessionId={sessionId}
             language={language}
             onConversationTurn={handleConversationTurn}
             onNext={() => setCurrentScreen("upload")}

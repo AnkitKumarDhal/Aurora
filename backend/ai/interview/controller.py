@@ -7,36 +7,20 @@ from uuid import uuid4
 
 from backend.ai.clinical_schema import InterviewExtraction
 from backend.ai.interview.extractor import InterviewExtractor
-from backend.ai.interview.objectives import (
-    missing_objectives,
-    normalize_topic,
-)
+from backend.ai.interview.objectives import missing_objectives, normalize_topic
 from backend.ai.interview.questions import question_for
 from backend.ai.red_flag_engine import detect_red_flags
-from backend.database.repositories.clinical_signal import (
-    ClinicalSignalRepository,
-)
-from backend.database.repositories.conversation import ConversationRepository
-from backend.database.repositories.clinical_summary import (
-    ClinicalSummaryRepository,
-)
-from backend.database.repositories.triage import TriageRepository
+from backend.config import settings
 from backend.domain.clinical_signal import ClinicalSignal
 from backend.domain.clinical_summary import ClinicalSummary
 from backend.domain.conversation import ConversationTurn
-from backend.domain.enums import (
-    ClinicalSignalType,
-    SessionStatus,
-    Speaker,
-    SummaryStatus,
-)
+from backend.domain.enums import ClinicalSignalType, SessionStatus, Speaker, SummaryStatus
 from backend.domain.triage import TriageResult
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_signal import ClinicalSignalService
 from backend.services.clinical_summary import ClinicalSummaryService
 from backend.services.conversation import ConversationService
 from backend.services.triage import TriageService
-from backend.config import settings
 
 
 class InterviewController:
@@ -62,9 +46,7 @@ class InterviewController:
         if session is None:
             raise ValueError("Clinical session not found")
 
-        turns = await self.conversation_service.get_session_turns(
-            session_id,
-        )
+        turns = await self.conversation_service.get_session_turns(session_id)
 
         patient_turns = [
             turn
@@ -72,11 +54,9 @@ class InterviewController:
             if turn.speaker == Speaker.PATIENT
         ]
 
-        signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
-
+        signals = await self.signal_service.get_session_signals(session_id)
         known_fields = self._build_known_fields(signals)
+
         topic = normalize_topic(
             self._value_as_string(
                 known_fields.get("symptom_topic"),
@@ -92,17 +72,8 @@ class InterviewController:
             next_question = None
             completed = True
         else:
-            missing = missing_objectives(
-                topic,
-                known_fields,
-            )
-
-            next_question = (
-                question_for(missing[0])
-                if missing
-                else None
-            )
-
+            missing = missing_objectives(topic, known_fields)
+            next_question = question_for(missing[0]) if missing else None
             completed = (
                 not missing
                 or len(patient_turns) >= settings.interview_max_turns
@@ -142,12 +113,21 @@ class InterviewController:
             SessionStatus.HISTORY_IN_PROGRESS,
         }:
             raise ValueError(
-                "Session must be consented or have history in progress",
+                "Session must be consented or have history in progress")
+
+        if session.status == SessionStatus.CONSENTED:
+            updated_session = await self.session_service.transition_session(
+                session_id,
+                SessionStatus.HISTORY_IN_PROGRESS,
             )
 
-        existing_turn = await self.conversation_service.get_turn(
-            turn_id,
-        )
+            if updated_session is None:
+                raise ValueError(
+                    "Clinical session could not enter history state")
+
+            session = updated_session
+
+        existing_turn = await self.conversation_service.get_turn(turn_id)
 
         if existing_turn is None:
             turn = ConversationTurn(
@@ -160,14 +140,13 @@ class InterviewController:
                 media_reference=None,
             )
 
-            stored_turn = await self.conversation_service.submit_turn(
-                turn,
-            )
+            stored_turn = await self.conversation_service.submit_turn(turn)
         else:
             if existing_turn.content != text:
                 raise ValueError(
                     "Conversation turn already exists with different content",
                 )
+
             stored_turn = existing_turn
 
         previous_turns = await self.conversation_service.get_session_turns(
@@ -204,10 +183,7 @@ class InterviewController:
             extraction=extraction,
         )
 
-        signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
-
+        signals = await self.signal_service.get_session_signals(session_id)
         known_fields = self._build_known_fields(signals)
 
         topic = normalize_topic(
@@ -217,7 +193,6 @@ class InterviewController:
             ),
         )
 
-        # Store the topic as a durable signal.
         await self._upsert_signal(
             session_id=session_id,
             name="symptom_topic",
@@ -226,9 +201,7 @@ class InterviewController:
             confidence=0.95 if extraction.topic else 0.70,
         )
 
-        signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
+        signals = await self.signal_service.get_session_signals(session_id)
         known_fields = self._build_known_fields(signals)
 
         red_flag_result = self._run_red_flag_screen(
@@ -250,24 +223,17 @@ class InterviewController:
                     item
                     for item in previous_turns
                     if item.speaker == Speaker.PATIENT
-                ]
+                ],
             )
 
-            missing = missing_objectives(
-                topic,
-                known_fields,
-            )
+            missing = missing_objectives(topic, known_fields)
 
             completed = (
                 not missing
                 or patient_turn_count >= settings.interview_max_turns
             )
 
-            next_question = (
-                None
-                if completed
-                else question_for(missing[0])
-            )
+            next_question = None if completed else question_for(missing[0])
 
         assistant_response = next_question
 
@@ -276,16 +242,12 @@ class InterviewController:
                 "ai_"
                 + sha256(
                     f"{stored_turn.turn_id}:{assistant_response}".encode(
-                        "utf-8"
-                    )
+                        "utf-8",
+                    ),
                 ).hexdigest()[:24]
             )
 
-            if (
-                await self.conversation_service.get_turn(
-                    system_turn_id,
-                )
-            ) is None:
+            if await self.conversation_service.get_turn(system_turn_id) is None:
                 system_turn = ConversationTurn(
                     turn_id=system_turn_id,
                     session_id=session_id,
@@ -296,9 +258,7 @@ class InterviewController:
                     media_reference=None,
                 )
 
-                await self.conversation_service.add_turn(
-                    system_turn,
-                )
+                await self.conversation_service.add_turn(system_turn)
 
         return {
             "turn": stored_turn,
@@ -314,10 +274,7 @@ class InterviewController:
             and self.extractor.provider == "lemonade",
         }
 
-    async def finalize(
-        self,
-        session_id: str,
-    ) -> dict[str, Any]:
+    async def finalize(self, session_id: str) -> dict[str, Any]:
         session = await self.session_service.get_session(session_id)
 
         if session is None:
@@ -331,9 +288,7 @@ class InterviewController:
                 "Clinical session is not ready for interview finalization",
             )
 
-        turns = await self.conversation_service.get_session_turns(
-            session_id,
-        )
+        turns = await self.conversation_service.get_session_turns(session_id)
 
         patient_turns = [
             turn
@@ -341,10 +296,7 @@ class InterviewController:
             if turn.speaker == Speaker.PATIENT
         ]
 
-        signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
-
+        signals = await self.signal_service.get_session_signals(session_id)
         known_fields = self._build_known_fields(signals)
 
         red_flag_result = self._run_red_flag_screen(
@@ -357,10 +309,7 @@ class InterviewController:
             red_flag_result,
         )
 
-        signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
-
+        signals = await self.signal_service.get_session_signals(session_id)
         known_fields = self._build_known_fields(signals)
 
         summary = await self._upsert_summary(
@@ -368,22 +317,17 @@ class InterviewController:
             known_fields=known_fields,
         )
 
-        triage = await self.triage_service.get_session_result(
-            session_id,
-        )
+        triage = await self.triage_service.get_session_result(session_id)
 
         if triage is None:
             triage = TriageResult(
                 triage_id=f"triage_{uuid4().hex}",
                 session_id=session_id,
             )
-            triage = await self.triage_service.create_result(
-                triage,
-            )
 
-        signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
+            triage = await self.triage_service.create_result(triage)
+
+        signals = await self.signal_service.get_session_signals(session_id)
 
         assessed = await self.triage_service.assess_from_signals(
             triage.triage_id,
@@ -429,7 +373,8 @@ class InterviewController:
             await self._upsert_signal(
                 session_id=session_id,
                 name=field,
-                value=value,
+                value=", ".join(map(str, value)) if isinstance(
+                    value, list) else value,
                 signal_type=self._signal_type_for(field),
                 confidence=0.90,
             )
@@ -490,10 +435,7 @@ class InterviewController:
         session_id: str,
         result: dict[str, Any],
     ) -> None:
-        critical_signals = result.get(
-            "critical_signals",
-            {},
-        )
+        critical_signals = result.get("critical_signals", {})
 
         for name, value in critical_signals.items():
             if value is True:
@@ -505,11 +447,7 @@ class InterviewController:
                     confidence=1.0,
                 )
 
-        # Translate severity into signals understood by Aurora's
-        # deterministic triage engine.
-        signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
+        signals = await self.signal_service.get_session_signals(session_id)
 
         severity = next(
             (
@@ -543,18 +481,14 @@ class InterviewController:
             )
 
     @staticmethod
-    def _signal_type_for(
-        field: str,
-    ) -> ClinicalSignalType:
+    def _signal_type_for(field: str) -> ClinicalSignalType:
         if field == "medications":
             return ClinicalSignalType.MEDICATION
 
         if field == "allergies":
             return ClinicalSignalType.ALLERGY
 
-        if field in {
-            "past_medical_history",
-        }:
+        if field == "past_medical_history":
             return ClinicalSignalType.HISTORY
 
         return ClinicalSignalType.SYMPTOM
@@ -564,9 +498,7 @@ class InterviewController:
         session_id: str,
         known_fields: dict[str, Any],
     ) -> ClinicalSummary:
-        existing = await self.summary_service.get_session_summary(
-            session_id,
-        )
+        existing = await self.summary_service.get_session_summary(session_id)
 
         complaint = self._value_as_string(
             known_fields.get("chief_complaint"),
@@ -616,15 +548,9 @@ class InterviewController:
             else:
                 text = str(value)
 
-            hpi_parts.append(
-                f"{field.replace('_', ' ')}: {text}"
-            )
+            hpi_parts.append(f"{field.replace('_', ' ')}: {text}")
 
-        history = (
-            "; ".join(hpi_parts)
-            if hpi_parts
-            else None
-        )
+        history = "; ".join(hpi_parts) if hpi_parts else None
 
         clinical_signal_names = sorted(
             {
@@ -658,9 +584,7 @@ class InterviewController:
                 **values,
             )
 
-            return await self.summary_service.create_summary(
-                summary,
-            )
+            return await self.summary_service.create_summary(summary)
 
         updated = await self.summary_service.update_summary(
             existing.summary_id,
@@ -668,9 +592,7 @@ class InterviewController:
         )
 
         if updated is None:
-            raise ValueError(
-                "Clinical summary could not be updated",
-            )
+            raise ValueError("Clinical summary could not be updated")
 
         return updated
 
@@ -694,9 +616,7 @@ class InterviewController:
         }
 
     @staticmethod
-    def _value_as_string(
-        value: Any,
-    ) -> str | None:
+    def _value_as_string(value: Any) -> str | None:
         if value is None:
             return None
 
@@ -705,9 +625,7 @@ class InterviewController:
         return text or None
 
     @staticmethod
-    def _as_list(
-        value: Any,
-    ) -> list[str]:
+    def _as_list(value: Any) -> list[str]:
         if value is None:
             return []
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Mic, MicOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getInterviewState, type InterviewTurnResult } from "@/api/interview";
 import { loadPatientDraft } from "@/lib/patientDraft";
 import {
   getSpeechRecognitionConstructor,
@@ -11,12 +12,13 @@ import {
 
 interface VoiceAIConsultationProps {
   draftId: string;
+  sessionId: string;
   onNext: () => void;
   onConversationTurn: (
     inputType: "AUDIO",
     content: string,
     language: string,
-  ) => boolean;
+  ) => Promise<InterviewTurnResult | null>;
   onActivity?: () => void;
   language: "en" | "hi";
 }
@@ -27,15 +29,7 @@ interface Message {
   text: string;
 }
 
-interface InitialVoiceState {
-  messages: Message[];
-  existingTurnCount: number;
-}
-
-function getInitialVoiceState(
-  draftId: string,
-  isHi: boolean,
-): InitialVoiceState {
+function getInitialVoiceMessages(draftId: string, isHi: boolean): Message[] {
   const initialMessage: Message = {
     id: "initial",
     sender: "ai",
@@ -47,70 +41,95 @@ function getInitialVoiceState(
   const draft = loadPatientDraft();
 
   if (!draft || draft.draft_id !== draftId) {
-    return {
-      messages: [initialMessage],
-      existingTurnCount: 0,
-    };
+    return [initialMessage];
   }
 
   const existingTurns = draft.conversation_turns.filter(
     (turn) => turn.input_type === "AUDIO",
   );
 
-  if (existingTurns.length === 0) {
-    return {
-      messages: [initialMessage],
-      existingTurnCount: 0,
-    };
+  return [
+    initialMessage,
+    ...existingTurns.map((turn) => ({
+      id: turn.local_id,
+      sender: "user" as const,
+      text: turn.content,
+    })),
+  ];
+}
+
+function hasExistingVoiceTurn(draftId: string): boolean {
+  const draft = loadPatientDraft();
+
+  if (!draft || draft.draft_id !== draftId) {
+    return false;
   }
 
-  return {
-    messages: [
-      initialMessage,
-      ...existingTurns.map((turn) => ({
-        id: turn.local_id,
-        sender: "user" as const,
-        text: turn.content,
-      })),
-    ],
-    existingTurnCount: existingTurns.length,
-  };
+  return draft.conversation_turns.some((turn) => turn.input_type === "AUDIO");
 }
 
 export function VoiceAIConsultation({
   draftId,
+  sessionId,
   onNext,
   onConversationTurn,
   onActivity,
   language,
 }: VoiceAIConsultationProps) {
   const isHi = language === "hi";
-  const [initialState] = useState<InitialVoiceState>(() =>
-    getInitialVoiceState(draftId, isHi),
+  const [messages, setMessages] = useState<Message[]>(() =>
+    getInitialVoiceMessages(draftId, isHi),
   );
-
-  const [messages, setMessages] = useState<Message[]>(initialState.messages);
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [canContinue, setCanContinue] = useState(
-    initialState.existingTurnCount > 0,
+  const [canContinue, setCanContinue] = useState(() =>
+    hasExistingVoiceTurn(draftId),
   );
+  const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const messageCount = useRef(initialState.existingTurnCount);
+  const hydrated = useRef(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, currentTranscript, isSaving]);
 
+  useEffect(() => {
+    if (hydrated.current) {
+      return;
+    }
+
+    hydrated.current = true;
+
+    void getInterviewState(sessionId)
+      .then((state) => {
+        if (state.patient_turns > 0 && state.next_question) {
+          setMessages((previous) => [
+            ...previous,
+            {
+              id: "restored-question",
+              sender: "ai",
+              text: state.next_question!,
+            },
+          ]);
+        }
+
+        setCompleted(state.completed);
+
+        if (state.patient_turns > 0) {
+          setCanContinue(true);
+        }
+      })
+      .catch(() => undefined);
+  }, [sessionId]);
+
   const handleUserMessage = useCallback(
-    (text: string) => {
+    async (text: string) => {
       const content = text.trim();
 
-      if (!content || isSaving) {
+      if (!content || isSaving || completed) {
         return;
       }
 
@@ -118,58 +137,63 @@ export function VoiceAIConsultation({
       setError(null);
       setIsSaving(true);
 
-      const saved = onConversationTurn("AUDIO", content, isHi ? "hi" : "en");
+      const result = await onConversationTurn(
+        "AUDIO",
+        content,
+        isHi ? "hi" : "en",
+      );
 
-      if (!saved) {
-        setError("Unable to save your response locally.");
+      if (!result) {
+        setError(
+          isHi
+            ? "उत्तर भेजने में समस्या हुई। कृपया फिर से प्रयास करें।"
+            : "There was a problem sending your response. Please try again.",
+        );
         setIsSaving(false);
         return;
       }
 
-      messageCount.current += 1;
-
       setMessages((previous) => [
         ...previous,
         {
-          id: `voice-user-${messageCount.current}`,
+          id: result.turn_id,
           sender: "user",
           text: content,
         },
       ]);
 
-      setCanContinue(true);
-
-      window.setTimeout(() => {
-        const questions = [
-          isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
-          isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
-          isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
-          isHi
-            ? "क्या आपको कोई पुरानी बीमारी है?"
-            : "Do you have any chronic illnesses?",
-          isHi
-            ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
-            : "Thank you. You can now proceed to upload your reports.",
-        ];
-
-        const questionIndex = Math.min(
-          messageCount.current - 1,
-          questions.length - 1,
-        );
-
+      if (result.assistant_response) {
         setMessages((previous) => [
           ...previous,
           {
-            id: `voice-ai-${messageCount.current}`,
+            id: `ai-${result.turn_id}`,
             sender: "ai",
-            text: questions[questionIndex],
+            text: result.assistant_response!,
           },
         ]);
+      }
 
-        setIsSaving(false);
-      }, 1500);
+      if (result.completed) {
+        setCompleted(true);
+
+        if (!result.assistant_response) {
+          setMessages((previous) => [
+            ...previous,
+            {
+              id: `complete-${result.turn_id}`,
+              sender: "ai",
+              text: isHi
+                ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
+                : "Thank you. You can now proceed to upload your reports.",
+            },
+          ]);
+        }
+      }
+
+      setCanContinue(true);
+      setIsSaving(false);
     },
-    [isHi, isSaving, onActivity, onConversationTurn],
+    [completed, isHi, isSaving, onActivity, onConversationTurn],
   );
 
   useEffect(() => {
@@ -212,14 +236,13 @@ export function VoiceAIConsultation({
       setCurrentTranscript(interimTranscript);
 
       if (finalTranscript.trim()) {
-        handleUserMessage(finalTranscript);
+        void handleUserMessage(finalTranscript);
         setCurrentTranscript("");
       }
     };
 
     recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error("Speech recognition error:", event.error);
-
       setIsListening(false);
       setError(
         isHi
@@ -243,7 +266,7 @@ export function VoiceAIConsultation({
   const toggleListening = () => {
     const currentRecognition = recognitionRef.current;
 
-    if (!currentRecognition || isSaving) {
+    if (!currentRecognition || isSaving || completed) {
       return;
     }
 
@@ -351,7 +374,7 @@ export function VoiceAIConsultation({
                 ? "animate-pulse bg-danger"
                 : "bg-primary hover:bg-primary-dark"
             }`}
-            disabled={isSaving}
+            disabled={isSaving || completed}
             onClick={toggleListening}
             type="button"
           >
@@ -363,11 +386,7 @@ export function VoiceAIConsultation({
           </button>
 
           <span
-            className={`text-sm ${
-              isListening
-                ? "text-danger"
-                : "text-text-secondary"
-            }`}
+            className={`text-sm ${isListening ? "text-danger" : "text-text-secondary"}`}
           >
             {isListening
               ? isHi

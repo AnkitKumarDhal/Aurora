@@ -34,6 +34,7 @@ from backend.services.document import DocumentService
 from backend.services.ephemeral_identity import EphemeralIdentityService
 from backend.services.healthcare_integration import HealthcareIntegrationService
 from backend.services.intake import IntakeService
+from backend.services.interview_session import InterviewSessionPreparationService
 from backend.services.patient import PatientService
 from backend.services.patient_registration import PatientRegistrationService
 from backend.services.promotion import PromotionService
@@ -130,6 +131,13 @@ def get_workflow_service() -> WorkflowService:
 
 def get_patient_service() -> PatientService:
     return PatientService(PatientRepository())
+
+
+def get_interview_session_service() -> InterviewSessionPreparationService:
+    return InterviewSessionPreparationService(
+        session_service=ClinicalSessionService(ClinicalSessionRepository()),
+        ephemeral_identity_service=get_ephemeral_identity_service(),
+    )
 
 
 def get_verification_service() -> VerificationService:

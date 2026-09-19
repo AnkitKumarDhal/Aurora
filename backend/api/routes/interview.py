@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from hashlib import sha256
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -26,27 +27,20 @@ router = APIRouter(
 )
 async def get_interview_state(
     session_id: str,
-    controller: InterviewController = Depends(
-        get_interview_controller,
-    ),
+    controller: InterviewController = Depends(get_interview_controller),
 ) -> dict[str, InterviewStateResponse]:
     try:
         result = await controller.get_state(session_id)
     except ValueError as exc:
         message = str(exc)
-
         raise HTTPException(
-            status_code=(
-                status.HTTP_404_NOT_FOUND
-                if message == "Clinical session not found"
-                else status.HTTP_400_BAD_REQUEST
-            ),
+            status_code=status.HTTP_404_NOT_FOUND
+            if message == "Clinical session not found"
+            else status.HTTP_400_BAD_REQUEST,
             detail=message,
         ) from exc
 
-    return {
-        "data": InterviewStateResponse(**result),
-    }
+    return {"data": InterviewStateResponse(**result)}
 
 
 @router.post(
@@ -57,14 +51,23 @@ async def get_interview_state(
 async def process_interview_turn(
     session_id: str,
     request: InterviewTurnRequest,
-    controller: InterviewController = Depends(
-        get_interview_controller,
-    ),
+    controller: InterviewController = Depends(get_interview_controller),
 ) -> dict[str, InterviewTurnResponse]:
+    expected_session_id = (
+        f"sess_{sha256(request.draft_id.encode()).hexdigest()[:24]}"
+    )
+
+    if session_id != expected_session_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Draft does not match interview session",
+        )
+
     turn_id = (
-        f"turn_{request.client_turn_id}"
-        if request.client_turn_id
-        else f"turn_{uuid4().hex}"
+        "turn_"
+        + sha256(
+            f"{request.draft_id}:{request.client_turn_id}".encode()
+        ).hexdigest()
     )
 
     try:
@@ -77,13 +80,10 @@ async def process_interview_turn(
         )
     except ValueError as exc:
         message = str(exc)
-
         raise HTTPException(
-            status_code=(
-                status.HTTP_404_NOT_FOUND
-                if message == "Clinical session not found"
-                else status.HTTP_400_BAD_REQUEST
-            ),
+            status_code=status.HTTP_404_NOT_FOUND
+            if message == "Clinical session not found"
+            else status.HTTP_400_BAD_REQUEST,
             detail=message,
         ) from exc
 
@@ -117,21 +117,16 @@ async def process_interview_turn(
 )
 async def finalize_interview(
     session_id: str,
-    controller: InterviewController = Depends(
-        get_interview_controller,
-    ),
+    controller: InterviewController = Depends(get_interview_controller),
 ) -> dict[str, InterviewFinalizeResponse]:
     try:
         result = await controller.finalize(session_id)
     except ValueError as exc:
         message = str(exc)
-
         raise HTTPException(
-            status_code=(
-                status.HTTP_404_NOT_FOUND
-                if message == "Clinical session not found"
-                else status.HTTP_400_BAD_REQUEST
-            ),
+            status_code=status.HTTP_404_NOT_FOUND
+            if message == "Clinical session not found"
+            else status.HTTP_400_BAD_REQUEST,
             detail=message,
         ) from exc
 

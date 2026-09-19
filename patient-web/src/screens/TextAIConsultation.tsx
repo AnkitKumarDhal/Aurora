@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Send, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getInterviewState, type InterviewTurnResult } from "@/api/interview";
 import { loadPatientDraft } from "@/lib/patientDraft";
 
 interface TextAIConsultationProps {
   draftId: string;
+  sessionId: string;
   onNext: () => void;
   onConversationTurn: (
     inputType: "TEXT",
     content: string,
     language: string,
-  ) => boolean;
+  ) => Promise<InterviewTurnResult | null>;
   language: "en" | "hi";
 }
 
@@ -39,10 +41,6 @@ function getInitialMessages(draftId: string, isHi: boolean): Message[] {
     (turn) => turn.input_type === "TEXT",
   );
 
-  if (existingTurns.length === 0) {
-    return [initialMessage];
-  }
-
   return [
     initialMessage,
     ...existingTurns.map((turn) => ({
@@ -53,102 +51,137 @@ function getInitialMessages(draftId: string, isHi: boolean): Message[] {
   ];
 }
 
-function getInitialMessageCount(draftId: string): number {
+function hasExistingTextTurn(draftId: string): boolean {
   const draft = loadPatientDraft();
 
   if (!draft || draft.draft_id !== draftId) {
-    return 0;
+    return false;
   }
 
-  return draft.conversation_turns.filter((turn) => turn.input_type === "TEXT")
-    .length;
+  return draft.conversation_turns.some((turn) => turn.input_type === "TEXT");
 }
 
 export function TextAIConsultation({
   draftId,
+  sessionId,
   onNext,
   onConversationTurn,
   language,
 }: TextAIConsultationProps) {
   const isHi = language === "hi";
-  const initialMessageCount = getInitialMessageCount(draftId);
-
   const [messages, setMessages] = useState<Message[]>(() =>
     getInitialMessages(draftId, isHi),
   );
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [canContinue, setCanContinue] = useState(initialMessageCount > 0);
+  const [canContinue, setCanContinue] = useState(() =>
+    hasExistingTextTurn(draftId),
+  );
+  const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const hydratedFromDraft = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const messageCount = useRef(initialMessageCount);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isThinking]);
 
-  const handleSend = () => {
+  useEffect(() => {
+    if (hydratedFromDraft.current) {
+      return;
+    }
+
+    hydratedFromDraft.current = true;
+
+    void getInterviewState(sessionId)
+      .then((state) => {
+        if (state.patient_turns > 0 && state.next_question) {
+          setMessages((previous) => [
+            ...previous,
+            {
+              id: "restored-question",
+              sender: "ai",
+              text: state.next_question!,
+            },
+          ]);
+        }
+
+        setCompleted(state.completed);
+
+        if (state.patient_turns > 0) {
+          setCanContinue(true);
+        }
+      })
+      .catch(() => undefined);
+  }, [sessionId]);
+
+  const handleSend = async () => {
     const content = input.trim();
 
-    if (!content || isThinking) {
+    if (!content || isThinking || completed) {
       return;
     }
 
     setError(null);
     setIsThinking(true);
 
-    const saved = onConversationTurn("TEXT", content, isHi ? "hi" : "en");
+    const result = await onConversationTurn(
+      "TEXT",
+      content,
+      isHi ? "hi" : "en",
+    );
 
-    if (!saved) {
-      setError("Unable to save your response locally.");
+    if (!result) {
+      setError(
+        isHi
+          ? "उत्तर भेजने में समस्या हुई। कृपया फिर से प्रयास करें।"
+          : "There was a problem sending your response. Please try again.",
+      );
       setIsThinking(false);
       return;
     }
 
-    messageCount.current += 1;
-
     setMessages((previous) => [
       ...previous,
       {
-        id: `user-${messageCount.current}`,
+        id: result.turn_id,
         sender: "user",
         text: content,
       },
     ]);
 
-    setInput("");
-    setCanContinue(true);
-
-    window.setTimeout(() => {
-      const questions = [
-        isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
-        isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
-        isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
-        isHi
-          ? "क्या आपको कोई पुरानी बीमारी है?"
-          : "Do you have any chronic illnesses?",
-        isHi
-          ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
-          : "Thank you. You can now proceed to upload your reports.",
-      ];
-
-      const questionIndex = Math.min(
-        messageCount.current - 1,
-        questions.length - 1,
-      );
-
+    if (result.assistant_response) {
       setMessages((previous) => [
         ...previous,
         {
-          id: `ai-${messageCount.current}`,
+          id: `ai-${result.turn_id}`,
           sender: "ai",
-          text: questions[questionIndex],
+          text: result.assistant_response!,
         },
       ]);
+    }
 
-      setIsThinking(false);
-    }, 1500);
+    if (result.completed) {
+      setCompleted(true);
+
+      if (!result.assistant_response) {
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: `complete-${result.turn_id}`,
+            sender: "ai",
+            text: isHi
+              ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
+              : "Thank you. You can now proceed to upload your reports.",
+          },
+        ]);
+      }
+    }
+
+    setInput("");
+    setCanContinue(true);
+    setIsThinking(false);
   };
 
   return (
@@ -230,11 +263,11 @@ export function TextAIConsultation({
         <div className="flex gap-3">
           <input
             className="flex-1 rounded-lg border-2 border-border bg-bg p-4 text-lg text-text-primary focus:border-primary focus:outline-none"
-            disabled={isThinking}
+            disabled={isThinking || completed}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
-                handleSend();
+                void handleSend();
               }
             }}
             placeholder={
@@ -245,8 +278,10 @@ export function TextAIConsultation({
 
           <Button
             className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg hover:bg-text-primary"
-            disabled={isThinking || !input.trim()}
-            onClick={handleSend}
+            disabled={isThinking || completed || !input.trim()}
+            onClick={() => {
+              void handleSend();
+            }}
           >
             <Send className="h-5 w-5" />
           </Button>

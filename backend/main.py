@@ -13,6 +13,7 @@ from backend.api.routes.doctor_case import router as doctor_case_router
 from backend.api.routes.doctor_queue import router as doctor_queue_router
 from backend.api.routes.intake import router as intake_router
 from backend.api.routes.interview import router as interview_router
+from backend.api.routes.interview_session import router as interview_session_router
 from backend.api.routes.patient_registration import router as patient_registration_router
 from backend.api.routes.patient_verification import router as patient_verification_router
 from backend.api.routes.promotion import router as promotion_router
@@ -65,6 +66,7 @@ app.include_router(triage_router, prefix="/api/v1")
 app.include_router(queue_router, prefix="/api/v1")
 app.include_router(workflow_router, prefix="/api/v1")
 app.include_router(promotion_router, prefix="/api/v1")
+app.include_router(interview_session_router, prefix="/api/v1")
 
 
 @app.get("/health")

@@ -9,18 +9,11 @@ from backend.domain.enums import ConversationInputType
 
 
 class InterviewTurnRequest(BaseModel):
+    draft_id: str = Field(min_length=1)
+    client_turn_id: str = Field(min_length=1, max_length=128)
     content: str = Field(min_length=1, max_length=4000)
     input_type: ConversationInputType = ConversationInputType.TEXT
-    language: str | None = Field(
-        default=None,
-        min_length=2,
-        max_length=16,
-    )
-    client_turn_id: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=128,
-    )
+    language: str | None = Field(default=None, min_length=2, max_length=16)
 
 
 class InterviewStateResponse(BaseModel):
