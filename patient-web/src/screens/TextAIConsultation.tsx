@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ClinicalIntelligenceTurnResponse } from "@/api/clinicalIntelligence";
 import { Bot, Send, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadPatientDraft } from "@/lib/patientDraft";
@@ -10,7 +11,7 @@ interface TextAIConsultationProps {
     inputType: "TEXT",
     content: string,
     language: string,
-  ) => boolean;
+  ) => Promise<ClinicalIntelligenceTurnResponse | null>;
   language: "en" | "hi";
 }
 
@@ -82,13 +83,12 @@ export function TextAIConsultation({
   const [error, setError] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const messageCount = useRef(initialMessageCount);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isThinking]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const content = input.trim();
 
     if (!content || isThinking) {
@@ -98,57 +98,48 @@ export function TextAIConsultation({
     setError(null);
     setIsThinking(true);
 
-    const saved = onConversationTurn("TEXT", content, isHi ? "hi" : "en");
-
-    if (!saved) {
-      setError("Unable to save your response locally.");
-      setIsThinking(false);
-      return;
-    }
-
-    messageCount.current += 1;
-
     setMessages((previous) => [
       ...previous,
       {
-        id: `user-${messageCount.current}`,
+        id: `user-${Date.now()}`,
         sender: "user",
         text: content,
       },
     ]);
 
     setInput("");
-    setCanContinue(true);
 
-    window.setTimeout(() => {
-      const questions = [
-        isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
-        isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
-        isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
-        isHi
-          ? "क्या आपको कोई पुरानी बीमारी है?"
-          : "Do you have any chronic illnesses?",
-        isHi
-          ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
-          : "Thank you. You can now proceed to upload your reports.",
-      ];
+    const response = await onConversationTurn(
+      "TEXT",
+      content,
+      isHi ? "hi" : "en",
+    );
 
-      const questionIndex = Math.min(
-        messageCount.current - 1,
-        questions.length - 1,
+    if (!response) {
+      setError(
+        isHi
+          ? "उत्तर प्राप्त नहीं हो सका। कृपया फिर से प्रयास करें।"
+          : "The AI could not process your response. Please try again.",
       );
+      setIsThinking(false);
+      return;
+    }
 
+    const assistantResponse = response.assistant_response;
+
+    if (assistantResponse?.trim()) {
       setMessages((previous) => [
         ...previous,
         {
-          id: `ai-${messageCount.current}`,
+          id: `ai-${response.turn_id}`,
           sender: "ai",
-          text: questions[questionIndex],
+          text: assistantResponse,
         },
       ]);
+    }
 
-      setIsThinking(false);
-    }, 1500);
+    setCanContinue(response.completed);
+    setIsThinking(false);
   };
 
   return (

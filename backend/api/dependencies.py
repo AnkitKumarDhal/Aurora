@@ -167,6 +167,8 @@ def get_patient_registration_service() -> PatientRegistrationService:
         document_service=get_document_service(),
         storage=get_storage(),
         ephemeral_identity_service=get_ephemeral_identity_service(),
+        clinical_intelligence_service=get_clinical_intelligence_service(),
+        workflow_service=get_workflow_service(),
     )
 
 

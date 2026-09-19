@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Mic, MicOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadPatientDraft } from "@/lib/patientDraft";
+import type { ClinicalIntelligenceTurnResponse } from "@/api/clinicalIntelligence";
 import {
   getSpeechRecognitionConstructor,
   type SpeechRecognitionErrorEvent,
@@ -16,7 +17,7 @@ interface VoiceAIConsultationProps {
     inputType: "AUDIO",
     content: string,
     language: string,
-  ) => boolean;
+  ) => Promise<ClinicalIntelligenceTurnResponse | null>;
   onActivity?: () => void;
   language: "en" | "hi";
 }
@@ -100,14 +101,13 @@ export function VoiceAIConsultation({
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const messageCount = useRef(initialState.existingTurnCount);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, currentTranscript, isSaving]);
 
   const handleUserMessage = useCallback(
-    (text: string) => {
+    async (text: string) => {
       const content = text.trim();
 
       if (!content || isSaving) {
@@ -118,56 +118,46 @@ export function VoiceAIConsultation({
       setError(null);
       setIsSaving(true);
 
-      const saved = onConversationTurn("AUDIO", content, isHi ? "hi" : "en");
-
-      if (!saved) {
-        setError("Unable to save your response locally.");
-        setIsSaving(false);
-        return;
-      }
-
-      messageCount.current += 1;
-
       setMessages((previous) => [
         ...previous,
         {
-          id: `voice-user-${messageCount.current}`,
+          id: `voice-user-${Date.now()}`,
           sender: "user",
           text: content,
         },
       ]);
 
-      setCanContinue(true);
+      const response = await onConversationTurn(
+        "AUDIO",
+        content,
+        isHi ? "hi" : "en",
+      );
 
-      window.setTimeout(() => {
-        const questions = [
-          isHi ? "कब से ये लक्षण हैं?" : "How long have you had these symptoms?",
-          isHi ? "क्या कोई अन्य लक्षण हैं?" : "Are there any other symptoms?",
-          isHi ? "क्या आप कोई दवा ले रहे हैं?" : "Are you taking any medications?",
+      if (!response) {
+        setError(
           isHi
-            ? "क्या आपको कोई पुरानी बीमारी है?"
-            : "Do you have any chronic illnesses?",
-          isHi
-            ? "धन्यवाद। आप अब अपनी रिपोर्ट अपलोड कर सकते हैं।"
-            : "Thank you. You can now proceed to upload your reports.",
-        ];
-
-        const questionIndex = Math.min(
-          messageCount.current - 1,
-          questions.length - 1,
+            ? "उत्तर प्राप्त नहीं हो सका। कृपया फिर से प्रयास करें।"
+            : "The AI could not process your response. Please try again.",
         );
+        setIsSaving(false);
+        return;
+      }
 
+      const assistantResponse = response.assistant_response;
+
+      if (assistantResponse?.trim()) {
         setMessages((previous) => [
           ...previous,
           {
-            id: `voice-ai-${messageCount.current}`,
+            id: `voice-ai-${response.turn_id}`,
             sender: "ai",
-            text: questions[questionIndex],
+            text: assistantResponse,
           },
         ]);
+      }
 
-        setIsSaving(false);
-      }, 1500);
+      setCanContinue(response.completed);
+      setIsSaving(false);
     },
     [isHi, isSaving, onActivity, onConversationTurn],
   );
@@ -212,7 +202,7 @@ export function VoiceAIConsultation({
       setCurrentTranscript(interimTranscript);
 
       if (finalTranscript.trim()) {
-        handleUserMessage(finalTranscript);
+        void handleUserMessage(finalTranscript);
         setCurrentTranscript("");
       }
     };
@@ -364,9 +354,7 @@ export function VoiceAIConsultation({
 
           <span
             className={`text-sm ${
-              isListening
-                ? "text-danger"
-                : "text-text-secondary"
+              isListening ? "text-danger" : "text-text-secondary"
             }`}
           >
             {isListening

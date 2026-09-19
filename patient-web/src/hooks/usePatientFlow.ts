@@ -18,6 +18,11 @@ import {
   type PatientDraftConversationInputType,
   type PatientDraftIdentityMethod,
 } from "@/lib/patientDraft";
+import {
+  processClinicalIntelligenceTurn,
+  type ClinicalIntelligenceTurnResponse,
+} from "@/api/clinicalIntelligence";
+import { preparePatientSession } from "@/api/patientSession";
 
 const IDLE_TIMEOUT_SECONDS = 90;
 const COMPLETION_TIMEOUT_SECONDS = 90;
@@ -393,7 +398,7 @@ export function usePatientFlow() {
     [draftId, isVerifying, otpChallengeId, registerActivity],
   );
 
-  const handleConsentGrant = useCallback(() => {
+  const handleConsentGrant = useCallback(async () => {
     if (!draftId || !consentVersion || !identityType || !identityIdentifier) {
       return;
     }
@@ -405,8 +410,18 @@ export function usePatientFlow() {
       return;
     }
 
+    registerActivity();
+    setConsentError(null);
+    setIsLoadingConsent(true);
+
     try {
-      registerActivity();
+      const session = await preparePatientSession(
+        draftId,
+        draft.verification_token,
+        identityType,
+        identityIdentifier,
+        consentVersion,
+      );
 
       savePatientDraft({
         ...draft,
@@ -414,14 +429,16 @@ export function usePatientFlow() {
         consent_granted: true,
       });
 
-      setConsentError(null);
+      setSessionId(session.session_id);
       setCurrentScreen("ai-mode");
     } catch (error) {
       setConsentError(
         error instanceof Error
           ? error.message
-          : "Unable to save your consent locally",
+          : "Unable to start your clinical session",
       );
+    } finally {
+      setIsLoadingConsent(false);
     }
   }, [
     consentVersion,
@@ -437,35 +454,73 @@ export function usePatientFlow() {
   }, [registerActivity, resetFlow]);
 
   const handleConversationTurn = useCallback(
-    (
+    async (
       inputType: PatientDraftConversationInputType,
       content: string,
       turnLanguage: string,
-    ): boolean => {
-      if (!draftId) {
-        return false;
+    ): Promise<ClinicalIntelligenceTurnResponse | null> => {
+      if (!draftId || !sessionId) {
+        return null;
       }
 
       const draft = loadPatientDraft();
 
-      if (!draft || draft.draft_id !== draftId) {
-        return false;
+      if (
+        !draft ||
+        draft.draft_id !== draftId ||
+        !draft.verification_token ||
+        !draft.identity_method ||
+        !draft.identity_identifier
+      ) {
+        return null;
       }
 
       try {
-        appendPatientDraftConversationTurn(draft, {
+        const updatedDraft = appendPatientDraftConversationTurn(draft, {
           input_type: inputType,
           content,
           language: turnLanguage,
         });
 
-        registerActivity();
-        return true;
+        const localTurn =
+          updatedDraft.conversation_turns[
+            updatedDraft.conversation_turns.length - 1
+          ];
+
+        if (!localTurn) {
+          return null;
+        }
+
+        try {
+          const response = await processClinicalIntelligenceTurn(sessionId, {
+            draft_id: draftId,
+            local_id: localTurn.local_id,
+            verification_token: draft.verification_token,
+            identity_method: draft.identity_method,
+            identity_identifier: draft.identity_identifier,
+            input_type: inputType,
+            content,
+            language: turnLanguage,
+          });
+
+          registerActivity();
+
+          return response;
+        } catch {
+          savePatientDraft({
+            ...updatedDraft,
+            conversation_turns: updatedDraft.conversation_turns.filter(
+              (turn) => turn.local_id !== localTurn.local_id,
+            ),
+          });
+
+          return null;
+        }
       } catch {
-        return false;
+        return null;
       }
     },
-    [draftId, registerActivity],
+    [draftId, registerActivity, sessionId],
   );
 
   const handleFinalizeRegistration = useCallback(async () => {

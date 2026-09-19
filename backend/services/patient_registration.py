@@ -19,6 +19,8 @@ from backend.domain.enums import (
 from backend.domain.patient import Patient
 from backend.integrations.storage import LocalStorage
 from backend.services.clinical_session import ClinicalSessionService
+from backend.services.clinical_intelligence import ClinicalIntelligenceService
+from backend.services.workflow import WorkflowService
 from backend.services.conversation import ConversationService
 from backend.services.document import DocumentService
 from backend.services.ephemeral_identity import EphemeralIdentityService
@@ -36,6 +38,8 @@ class PatientRegistrationService:
         document_service: DocumentService,
         storage: LocalStorage,
         ephemeral_identity_service: EphemeralIdentityService,
+        clinical_intelligence_service: ClinicalIntelligenceService,
+        workflow_service: WorkflowService
     ) -> None:
         self.session_service = session_service
         self.patient_service = patient_service
@@ -44,6 +48,8 @@ class PatientRegistrationService:
         self.document_service = document_service
         self.storage = storage
         self.ephemeral_identity_service = ephemeral_identity_service
+        self.clinical_intelligence_service = clinical_intelligence_service
+        self.workflow_service = workflow_service
 
     async def submit(
         self,
@@ -304,6 +310,37 @@ class PatientRegistrationService:
         if final_session is None:
             raise ValueError(
                 "Clinical session could not be loaded after registration",
+            )
+
+        if final_session.status in {
+            SessionStatus.HISTORY_IN_PROGRESS,
+            SessionStatus.DOCUMENT_PROCESSING,
+        }:
+            await self.clinical_intelligence_service.finalize_clinical_session(
+                session_id,
+            )
+
+        final_session = await self.session_service.get_session(
+            session_id,
+        )
+
+        if final_session is None:
+            raise ValueError(
+                "Clinical session could not be loaded after clinical finalization",
+            )
+
+        if final_session.status == SessionStatus.SUMMARY_READY:
+            await self.workflow_service.queue_session_from_triage(
+                session_id,
+            )
+
+        final_session = await self.session_service.get_session(
+            session_id,
+        )
+
+        if final_session is None:
+            raise ValueError(
+                "Clinical session could not be loaded after queueing",
             )
 
         patient = await self.patient_service.get_patient(
