@@ -8,13 +8,13 @@ from uuid import uuid4
 from backend.ai.clinical_schema import InterviewExtraction
 from backend.ai.interview.extractor import InterviewExtractor
 from backend.ai.interview.objectives import missing_objectives, normalize_topic
-from backend.ai.interview.questions import question_for
+from backend.ai.interview.questions import field_for_question, is_boolean_field, question_for
 from backend.ai.red_flag_engine import detect_red_flags
 from backend.config import settings
 from backend.domain.clinical_signal import ClinicalSignal
 from backend.domain.clinical_summary import ClinicalSummary
 from backend.domain.conversation import ConversationTurn
-from backend.domain.enums import ClinicalSignalType, SessionStatus, Speaker, SummaryStatus
+from backend.domain.enums import ClinicalSignalType, SessionStatus, Speaker, SummaryStatus, UrgencyLevel
 from backend.domain.triage import TriageResult
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_signal import ClinicalSignalService
@@ -115,18 +115,6 @@ class InterviewController:
             raise ValueError(
                 "Session must be consented or have history in progress")
 
-        if session.status == SessionStatus.CONSENTED:
-            updated_session = await self.session_service.transition_session(
-                session_id,
-                SessionStatus.HISTORY_IN_PROGRESS,
-            )
-
-            if updated_session is None:
-                raise ValueError(
-                    "Clinical session could not enter history state")
-
-            session = updated_session
-
         existing_turn = await self.conversation_service.get_turn(turn_id)
 
         if existing_turn is None:
@@ -149,9 +137,7 @@ class InterviewController:
 
             stored_turn = existing_turn
 
-        previous_turns = await self.conversation_service.get_session_turns(
-            session_id,
-        )
+        previous_turns = await self.conversation_service.get_session_turns(session_id)
 
         previous_patient_turns = [
             item
@@ -160,10 +146,7 @@ class InterviewController:
             and item.turn_id != stored_turn.turn_id
         ]
 
-        existing_signals = await self.signal_service.get_session_signals(
-            session_id,
-        )
-
+        existing_signals = await self.signal_service.get_session_signals(session_id)
         known_fields = self._build_known_fields(existing_signals)
 
         current_topic = normalize_topic(
@@ -176,6 +159,12 @@ class InterviewController:
             patient_text=text,
             known_fields=self._public_fields(known_fields),
             topic=current_topic,
+        )
+
+        self._apply_answer_to_last_question(
+            extraction=extraction,
+            turns=previous_turns,
+            patient_text=text,
         )
 
         await self._persist_extraction(
@@ -323,6 +312,9 @@ class InterviewController:
             triage = TriageResult(
                 triage_id=f"triage_{uuid4().hex}",
                 session_id=session_id,
+                urgency_level=UrgencyLevel.LEVEL_1,
+                priority_score=20,
+                red_flags_present=False,
             )
 
             triage = await self.triage_service.create_result(triage)
@@ -481,6 +473,62 @@ class InterviewController:
             )
 
     @staticmethod
+    def _apply_answer_to_last_question(
+        extraction: InterviewExtraction,
+        turns: list[ConversationTurn],
+        patient_text: str,
+    ) -> None:
+        question = None
+
+        for turn in reversed(turns):
+            if turn.speaker == Speaker.SYSTEM and turn.content:
+                question = turn.content
+                break
+
+        field = field_for_question(question)
+
+        if not is_boolean_field(field):
+            return
+
+        normalized = patient_text.strip().lower()
+
+        negative_answers = {
+            "no",
+            "nope",
+            "nah",
+            "none",
+            "nothing",
+            "not at all",
+            "negative",
+            "no other symptoms",
+            "nothing else",
+        }
+
+        positive_answers = {
+            "yes",
+            "yeah",
+            "yep",
+            "yes i do",
+            "yes, i do",
+            "yes i have",
+            "yes, i have",
+        }
+
+        if normalized in negative_answers:
+            if field not in extraction.negatives:
+                extraction.negatives.append(field)
+
+            extraction.fields.pop(field, None)
+
+        elif normalized in positive_answers:
+            extraction.fields[field] = True
+            extraction.negatives = [
+                item
+                for item in extraction.negatives
+                if item != field
+            ]
+
+    @staticmethod
     def _signal_type_for(field: str) -> ClinicalSignalType:
         if field == "medications":
             return ClinicalSignalType.MEDICATION
@@ -616,7 +664,9 @@ class InterviewController:
         }
 
     @staticmethod
-    def _value_as_string(value: Any) -> str | None:
+    def _value_as_string(
+        value: Any,
+    ) -> str | None:
         if value is None:
             return None
 
@@ -625,7 +675,9 @@ class InterviewController:
         return text or None
 
     @staticmethod
-    def _as_list(value: Any) -> list[str]:
+    def _as_list(
+        value: Any,
+    ) -> list[str]:
         if value is None:
             return []
 

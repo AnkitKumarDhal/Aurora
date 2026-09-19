@@ -2,86 +2,55 @@ from __future__ import annotations
 
 
 QUESTIONS: dict[str, str] = {
-    "chief_complaint": (
-        "What is the main problem you are having today?"
-    ),
-    "onset": (
-        "When did this problem start?"
-    ),
-    "site": (
-        "Where exactly do you feel it?"
-    ),
-    "severity": (
-        "How severe is it on a scale of 0 to 10?"
-    ),
-    "character": (
-        "What does it feel like — for example, pressure, burning, "
-        "throbbing, stabbing, or something else?"
-    ),
-    "timing": (
-        "Is it constant, or does it come and go?"
-    ),
-    "aggravating_factors": (
-        "What makes it worse?"
-    ),
-    "relieving_factors": (
-        "What makes it better?"
-    ),
-    "radiation": (
-        "Does the discomfort spread anywhere else?"
-    ),
-    "associated_symptoms": (
-        "What other symptoms have you noticed with it?"
-    ),
-    "breathing_difficulty": (
-        "Have you had any difficulty breathing or shortness of breath?"
-    ),
-    "nausea_vomiting": (
-        "Have you had nausea or vomiting?"
-    ),
-    "vision_or_neuro": (
-        "Have you had any vision changes, weakness, numbness, "
-        "confusion, or other unusual neurological symptoms?"
-    ),
-    "cough": (
-        "Have you had a cough?"
-    ),
-    "wheeze": (
-        "Have you noticed wheezing or a whistling sound when breathing?"
-    ),
-    "location": (
-        "Where in your abdomen or digestive system is the problem?"
-    ),
-    "bowel_changes": (
-        "Have you noticed any change in your bowel movements?"
-    ),
-    "appearance": (
-        "What does the affected skin area look like?"
-    ),
-    "itch_or_pain": (
-        "Is the area itchy, painful, or both?"
-    ),
-    "spread": (
-        "Has the affected area spread or changed size?"
-    ),
-    "urinary_frequency": (
-        "Have you been urinating more or less often than usual?"
-    ),
-    "urinary_burning": (
-        "Do you have burning or pain while urinating?"
-    ),
-    "urinary_blood": (
-        "Have you noticed any blood in your urine?"
-    ),
-    "fever": (
-        "Have you had a fever?"
-    ),
-    "fatigue": (
-        "Have you felt unusually tired?"
-    ),
-    "weight_change": (
-        "Have you had any unexpected weight change?"
-    ),
+    "chief_complaint": "What is the main problem you are having today?",
+    "onset": "When did this problem start?",
+    "site": "Where exactly do you feel it?",
+    "severity": "How severe is it on a scale of 0 to 10?",
+    "character": "What does it feel like — for example, pressure, burning, throbbing, stabbing, or something else?",
+    "timing": "Is it constant, or does it come and go?",
+    "aggravating_factors": "What makes it worse?",
+    "relieving_factors": "What makes it better?",
+    "radiation": "Does the discomfort spread anywhere else?",
+    "associated_symptoms": "What other symptoms have you noticed with it?",
+    "breathing_difficulty": "Have you had any difficulty breathing or shortness of breath?",
+    "nausea_vomiting": "Have you had nausea or vomiting?",
+    "vision_or_neuro": "Have you had any vision changes, weakness, numbness, confusion, or other unusual neurological symptoms?",
+    "cough": "Have you had a cough?",
+    "wheeze": "Have you noticed wheezing or a whistling sound when breathing?",
+    "location": "Where in your abdomen or digestive system is the problem?",
+    "bowel_changes": "Have you noticed any change in your bowel movements?",
+    "appearance": "What does the affected skin area look like?",
+    "itch_or_pain": "Is the area itchy, painful, or both?",
+    "spread": "Has the affected area spread or changed size?",
+    "urinary_frequency": "Have you been urinating more or less often than usual?",
+    "urinary_burning": "Do you have burning or pain while urinating?",
+    "urinary_blood": "Have you noticed any blood in your urine?",
+    "fever": "Have you had a fever?",
+    "fatigue": "Have you felt unusually tired?",
+    "weight_change": "Have you had any unexpected weight change?",
+}
+
+
+QUESTION_TO_FIELD = {
+    question: field
+    for field, question in QUESTIONS.items()
+}
+
+
+BOOLEAN_FIELDS = {
+    "associated_symptoms",
+    "breathing_difficulty",
+    "nausea_vomiting",
+    "vision_or_neuro",
+    "cough",
+    "wheeze",
+    "bowel_changes",
+    "urinary_frequency",
+    "urinary_burning",
+    "urinary_blood",
+    "fever",
+    "fatigue",
+    "weight_change",
 }
 
 
@@ -90,3 +59,14 @@ def question_for(field: str) -> str:
         field,
         "Is there anything else important about this symptom that you think the doctor should know?",
     )
+
+
+def field_for_question(question: str | None) -> str | None:
+    if not question:
+        return None
+
+    return QUESTION_TO_FIELD.get(question.strip())
+
+
+def is_boolean_field(field: str | None) -> bool:
+    return field in BOOLEAN_FIELDS
