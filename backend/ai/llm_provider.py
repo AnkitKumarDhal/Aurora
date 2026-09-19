@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -32,7 +33,7 @@ class JsonLLMProvider(Protocol):
 
 
 def _parse_json(
-    content: str,
+    content: str | None,
 ) -> dict[str, Any] | None:
     text = str(content or "").strip()
 
@@ -61,6 +62,184 @@ def _parse_json(
 
 
 @dataclass
+class LemonadeProvider:
+    model: str
+    url: str
+    timeout_seconds: float
+
+    def generate_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> dict[str, Any] | None:
+        if requests is None:
+            logger.error(
+                "Lemonade provider requires the requests package",
+            )
+            return None
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
+            ],
+
+            # The interviewer must be deterministic enough for
+            # our validator/controller.
+            "temperature": 0,
+
+            # The planner only needs to return a tiny JSON decision.
+            "max_tokens": 300,
+
+            # Qwen reasoning is unnecessary for this task.
+            # Disable the hidden <think> generation so the small
+            # output budget is spent on the actual JSON response.
+            "chat_template_kwargs": {
+                "enable_thinking": False,
+            },
+
+            "response_format": {
+                "type": "json_object",
+            },
+        }
+
+        started = time.perf_counter()
+
+        try:
+            response = requests.post(
+                self.url,
+                headers=headers,
+                json=payload,
+                timeout=self.timeout_seconds,
+            )
+        except requests.RequestException:
+            elapsed_ms = (
+                time.perf_counter() - started
+            ) * 1000
+
+            logger.warning(
+                "Lemonade request failed: "
+                "model=%s elapsed_ms=%.1f",
+                self.model,
+                elapsed_ms,
+            )
+            return None
+        except Exception:
+            logger.exception(
+                "Unexpected Lemonade provider error: model=%s",
+                self.model,
+            )
+            return None
+
+        elapsed_ms = (
+            time.perf_counter() - started
+        ) * 1000
+
+        if not response.ok:
+            self._log_error_response(
+                response=response,
+                model=self.model,
+                elapsed_ms=elapsed_ms,
+            )
+            return None
+
+        try:
+            body = response.json()
+        except ValueError:
+            logger.warning(
+                "Lemonade returned a non-JSON HTTP response: "
+                "model=%s status=%s elapsed_ms=%.1f",
+                self.model,
+                response.status_code,
+                elapsed_ms,
+            )
+            return None
+
+        choices = body.get("choices") or []
+
+        if not choices:
+            logger.warning(
+                "Lemonade returned no choices: "
+                "model=%s elapsed_ms=%.1f response=%s",
+                self.model,
+                elapsed_ms,
+                body,
+            )
+            return None
+
+        choice = choices[0] or {}
+        message = choice.get("message") or {}
+
+        content = message.get("content")
+        finish_reason = choice.get("finish_reason")
+
+        if not content:
+            logger.warning(
+                "Lemonade returned empty message content: "
+                "model=%s finish_reason=%s elapsed_ms=%.1f message=%s",
+                self.model,
+                finish_reason,
+                elapsed_ms,
+                message,
+            )
+            return None
+
+        parsed = _parse_json(content)
+
+        if parsed is None:
+            logger.warning(
+                "Lemonade returned invalid JSON: "
+                "model=%s finish_reason=%s elapsed_ms=%.1f "
+                "content=%r",
+                self.model,
+                finish_reason,
+                elapsed_ms,
+                content,
+            )
+            return None
+
+        logger.info(
+            "Lemonade interviewer success: "
+            "model=%s elapsed_ms=%.1f",
+            self.model,
+            elapsed_ms,
+        )
+
+        return parsed
+
+    @staticmethod
+    def _log_error_response(
+        response: Any,
+        model: str,
+        elapsed_ms: float,
+    ) -> None:
+        try:
+            body = response.json()
+        except Exception:
+            body = response.text
+
+        logger.warning(
+            "Lemonade request failed: "
+            "status=%s model=%s elapsed_ms=%.1f response=%s",
+            response.status_code,
+            model,
+            elapsed_ms,
+            body,
+        )
+
+
+@dataclass
 class OpenRouterProvider:
     api_key: str
     primary_model: str
@@ -71,7 +250,6 @@ class OpenRouterProvider:
 
     @property
     def fallback_model(self) -> str | None:
-        """Backward-compatible access to the first fallback model."""
         return (
             self.fallback_models[0]
             if self.fallback_models
@@ -80,7 +258,6 @@ class OpenRouterProvider:
 
     @property
     def models(self) -> list[str]:
-        """Return the complete model chain in priority order."""
         result: list[str] = []
 
         for model in (
@@ -165,24 +342,16 @@ class OpenRouterProvider:
                 },
             ],
             "temperature": 0,
-            "max_tokens": 600,
+            "max_tokens": 300,
             "response_format": {
                 "type": "json_object",
             },
             "provider": {
-                # Allow OpenRouter to fail over between
-                # providers hosting the same model.
                 "allow_fallbacks": True,
-
-                # Only use providers that support all requested
-                # parameters.
                 "require_parameters": True,
             },
         }
 
-        # DeepSeek V4 Flash is reasoning-enabled by default.
-        # This task only needs a compact structured decision,
-        # so explicitly use low reasoning effort.
         if model.startswith("deepseek/"):
             payload["reasoning"] = {
                 "effort": "low",
@@ -195,14 +364,12 @@ class OpenRouterProvider:
                 json=payload,
                 timeout=self.timeout_seconds,
             )
-
         except requests.RequestException:
-            logger.exception(
+            logger.warning(
                 "OpenRouter request failed: model=%s",
                 model,
             )
             return None
-
         except Exception:
             logger.exception(
                 "Unexpected OpenRouter provider error: model=%s",
@@ -284,6 +451,35 @@ class OpenRouterProvider:
             response.status_code,
             model,
             body,
+        )
+
+
+@dataclass
+class FallbackJsonProvider:
+    primary: JsonLLMProvider
+    fallback: JsonLLMProvider
+
+    def generate_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> dict[str, Any] | None:
+        result = self.primary.generate_json(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+        )
+
+        if result is not None:
+            return result
+
+        logger.warning(
+            "Primary interviewer provider failed; "
+            "using remote fallback",
+        )
+
+        return self.fallback.generate_json(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
         )
 
 
@@ -375,6 +571,65 @@ class OllamaProvider:
             return None
 
 
+def _build_openrouter_provider(
+    timeout_seconds: float,
+) -> OpenRouterProvider | None:
+    api_key = os.getenv(
+        "OPENROUTER_API_KEY",
+        "",
+    ).strip()
+
+    if not api_key:
+        logger.warning(
+            "OpenRouter selected but OPENROUTER_API_KEY is missing",
+        )
+        return None
+
+    primary_model = (
+        os.getenv(
+            "AURORA_OPENROUTER_MODEL",
+            os.getenv(
+                "OPENROUTER_PRIMARY_MODEL",
+                "deepseek/deepseek-v4-flash-0731:free",
+            ),
+        )
+        .strip()
+    )
+
+    configured_fallbacks = os.getenv(
+        "AURORA_OPENROUTER_FALLBACK_MODELS",
+        "",
+    ).strip()
+
+    if configured_fallbacks:
+        fallback_models = tuple(
+            model.strip()
+            for model in configured_fallbacks.split(",")
+            if model.strip()
+        )
+    else:
+        legacy_fallback = os.getenv(
+            "AURORA_OPENROUTER_FALLBACK_MODEL",
+            os.getenv(
+                "OPENROUTER_FALLBACK_MODEL",
+                "",
+            ),
+        ).strip()
+
+        fallback_models = (
+            (legacy_fallback,)
+            if legacy_fallback
+            else ()
+        )
+
+    return OpenRouterProvider(
+        api_key=api_key,
+        primary_model=primary_model,
+        fallback_models=fallback_models,
+        timeout_seconds=timeout_seconds,
+    )
+
+
 def build_interviewer_provider() -> JsonLLMProvider | None:
     enabled = (
         os.getenv(
@@ -396,7 +651,7 @@ def build_interviewer_provider() -> JsonLLMProvider | None:
 
     provider = os.getenv(
         "AURORA_INTERVIEW_AI_PROVIDER",
-        "openrouter",
+        "lemonade",
     ).strip().lower()
 
     try:
@@ -409,61 +664,61 @@ def build_interviewer_provider() -> JsonLLMProvider | None:
     except ValueError:
         timeout_seconds = 12.0
 
-    if provider == "openrouter":
-        api_key = os.getenv(
-            "OPENROUTER_API_KEY",
-            "",
-        ).strip()
-
-        if not api_key:
-            logger.warning(
-                "OpenRouter selected but OPENROUTER_API_KEY is missing",
-            )
-            return None
-
-        primary_model = (
-            os.getenv(
-                "AURORA_OPENROUTER_MODEL",
+    if provider == "lemonade":
+        try:
+            lemonade_timeout = float(
                 os.getenv(
-                    "OPENROUTER_PRIMARY_MODEL",
-                    "deepseek/deepseek-v4-flash-0731:free",
-                ),
-            )
-            .strip()
-        )
-
-        configured_fallbacks = os.getenv(
-            "AURORA_OPENROUTER_FALLBACK_MODELS",
-            "",
-        ).strip()
-
-        if configured_fallbacks:
-            fallback_models = tuple(
-                model.strip()
-                for model in configured_fallbacks.split(",")
-                if model.strip()
-            )
-        else:
-            legacy_fallback = os.getenv(
-                "AURORA_OPENROUTER_FALLBACK_MODEL",
-                os.getenv(
-                    "OPENROUTER_FALLBACK_MODEL",
-                    "mistralai/mistral-small-3.2-24b-instruct:free",
-                ),
-            ).strip()
-
-            fallback_models = (
-                (legacy_fallback,)
-                if legacy_fallback
-                else (
-                    "mistralai/mistral-small-3.2-24b-instruct:free",
+                    "AURORA_LEMONADE_TIMEOUT",
+                    str(timeout_seconds),
                 )
             )
+        except ValueError:
+            lemonade_timeout = timeout_seconds
 
-        return OpenRouterProvider(
-            api_key=api_key,
-            primary_model=primary_model,
-            fallback_models=fallback_models,
+        lemonade = LemonadeProvider(
+            model=os.getenv(
+                "AURORA_LEMONADE_MODEL",
+                "qwen3.5-9b-FLM",
+            ).strip(),
+            url=os.getenv(
+                "AURORA_LEMONADE_URL",
+                "http://127.0.0.1:13305/api/v1/chat/completions",
+            ).strip(),
+            timeout_seconds=lemonade_timeout,
+        )
+
+        fallback_enabled = (
+            os.getenv(
+                "AURORA_LEMONADE_FALLBACK_OPENROUTER",
+                "1",
+            )
+            .strip()
+            .lower()
+            not in {
+                "0",
+                "false",
+                "no",
+                "off",
+            }
+        )
+
+        if not fallback_enabled:
+            return lemonade
+
+        openrouter = _build_openrouter_provider(
+            timeout_seconds=timeout_seconds,
+        )
+
+        if openrouter is None:
+            return lemonade
+
+        return FallbackJsonProvider(
+            primary=lemonade,
+            fallback=openrouter,
+        )
+
+    if provider == "openrouter":
+        return _build_openrouter_provider(
             timeout_seconds=timeout_seconds,
         )
 
