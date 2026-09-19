@@ -85,7 +85,6 @@ class Settings(BaseSettings):
 
     @property
     def interview_max_turns(self) -> int:
-        # One initial patient answer + configured follow-ups.
         return 1 + self.interview_max_followups
 
 
