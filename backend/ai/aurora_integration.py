@@ -273,35 +273,75 @@ class AuroraClinicalAdapter:
 
     @staticmethod
     def _rebuild_session(
-        patient_turns: Iterable[Any],
+        turns: Iterable[Any],
     ) -> ClinicalSession:
         """
         Reconstruct clinical state from Aurora's persisted conversation turns.
 
-        No process-global/session-global dictionary is used.
+        When system turns contain adaptive question metadata, the following
+        patient answer is applied to the exact field that Aurora asked.
+
+        This preserves adaptive interviewer semantics during stateless replay.
+
+        If adaptive metadata is unavailable, the clinical engine falls back
+        to its deterministic queue behavior.
         """
-        turns = [
+        normalised_turns = [
             turn
             for turn in (
                 AuroraClinicalAdapter._normalise_turns(
-                    patient_turns
+                    turns
                 )
             )
             if turn.get("content")
         ]
 
-        turns.sort(
+        normalised_turns.sort(
             key=AuroraClinicalAdapter._turn_sort_key
         )
 
         session = ClinicalSession()
 
-        for turn in turns:
-            # Aurora may eventually persist system turns as well. Only
-            # patient content is replayed into the clinical engine.
+        pending_question_field: str | None = None
+
+        for turn in normalised_turns:
             speaker = str(
-                turn.get("speaker", "patient")
+                turn.get(
+                    "speaker",
+                    "patient",
+                )
             ).strip().lower()
+
+            # System turns are not themselves clinical answers.
+            # They carry the metadata describing what the next patient
+            # response was answering.
+            if speaker == "system":
+                media_reference = turn.get(
+                    "media_reference",
+                )
+
+                if media_reference:
+                    try:
+                        metadata = json.loads(
+                            media_reference,
+                        )
+                    except (
+                        TypeError,
+                        json.JSONDecodeError,
+                    ):
+                        metadata = {}
+
+                    field = metadata.get(
+                        "question_field",
+                    )
+
+                    pending_question_field = (
+                        str(field).strip()
+                        if field
+                        else None
+                    )
+
+                continue
 
             if speaker not in {
                 "patient",
@@ -309,9 +349,31 @@ class AuroraClinicalAdapter:
             }:
                 continue
 
-            session.process_response(
-                str(turn["content"]),
+            content = str(
+                turn["content"],
             )
+
+            if pending_question_field:
+                try:
+                    process_response_for_field(
+                        session=session,
+                        response=content,
+                        target_field=pending_question_field,
+                    )
+                except ValueError:
+                    # If persisted metadata is stale or invalid, do not
+                    # destroy reconstruction. Fall back to the deterministic
+                    # clinical engine for this turn.
+                    session.process_response(
+                        content,
+                    )
+            else:
+                session.process_response(
+                    content,
+                )
+
+            # A patient answer consumes the pending question.
+            pending_question_field = None
 
         return session
 
@@ -328,6 +390,7 @@ class AuroraClinicalAdapter:
                         "content": turn,
                         "speaker": "patient",
                         "index": index,
+                        "media_reference": None,
                     }
                 )
                 continue
@@ -353,11 +416,14 @@ class AuroraClinicalAdapter:
                         "patient",
                     ),
                     "created_at": turn.get(
-                        "created_at"
+                        "created_at",
                     ),
                     "index": turn.get(
                         "index",
                         index,
+                    ),
+                    "media_reference": turn.get(
+                        "media_reference",
                     ),
                 }
             )

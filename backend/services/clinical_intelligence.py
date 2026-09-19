@@ -218,10 +218,9 @@ class ClinicalIntelligenceService:
             )
         )
 
-        patient_turns = [
+        conversation_turns = [
             self._turn_to_payload(turn)
             for turn in persisted_turns
-            if turn.speaker == Speaker.PATIENT
         ]
 
         document_summaries = (
@@ -233,7 +232,7 @@ class ClinicalIntelligenceService:
         clinical_result = (
             self.adapter.finalize_clinical_session(
                 session_id=session_id,
-                patient_turns=patient_turns,
+                patient_turns=conversation_turns,
                 document_summaries=document_summaries,
                 generate_ai_draft=False,
             )
