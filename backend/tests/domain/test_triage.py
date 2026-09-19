@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-
+from datetime import datetime, timezone
 from backend.domain.enums import TriageStatus, UrgencyLevel
 from backend.domain.triage import TriageResult
 
@@ -78,3 +78,18 @@ def test_triage_can_fail():
     )
 
     assert result.status == TriageStatus.FAILED
+
+
+def test_triage_persistence_model_accepts_pending_values():
+    from backend.models.triage import TriageResultDocument
+
+    result = TriageResultDocument(
+        triage_result_id="triage-001",
+        session_id="session-001",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+
+    assert result.status == TriageStatus.PENDING
+    assert result.urgency_level is None
+    assert result.priority_score is None

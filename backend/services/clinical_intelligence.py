@@ -1,7 +1,11 @@
+import json
 from datetime import datetime, timezone
 from hashlib import sha256
 from uuid import uuid4
 
+from backend.ai.adaptive_interviewer import (
+    AdaptiveAuroraClinicalAdapter,
+)
 from backend.ai.aurora_integration import AuroraClinicalAdapter
 from backend.domain.clinical_signal import ClinicalSignal
 from backend.domain.clinical_summary import ClinicalSummary
@@ -32,7 +36,9 @@ class ClinicalIntelligenceService:
         document_service: DocumentService,
         session_service: ClinicalSessionService,
     ) -> None:
-        self.adapter = adapter
+        self.adapter = AdaptiveAuroraClinicalAdapter(
+            base_adapter=adapter,
+        )
         self.conversation_service = conversation_service
         self.signal_service = signal_service
         self.summary_service = summary_service
@@ -52,7 +58,9 @@ class ClinicalIntelligenceService:
         )
 
         if existing_turn is None:
-            stored_turn = await self.conversation_service.submit_turn(turn)
+            stored_turn = await self.conversation_service.submit_turn(
+                turn,
+            )
         else:
             if existing_turn.content != turn.content:
                 raise ValueError(
@@ -67,19 +75,16 @@ class ClinicalIntelligenceService:
             )
         )
 
-        previous_patient_turns = [
+        previous_turns = [
             self._turn_to_payload(item)
             for item in persisted_turns
-            if (
-                item.turn_id != stored_turn.turn_id
-                and item.speaker == Speaker.PATIENT
-            )
+            if item.turn_id != stored_turn.turn_id
         ]
 
         result = self.adapter.process_turn(
             session_id=turn.session_id,
-            patient_text=stored_turn.content,
-            previous_patient_turns=previous_patient_turns,
+            patient_text=stored_turn.content or "",
+            previous_patient_turns=previous_turns,
             language=stored_turn.language,
         )
 
@@ -88,21 +93,26 @@ class ClinicalIntelligenceService:
             result.get("signals", []),
         )
 
-        assistant_response = (
-            result.get("assistant_response")
-            or result.get("next_question")
+        assistant_response = result.get(
+            "assistant_response",
         )
 
         if assistant_response:
             system_turn_id = (
                 "ai_"
                 + sha256(
-                    f"{stored_turn.turn_id}:{assistant_response}".encode(),
+                    (
+                        f"{stored_turn.turn_id}:"
+                        f"{result.get('question_field')}:"
+                        f"{assistant_response}"
+                    ).encode(),
                 ).hexdigest()[:24]
             )
 
-            existing_system_turn = await self.conversation_service.get_turn(
-                system_turn_id,
+            existing_system_turn = (
+                await self.conversation_service.get_turn(
+                    system_turn_id,
+                )
             )
 
             if existing_system_turn is None:
@@ -113,7 +123,23 @@ class ClinicalIntelligenceService:
                     input_type=turn.input_type,
                     content=str(assistant_response),
                     language=turn.language,
-                    media_reference=None,
+                    media_reference=json.dumps(
+                        {
+                            "question_field": result.get(
+                                "question_field",
+                            ),
+                            "question_source": result.get(
+                                "question_source",
+                            ),
+                            "question_reason": result.get(
+                                "question_reason",
+                            ),
+                            "answer_mode": result.get(
+                                "answer_mode",
+                            ),
+                        },
+                        ensure_ascii=False,
+                    ),
                 )
 
                 await self.conversation_service.add_turn(
@@ -123,15 +149,36 @@ class ClinicalIntelligenceService:
         return {
             "turn": stored_turn,
             "assistant_response": assistant_response,
-            "next_question": result.get("next_question"),
-            "completed": bool(result.get("completed", False)),
+            "next_question": result.get(
+                "next_question",
+            ),
+            "completed": bool(
+                result.get(
+                    "completed",
+                    False,
+                )
+            ),
+            "question_field": result.get(
+                "question_field",
+            ),
+            "question_source": result.get(
+                "question_source",
+            ),
+            "question_reason": result.get(
+                "question_reason",
+            ),
+            "answer_mode": result.get(
+                "answer_mode",
+            ),
         }
 
     async def finalize_clinical_session(
         self,
         session_id: str,
     ) -> dict:
-        session = await self.session_service.get_session(session_id)
+        session = await self.session_service.get_session(
+            session_id,
+        )
 
         if session is None:
             raise ValueError("Clinical session not found")
@@ -140,12 +187,15 @@ class ClinicalIntelligenceService:
             summary = await self.summary_service.get_session_summary(
                 session_id,
             )
+
             triage = await self.triage_service.get_session_result(
                 session_id,
             )
 
             if summary is None:
-                raise ValueError("Clinical summary not found")
+                raise ValueError(
+                    "Clinical summary not found",
+                )
 
             return {
                 "session": session,
@@ -180,16 +230,21 @@ class ClinicalIntelligenceService:
             )
         )
 
-        clinical_result = self.adapter.finalize_clinical_session(
-            session_id=session_id,
-            patient_turns=patient_turns,
-            document_summaries=document_summaries,
-            generate_ai_draft=False,
+        clinical_result = (
+            self.adapter.finalize_clinical_session(
+                session_id=session_id,
+                patient_turns=patient_turns,
+                document_summaries=document_summaries,
+                generate_ai_draft=False,
+            )
         )
 
         await self._persist_signals(
             session_id,
-            clinical_result.get("signals", []),
+            clinical_result.get(
+                "signals",
+                [],
+            ),
         )
 
         summary = await self._upsert_summary(
@@ -247,8 +302,10 @@ class ClinicalIntelligenceService:
         session_id: str,
         signals: list[dict],
     ) -> None:
-        existing_signals = await self.signal_service.get_session_signals(
-            session_id,
+        existing_signals = (
+            await self.signal_service.get_session_signals(
+                session_id,
+            )
         )
 
         existing_ids = {
@@ -261,7 +318,10 @@ class ClinicalIntelligenceService:
                 continue
 
             signal_id = str(
-                signal_data.get("signal_id", ""),
+                signal_data.get(
+                    "signal_id",
+                    "",
+                )
             ).strip()
 
             if not signal_id or signal_id in existing_ids:
@@ -269,7 +329,12 @@ class ClinicalIntelligenceService:
 
             try:
                 signal_type = ClinicalSignalType(
-                    str(signal_data.get("signal_type", "OTHER")),
+                    str(
+                        signal_data.get(
+                            "signal_type",
+                            "OTHER",
+                        )
+                    ),
                 )
             except ValueError:
                 signal_type = ClinicalSignalType.OTHER
@@ -279,14 +344,26 @@ class ClinicalIntelligenceService:
                 session_id=session_id,
                 signal_type=signal_type,
                 name=str(
-                    signal_data.get("name", ""),
+                    signal_data.get(
+                        "name",
+                        "",
+                    )
                 ),
-                value=signal_data.get("value"),
-                confidence=signal_data.get("confidence"),
-                source=signal_data.get("source"),
+                value=signal_data.get(
+                    "value",
+                ),
+                confidence=signal_data.get(
+                    "confidence",
+                ),
+                source=signal_data.get(
+                    "source",
+                ),
             )
 
-            await self.signal_service.create_signal(signal)
+            await self.signal_service.create_signal(
+                signal,
+            )
+
             existing_ids.add(signal_id)
 
     async def _upsert_summary(
@@ -294,13 +371,17 @@ class ClinicalIntelligenceService:
         session_id: str,
         summary_data: dict,
     ) -> ClinicalSummary:
-        existing = await self.summary_service.get_session_summary(
-            session_id,
+        existing = (
+            await self.summary_service.get_session_summary(
+                session_id,
+            )
         )
 
         values = {
             "status": SummaryStatus.READY,
-            "chief_complaint": summary_data.get("chief_complaint"),
+            "chief_complaint": summary_data.get(
+                "chief_complaint",
+            ),
             "history_of_present_illness": summary_data.get(
                 "history_of_present_illness",
             ),
@@ -325,7 +406,9 @@ class ClinicalIntelligenceService:
                 [],
             ),
             "generated_at": self._parse_datetime(
-                summary_data.get("generated_at"),
+                summary_data.get(
+                    "generated_at",
+                ),
             ),
         }
 
@@ -356,8 +439,10 @@ class ClinicalIntelligenceService:
         self,
         session_id: str,
     ) -> list[dict]:
-        documents = await self.document_service.get_session_documents(
-            session_id,
+        documents = (
+            await self.document_service.get_session_documents(
+                session_id,
+            )
         )
 
         result = []
@@ -376,7 +461,9 @@ class ClinicalIntelligenceService:
 
             if extraction is not None:
                 if extraction.extracted_text:
-                    payload["extracted_text"] = extraction.extracted_text
+                    payload["extracted_text"] = (
+                        extraction.extracted_text
+                    )
 
                 if extraction.structured_data is not None:
                     payload["structured_data"] = (
@@ -396,6 +483,7 @@ class ClinicalIntelligenceService:
             "speaker": turn.speaker.value.lower(),
             "content": turn.content,
             "language": turn.language,
+            "media_reference": turn.media_reference,
             "created_at": turn.created_at,
         }
 
@@ -409,7 +497,10 @@ class ClinicalIntelligenceService:
         if isinstance(value, str):
             try:
                 return datetime.fromisoformat(
-                    value.replace("Z", "+00:00"),
+                    value.replace(
+                        "Z",
+                        "+00:00",
+                    ),
                 )
             except ValueError:
                 pass

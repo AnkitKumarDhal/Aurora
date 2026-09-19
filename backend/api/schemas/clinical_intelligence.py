@@ -28,3 +28,7 @@ class ClinicalIntelligenceTurnResponse(BaseModel):
     assistant_response: str | None
     next_question: str | None
     completed: bool
+    question_field: str | None
+    question_source: str | None
+    question_reason: str | None
+    answer_mode: str | None
