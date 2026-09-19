@@ -146,7 +146,7 @@ function DetailView({ patient }: { patient: Patient }) {
         <div className="drawer-row">
           <div className="drawer-field">
             <div className="drawer-field-label">Wait Time</div>
-            <div className="drawer-field-value">{patient.wait}</div>
+            <div className="drawer-field-value">{patient.wait} min</div>
           </div>
 
           <div className="drawer-field">

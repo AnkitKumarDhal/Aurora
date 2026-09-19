@@ -429,6 +429,10 @@ body,
   letter-spacing: -0.5px;
 }
 
+.card-wait-session {
+  font-size: 13px;
+}
+
 .card-wait span {
   font-size: 10px;
   color: var(--color-text-secondary);

@@ -51,9 +51,7 @@ export function PatientCard({ patient, selected, onClick }: PatientCardProps) {
       </div>
 
       {patient.doctor === "Unassigned" ? (
-        <div className="card-assign unassigned">
-          <span>⚠</span> Unassigned
-        </div>
+        <div className="card-assign unassigned">⚠ Unassigned</div>
       ) : (
         <div className="card-assign">
           <span className="arrow">→</span> {patient.doctor}
