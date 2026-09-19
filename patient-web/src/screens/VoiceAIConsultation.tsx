@@ -86,6 +86,7 @@ export function VoiceAIConsultation({
   language,
 }: VoiceAIConsultationProps) {
   const isHi = language === "hi";
+
   const [initialState] = useState<InitialVoiceState>(() =>
     getInitialVoiceState(draftId, isHi),
   );
@@ -156,7 +157,9 @@ export function VoiceAIConsultation({
         ]);
       }
 
-      setCanContinue(response.completed);
+      // One successful AI turn is enough to unlock report upload.
+      setCanContinue(true);
+
       setIsSaving(false);
     },
     [isHi, isSaving, onActivity, onConversationTurn],

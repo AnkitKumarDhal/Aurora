@@ -138,7 +138,9 @@ export function TextAIConsultation({
       ]);
     }
 
-    setCanContinue(response.completed);
+    // One successful AI turn is enough to unlock report upload.
+    setCanContinue(true);
+
     setIsThinking(false);
   };
 
@@ -225,7 +227,7 @@ export function TextAIConsultation({
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
-                handleSend();
+                void handleSend();
               }
             }}
             placeholder={
@@ -237,7 +239,9 @@ export function TextAIConsultation({
           <Button
             className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg hover:bg-text-primary"
             disabled={isThinking || !input.trim()}
-            onClick={handleSend}
+            onClick={() => {
+              void handleSend();
+            }}
           >
             <Send className="h-5 w-5" />
           </Button>

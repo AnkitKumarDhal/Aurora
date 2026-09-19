@@ -45,6 +45,7 @@ def _parse_json(
         text,
         flags=re.IGNORECASE,
     )
+
     text = re.sub(
         r"\s*```$",
         "",
@@ -71,14 +72,21 @@ class OpenRouterProvider:
     @property
     def fallback_model(self) -> str | None:
         """Backward-compatible access to the first fallback model."""
-        return self.fallback_models[0] if self.fallback_models else None
+        return (
+            self.fallback_models[0]
+            if self.fallback_models
+            else None
+        )
 
     @property
     def models(self) -> list[str]:
         """Return the complete model chain in priority order."""
         result: list[str] = []
 
-        for model in (self.primary_model, *self.fallback_models):
+        for model in (
+            self.primary_model,
+            *self.fallback_models,
+        ):
             model = model.strip()
 
             if model and model not in result:
@@ -93,25 +101,59 @@ class OpenRouterProvider:
     ) -> dict[str, Any] | None:
         if requests is None:
             logger.error(
-                "OpenRouter provider requires the requests package"
+                "OpenRouter provider requires the requests package",
             )
             return None
 
         models = self.models
 
         if not models:
-            logger.error("OpenRouter provider has no configured models")
+            logger.error(
+                "OpenRouter provider has no configured models",
+            )
             return None
 
+        for model in models:
+            result = self._generate_with_model(
+                model=model,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+            )
+
+            if result is not None:
+                logger.info(
+                    "OpenRouter model succeeded: model=%s",
+                    model,
+                )
+                return result
+
+            logger.warning(
+                "OpenRouter model produced no valid JSON; "
+                "trying next model: model=%s",
+                model,
+            )
+
+        logger.warning(
+            "All OpenRouter interviewer models failed: models=%s",
+            models,
+        )
+
+        return None
+
+    def _generate_with_model(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> dict[str, Any] | None:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
             "X-Title": "Aurora Clinical Interviewer",
         }
 
-        payload = {
-            # OpenRouter uses this list for model-level fallback.
-            "models": models,
+        payload: dict[str, Any] = {
+            "model": model,
             "messages": [
                 {
                     "role": "system",
@@ -123,20 +165,28 @@ class OpenRouterProvider:
                 },
             ],
             "temperature": 0,
-            "max_tokens": 500,
+            "max_tokens": 600,
             "response_format": {
                 "type": "json_object",
             },
             "provider": {
-                # Allow OpenRouter to fail over between providers
-                # serving the selected model.
+                # Allow OpenRouter to fail over between
+                # providers hosting the same model.
                 "allow_fallbacks": True,
 
-                # Only use providers that support every requested
-                # parameter, including response_format.
+                # Only use providers that support all requested
+                # parameters.
                 "require_parameters": True,
             },
         }
+
+        # DeepSeek V4 Flash is reasoning-enabled by default.
+        # This task only needs a compact structured decision,
+        # so explicitly use low reasoning effort.
+        if model.startswith("deepseek/"):
+            payload["reasoning"] = {
+                "effort": "low",
+            }
 
         try:
             response = requests.post(
@@ -146,65 +196,81 @@ class OpenRouterProvider:
                 timeout=self.timeout_seconds,
             )
 
-            if not response.ok:
-                self._log_error_response(
-                    models=models,
-                    response=response,
-                )
-                return None
-
-            try:
-                body = response.json()
-            except ValueError:
-                logger.warning(
-                    "OpenRouter returned a non-JSON HTTP response: "
-                    "models=%s status=%s",
-                    models,
-                    response.status_code,
-                )
-                return None
-
-            choices = body.get("choices") or []
-
-            if not choices:
-                logger.warning(
-                    "OpenRouter returned no choices: models=%s response=%s",
-                    models,
-                    body,
-                )
-                return None
-
-            message = choices[0].get("message") or {}
-            content = message.get("content", "")
-
-            parsed = _parse_json(content)
-
-            if parsed is None:
-                logger.warning(
-                    "OpenRouter returned invalid JSON: models=%s content=%r",
-                    models,
-                    content,
-                )
-
-            return parsed
-
         except requests.RequestException:
             logger.exception(
-                "OpenRouter request failed: models=%s",
-                models,
+                "OpenRouter request failed: model=%s",
+                model,
             )
             return None
 
         except Exception:
             logger.exception(
-                "Unexpected OpenRouter provider error: models=%s",
-                models,
+                "Unexpected OpenRouter provider error: model=%s",
+                model,
             )
             return None
 
+        if not response.ok:
+            self._log_error_response(
+                model=model,
+                response=response,
+            )
+            return None
+
+        try:
+            body = response.json()
+        except ValueError:
+            logger.warning(
+                "OpenRouter returned a non-JSON HTTP response: "
+                "model=%s status=%s",
+                model,
+                response.status_code,
+            )
+            return None
+
+        choices = body.get("choices") or []
+
+        if not choices:
+            logger.warning(
+                "OpenRouter returned no choices: model=%s response=%s",
+                model,
+                body,
+            )
+            return None
+
+        choice = choices[0] or {}
+        message = choice.get("message") or {}
+
+        content = message.get("content")
+        finish_reason = choice.get("finish_reason")
+
+        if not content:
+            logger.warning(
+                "OpenRouter returned empty message content: "
+                "model=%s finish_reason=%s message=%s",
+                model,
+                finish_reason,
+                message,
+            )
+            return None
+
+        parsed = _parse_json(content)
+
+        if parsed is None:
+            logger.warning(
+                "OpenRouter returned invalid JSON: "
+                "model=%s finish_reason=%s content=%r",
+                model,
+                finish_reason,
+                content,
+            )
+            return None
+
+        return parsed
+
     @staticmethod
     def _log_error_response(
-        models: list[str],
+        model: str,
         response: Any,
     ) -> None:
         try:
@@ -213,9 +279,10 @@ class OpenRouterProvider:
             body = response.text
 
         logger.warning(
-            "OpenRouter request failed: status=%s models=%s response=%s",
+            "OpenRouter request failed: "
+            "status=%s model=%s response=%s",
             response.status_code,
-            models,
+            model,
             body,
         )
 
@@ -233,7 +300,7 @@ class OllamaProvider:
     ) -> dict[str, Any] | None:
         if requests is None:
             logger.error(
-                "Ollama provider requires the requests package"
+                "Ollama provider requires the requests package",
             )
             return None
 
@@ -275,7 +342,7 @@ class OllamaProvider:
                 body = response.json()
             except ValueError:
                 logger.warning(
-                    "Ollama returned a non-JSON HTTP response"
+                    "Ollama returned a non-JSON HTTP response",
                 )
                 return None
 
@@ -297,13 +364,13 @@ class OllamaProvider:
 
         except requests.RequestException:
             logger.exception(
-                "Ollama request failed"
+                "Ollama request failed",
             )
             return None
 
         except Exception:
             logger.exception(
-                "Unexpected Ollama provider error"
+                "Unexpected Ollama provider error",
             )
             return None
 
@@ -336,11 +403,11 @@ def build_interviewer_provider() -> JsonLLMProvider | None:
         timeout_seconds = float(
             os.getenv(
                 "AURORA_INTERVIEW_AI_TIMEOUT",
-                "20",
+                "12",
             )
         )
     except ValueError:
-        timeout_seconds = 20.0
+        timeout_seconds = 12.0
 
     if provider == "openrouter":
         api_key = os.getenv(
@@ -350,7 +417,7 @@ def build_interviewer_provider() -> JsonLLMProvider | None:
 
         if not api_key:
             logger.warning(
-                "OpenRouter selected but OPENROUTER_API_KEY is missing"
+                "OpenRouter selected but OPENROUTER_API_KEY is missing",
             )
             return None
 
@@ -377,8 +444,6 @@ def build_interviewer_provider() -> JsonLLMProvider | None:
                 if model.strip()
             )
         else:
-            # Keep legacy configuration working while providing
-            # a current structured-output-capable fallback.
             legacy_fallback = os.getenv(
                 "AURORA_OPENROUTER_FALLBACK_MODEL",
                 os.getenv(

@@ -15,6 +15,10 @@ export interface ClinicalIntelligenceTurnResponse {
   assistant_response: string | null;
   next_question: string | null;
   completed: boolean;
+  question_field: string | null;
+  question_source: string | null;
+  question_reason: string | null;
+  answer_mode: string | null;
 }
 
 interface ClinicalIntelligenceTurnApiResponse {
