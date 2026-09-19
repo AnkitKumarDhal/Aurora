@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Mic, MicOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getInterviewState, type InterviewTurnResult } from "@/api/interview";
-import { loadPatientDraft } from "@/lib/patientDraft";
 import {
   getSpeechRecognitionConstructor,
   type SpeechRecognitionErrorEvent,
@@ -29,47 +28,7 @@ interface Message {
   text: string;
 }
 
-function getInitialVoiceMessages(draftId: string, isHi: boolean): Message[] {
-  const initialMessage: Message = {
-    id: "initial",
-    sender: "ai",
-    text: isHi
-      ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
-      : "Hello! I am Aurora AI. Please describe your symptoms.",
-  };
-
-  const draft = loadPatientDraft();
-
-  if (!draft || draft.draft_id !== draftId) {
-    return [initialMessage];
-  }
-
-  const existingTurns = draft.conversation_turns.filter(
-    (turn) => turn.input_type === "AUDIO",
-  );
-
-  return [
-    initialMessage,
-    ...existingTurns.map((turn) => ({
-      id: turn.local_id,
-      sender: "user" as const,
-      text: turn.content,
-    })),
-  ];
-}
-
-function hasExistingVoiceTurn(draftId: string): boolean {
-  const draft = loadPatientDraft();
-
-  if (!draft || draft.draft_id !== draftId) {
-    return false;
-  }
-
-  return draft.conversation_turns.some((turn) => turn.input_type === "AUDIO");
-}
-
 export function VoiceAIConsultation({
-  draftId,
   sessionId,
   onNext,
   onConversationTurn,
@@ -77,15 +36,19 @@ export function VoiceAIConsultation({
   language,
 }: VoiceAIConsultationProps) {
   const isHi = language === "hi";
-  const [messages, setMessages] = useState<Message[]>(() =>
-    getInitialVoiceMessages(draftId, isHi),
-  );
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "initial",
+      sender: "ai",
+      text: isHi
+        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
+        : "Hello! I am Aurora AI. Please describe your symptoms.",
+    },
+  ]);
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [canContinue, setCanContinue] = useState(() =>
-    hasExistingVoiceTurn(draftId),
-  );
+  const [canContinue, setCanContinue] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -111,7 +74,7 @@ export function VoiceAIConsultation({
             {
               id: "restored-question",
               sender: "ai",
-              text: state.next_question!,
+              text: state.next_question,
             },
           ]);
         }
@@ -133,8 +96,20 @@ export function VoiceAIConsultation({
         return;
       }
 
+      const localMessageId = `user-${Date.now()}`;
+
       onActivity?.();
       setError(null);
+      setCanContinue(true);
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: localMessageId,
+          sender: "user",
+          text: content,
+        },
+      ]);
+      setCurrentTranscript("");
       setIsSaving(true);
 
       const result = await onConversationTurn(
@@ -152,15 +127,6 @@ export function VoiceAIConsultation({
         setIsSaving(false);
         return;
       }
-
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: result.turn_id,
-          sender: "user",
-          text: content,
-        },
-      ]);
 
       if (result.assistant_response) {
         setMessages((previous) => [
@@ -190,7 +156,6 @@ export function VoiceAIConsultation({
         }
       }
 
-      setCanContinue(true);
       setIsSaving(false);
     },
     [completed, isHi, isSaving, onActivity, onConversationTurn],
@@ -237,7 +202,6 @@ export function VoiceAIConsultation({
 
       if (finalTranscript.trim()) {
         void handleUserMessage(finalTranscript);
-        setCurrentTranscript("");
       }
     };
 

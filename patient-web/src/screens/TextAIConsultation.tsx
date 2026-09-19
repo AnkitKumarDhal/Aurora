@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Send, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getInterviewState, type InterviewTurnResult } from "@/api/interview";
-import { loadPatientDraft } from "@/lib/patientDraft";
 
 interface TextAIConsultationProps {
   draftId: string;
@@ -22,64 +21,27 @@ interface Message {
   text: string;
 }
 
-function getInitialMessages(draftId: string, isHi: boolean): Message[] {
-  const initialMessage: Message = {
-    id: "initial",
-    sender: "ai",
-    text: isHi
-      ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
-      : "Hello! I am Aurora AI. Please describe your symptoms.",
-  };
-
-  const draft = loadPatientDraft();
-
-  if (!draft || draft.draft_id !== draftId) {
-    return [initialMessage];
-  }
-
-  const existingTurns = draft.conversation_turns.filter(
-    (turn) => turn.input_type === "TEXT",
-  );
-
-  return [
-    initialMessage,
-    ...existingTurns.map((turn) => ({
-      id: turn.local_id,
-      sender: "user" as const,
-      text: turn.content,
-    })),
-  ];
-}
-
-function hasExistingTextTurn(draftId: string): boolean {
-  const draft = loadPatientDraft();
-
-  if (!draft || draft.draft_id !== draftId) {
-    return false;
-  }
-
-  return draft.conversation_turns.some((turn) => turn.input_type === "TEXT");
-}
-
 export function TextAIConsultation({
-  draftId,
   sessionId,
   onNext,
   onConversationTurn,
   language,
 }: TextAIConsultationProps) {
   const isHi = language === "hi";
-  const [messages, setMessages] = useState<Message[]>(() =>
-    getInitialMessages(draftId, isHi),
-  );
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "initial",
+      sender: "ai",
+      text: isHi
+        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
+        : "Hello! I am Aurora AI. Please describe your symptoms.",
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [canContinue, setCanContinue] = useState(() =>
-    hasExistingTextTurn(draftId),
-  );
+  const [canContinue, setCanContinue] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const hydratedFromDraft = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -102,7 +64,7 @@ export function TextAIConsultation({
             {
               id: "restored-question",
               sender: "ai",
-              text: state.next_question!,
+              text: state.next_question,
             },
           ]);
         }
@@ -123,7 +85,19 @@ export function TextAIConsultation({
       return;
     }
 
+    const localMessageId = `user-${Date.now()}`;
+
     setError(null);
+    setInput("");
+    setCanContinue(true);
+    setMessages((previous) => [
+      ...previous,
+      {
+        id: localMessageId,
+        sender: "user",
+        text: content,
+      },
+    ]);
     setIsThinking(true);
 
     const result = await onConversationTurn(
@@ -141,15 +115,6 @@ export function TextAIConsultation({
       setIsThinking(false);
       return;
     }
-
-    setMessages((previous) => [
-      ...previous,
-      {
-        id: result.turn_id,
-        sender: "user",
-        text: content,
-      },
-    ]);
 
     if (result.assistant_response) {
       setMessages((previous) => [
@@ -179,8 +144,6 @@ export function TextAIConsultation({
       }
     }
 
-    setInput("");
-    setCanContinue(true);
     setIsThinking(false);
   };
 
