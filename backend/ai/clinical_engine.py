@@ -6,7 +6,7 @@ an optional CLI wrapper for older demos while avoiding import-time input() or
 infinite loops.
 """
 
-from clinical_service import ClinicalSession
+from .clinical_service import ClinicalSession
 
 
 def run_interactive() -> None:

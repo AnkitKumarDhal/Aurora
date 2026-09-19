@@ -39,6 +39,10 @@ from backend.services.queue import QueueService
 from backend.services.triage import TriageService
 from backend.services.verification import VerificationService
 from backend.services.workflow import WorkflowService
+from backend.ai.aurora_integration import AuroraClinicalAdapter
+from backend.services.clinical_intelligence import ClinicalIntelligenceService
+from backend.services.clinical_signal import ClinicalSignalService
+from backend.services.patient_session import PatientSessionPreparationService
 
 
 def get_authentication_service() -> AuthenticationService:
@@ -243,4 +247,27 @@ def get_doctor_case_service() -> DoctorCaseService:
         assignment_service=AssignmentService(
             assignment_repository,
         ),
+    )
+
+
+def get_patient_session_service() -> PatientSessionPreparationService:
+    return PatientSessionPreparationService(
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
+        ephemeral_identity_service=get_ephemeral_identity_service(),
+    )
+
+
+def get_clinical_intelligence_service() -> ClinicalIntelligenceService:
+    return ClinicalIntelligenceService(
+        adapter=AuroraClinicalAdapter(),
+        conversation_service=get_conversation_service(),
+        signal_service=ClinicalSignalService(
+            ClinicalSignalRepository(),
+        ),
+        summary_service=get_clinical_summary_service(),
+        triage_service=get_triage_service(),
+        document_service=get_document_service(),
+        session_service=get_clinical_session_service(),
     )

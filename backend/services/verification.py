@@ -3,7 +3,7 @@ from uuid import uuid4
 from pymongo.errors import DuplicateKeyError
 
 from backend.domain.common import utc_now
-from backend.domain.enums import SessionStatus, VerificationStatus
+from backend.domain.enums import SessionStatus, VerificationStatus, ConsentStatus
 from backend.domain.patient import Patient
 from backend.integrations.identity import (
     IdentityOtpChallenge,
@@ -54,10 +54,20 @@ class VerificationService:
                 "Clinical session could not enter identifying state",
             )
 
-        if session.status != SessionStatus.IDENTIFYING:
+        allowed_statuses = {
+            SessionStatus.IDENTIFYING,
+            SessionStatus.CONSENTED,
+            SessionStatus.HISTORY_IN_PROGRESS,
+            SessionStatus.DOCUMENT_PROCESSING
+        }
+
+        if session.status not in allowed_statuses:
             raise ValueError(
-                "Session must be identifying for identification",
-            )
+                "Session is not in a valid state for identity persistence")
+
+        if (session.status != SessionStatus.IDENTIFYING and session.consent_status != ConsentStatus.GRANTED):
+            raise ValueError(
+                "Patient consent is required before identity persistence")
 
         return await self.identity_provider.request_otp(
             session_id,

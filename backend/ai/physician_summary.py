@@ -3,14 +3,14 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-from ai_engine import generate_ai_physician_summary
-from clinical_discrepancy import (
+from .ai_engine import generate_ai_physician_summary
+from .clinical_discrepancy import (
     detect_cross_source_discrepancies,
 )
-from clinical_timeline import (
+from .clinical_timeline import (
     build_clinical_review_panel,
 )
-from medication_safety import screen_medication_interactions
+from .medication_safety import screen_medication_interactions
 
 
 def _as_dict(value: Any) -> Dict[str, Any]:

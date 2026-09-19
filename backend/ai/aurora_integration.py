@@ -26,8 +26,8 @@ import json
 from typing import Any, Dict, Iterable, List, Optional
 from uuid import NAMESPACE_URL, uuid5
 
-from clinical_service import ClinicalSession
-from physician_summary import build_physician_summary
+from .clinical_service import ClinicalSession
+from .physician_summary import build_physician_summary
 
 
 # ---------------------------------------------------------------------------

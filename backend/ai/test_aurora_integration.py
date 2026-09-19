@@ -1,4 +1,4 @@
-from aurora_integration import AuroraClinicalAdapter
+from backend.ai.aurora_integration import AuroraClinicalAdapter
 
 
 def _patient_turns() -> list[dict]:

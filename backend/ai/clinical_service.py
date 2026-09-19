@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from ai_engine import (
+from .ai_engine import (
     extract_contextual_fields,
     extract_explicit_onset,
     extract_history,
 )
-from complaint_router import classify_complaint
-from clinical_schema import QUESTION_GROUPS
-from red_flag_engine import detect_red_flags
-from clinical_evidence import ClinicalEvidenceStore
+from .complaint_router import classify_complaint
+from .clinical_schema import QUESTION_GROUPS
+from .red_flag_engine import detect_red_flags
+from .clinical_evidence import ClinicalEvidenceStore
 
 
 class ClinicalSession:
