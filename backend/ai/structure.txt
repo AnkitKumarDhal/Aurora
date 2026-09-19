@@ -1,0 +1,39 @@
+backend/ai/
+├── __init__.py
+│
+├── clinical_schema.py
+├── red_flag_engine.py
+│
+├── interview/
+│   ├── __init__.py
+│   ├── controller.py
+│   ├── extractor.py
+│   ├── objectives.py
+│   └── questions.py
+│
+├── ocr/
+│   ├── __init__.py
+│   ├── engine.py
+│   ├── preprocessing.py
+│   └── classification.py
+│
+├── documents/
+│   ├── __init__.py
+│   ├── pipeline.py
+│   ├── prescription.py
+│   ├── laboratory.py
+│   ├── discharge.py
+│   └── bridge.py
+│
+├── clinical/
+│   ├── __init__.py
+│   ├── adapter.py
+│   ├── evidence.py
+│   ├── discrepancy.py
+│   ├── timeline.py
+│   ├── medication_safety.py
+│   └── summary.py
+│
+└── voice/
+    ├── __init__.py
+    └── asr.py

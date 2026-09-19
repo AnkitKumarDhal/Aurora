@@ -1,5 +1,7 @@
 from functools import lru_cache
 
+from backend.ai.interview.controller import InterviewController
+from backend.ai.interview.extractor import InterviewExtractor
 from backend.auth.service import AuthenticationService
 from backend.config import settings
 from backend.database.repositories.assignment import AssignmentRepository
@@ -8,8 +10,7 @@ from backend.database.repositories.clinical_signal import ClinicalSignalReposito
 from backend.database.repositories.clinical_summary import ClinicalSummaryRepository
 from backend.database.repositories.conversation import ConversationRepository
 from backend.database.repositories.doctor import DoctorRepository
-from backend.database.repositories.document import DocumentExtractionRepository
-from backend.database.repositories.document import DocumentRepository
+from backend.database.repositories.document import DocumentExtractionRepository, DocumentRepository
 from backend.database.repositories.patient import PatientRepository
 from backend.database.repositories.promotion import PromotionRepository
 from backend.database.repositories.queue import QueueRepository
@@ -23,6 +24,7 @@ from backend.integrations.storage import LocalStorage
 from backend.services.assignment import AssignmentService
 from backend.services.assignment_scheduler import AssignmentSchedulerService
 from backend.services.clinical_session import ClinicalSessionService
+from backend.services.clinical_signal import ClinicalSignalService
 from backend.services.clinical_summary import ClinicalSummaryService
 from backend.services.consent import ConsentService
 from backend.services.conversation import ConversationService
@@ -59,6 +61,10 @@ def get_assignment_repository() -> AssignmentRepository:
 
 def get_clinical_session_service() -> ClinicalSessionService:
     return ClinicalSessionService(ClinicalSessionRepository())
+
+
+def get_clinical_signal_service() -> ClinicalSignalService:
+    return ClinicalSignalService(ClinicalSignalRepository())
 
 
 def get_clinical_summary_service() -> ClinicalSummaryService:
@@ -243,4 +249,29 @@ def get_doctor_case_service() -> DoctorCaseService:
         assignment_service=AssignmentService(
             assignment_repository,
         ),
+    )
+
+
+def get_interview_controller() -> InterviewController:
+    return InterviewController(
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
+        conversation_service=ConversationService(
+            repository=ConversationRepository(),
+            session_service=ClinicalSessionService(
+                ClinicalSessionRepository(),
+            ),
+        ),
+        signal_service=ClinicalSignalService(
+            ClinicalSignalRepository(),
+        ),
+        summary_service=ClinicalSummaryService(
+            ClinicalSummaryRepository(),
+        ),
+        triage_service=TriageService(
+            repository=TriageRepository(),
+            signal_repository=ClinicalSignalRepository(),
+        ),
+        extractor=InterviewExtractor(),
     )

@@ -12,6 +12,7 @@ from backend.api.routes.documents import router as documents_router
 from backend.api.routes.doctor_case import router as doctor_case_router
 from backend.api.routes.doctor_queue import router as doctor_queue_router
 from backend.api.routes.intake import router as intake_router
+from backend.api.routes.interview import router as interview_router
 from backend.api.routes.patient_registration import router as patient_registration_router
 from backend.api.routes.patient_verification import router as patient_verification_router
 from backend.api.routes.promotion import router as promotion_router
@@ -50,18 +51,13 @@ app.include_router(assignment_router, prefix="/api/v1")
 app.include_router(sessions_router, prefix="/api/v1")
 app.include_router(verification_router, prefix="/api/v1")
 app.include_router(consent_router, prefix="/api/v1")
-app.include_router(
-    consent_information_router,
-    prefix="/api/v1",
-)
+app.include_router(consent_information_router, prefix="/api/v1")
 app.include_router(conversation_router, prefix="/api/v1")
+app.include_router(interview_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(doctor_case_router, prefix="/api/v1")
 app.include_router(patient_verification_router, prefix="/api/v1")
-app.include_router(
-    patient_registration_router,
-    prefix="/api/v1",
-)
+app.include_router(patient_registration_router, prefix="/api/v1")
 app.include_router(doctor_queue_router, prefix="/api/v1")
 app.include_router(clinical_summary_router, prefix="/api/v1")
 app.include_router(intake_router, prefix="/api/v1")
