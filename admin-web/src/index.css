@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme inline {
@@ -44,12 +45,14 @@
   --aurora-danger: #c97a6a;
   --aurora-success: #6fa97f;
   --aurora-warning: #e0a758;
+
+  --aurora-shadow-sm: 0 1px 2px rgba(58, 46, 92, 0.04);
+  --aurora-shadow-md: 0 4px 12px rgba(58, 46, 92, 0.08);
+  --aurora-shadow-lg: 0 12px 32px rgba(58, 46, 92, 0.12);
 }
 
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html,
@@ -88,4 +91,27 @@ select {
 
 .mono {
   font-family: "JetBrains Mono", monospace;
+}
+
+::selection {
+  background: var(--aurora-primary-tint);
+  color: var(--aurora-text-primary);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--aurora-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--aurora-primary);
 }
