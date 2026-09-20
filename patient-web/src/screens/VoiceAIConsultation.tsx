@@ -29,6 +29,46 @@ interface Message {
   text: string;
 }
 
+function getVoiceErrorMessage(error: string, isHi: boolean): string | null {
+  if (error === "aborted") {
+    return null;
+  }
+
+  if (error === "no-speech") {
+    return isHi
+      ? "कोई आवाज़ नहीं मिली। कृपया फिर से बोलें।"
+      : "No speech was detected. Please try speaking again.";
+  }
+
+  if (error === "audio-capture") {
+    return isHi
+      ? "माइक्रोफोन उपलब्ध नहीं है। कृपया अपनी माइक्रोफोन सेटिंग जांचें।"
+      : "The microphone is not available. Please check your microphone settings.";
+  }
+
+  if (error === "not-allowed" || error === "service-not-allowed") {
+    return isHi
+      ? "माइक्रोफोन की अनुमति नहीं मिली। कृपया ब्राउज़र में माइक्रोफोन अनुमति दें।"
+      : "Microphone permission was denied. Please allow microphone access in your browser.";
+  }
+
+  if (error === "language-not-supported") {
+    return isHi
+      ? "चयनित भाषा के लिए वॉयस पहचान उपलब्ध नहीं है।"
+      : "Voice recognition is not available for the selected language.";
+  }
+
+  if (error === "network") {
+    return isHi
+      ? "वॉयस पहचान सेवा उपलब्ध नहीं है। कृपया इंटरनेट कनेक्शन जांचें और फिर प्रयास करें।"
+      : "The speech recognition service is unavailable. Please check your internet connection and try again.";
+  }
+
+  return isHi
+    ? "वॉयस इनपुट में समस्या हुई। कृपया फिर से प्रयास करें।"
+    : "There was a problem with voice input. Please try again.";
+}
+
 export function VoiceAIConsultation({
   sessionId,
   onNext,
@@ -37,6 +77,7 @@ export function VoiceAIConsultation({
   language,
 }: VoiceAIConsultationProps) {
   const isHi = language === "hi";
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "initial",
@@ -46,15 +87,28 @@ export function VoiceAIConsultation({
         : "Hello! I am Aurora AI. Please describe your symptoms.",
     },
   ]);
+
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [canContinue, setCanContinue] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const hydrated = useRef(false);
+  const recognitionStartingRef = useRef(false);
+  const expectedStopRef = useRef(false);
+
+  const latestOnActivityRef = useRef(onActivity);
+  const latestHandleUserMessageRef = useRef<(text: string) => Promise<void>>(
+    async () => undefined,
+  );
+
+  useEffect(() => {
+    latestOnActivityRef.current = onActivity;
+  }, [onActivity]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,14 +123,15 @@ export function VoiceAIConsultation({
 
     void getInterviewState(sessionId)
       .then((state) => {
-        const next_question = state.next_question;
-        if (state.patient_turns > 0 && next_question) {
+        const nextQuestion = state.next_question;
+
+        if (state.patient_turns > 0 && nextQuestion) {
           setMessages((previous) => [
             ...previous,
             {
               id: "restored-question",
               sender: "ai",
-              text: next_question,
+              text: nextQuestion,
             },
           ]);
         }
@@ -103,6 +158,7 @@ export function VoiceAIConsultation({
       flushSync(() => {
         setError(null);
         setCanContinue(true);
+
         setMessages((previous) => [
           ...previous,
           {
@@ -111,6 +167,7 @@ export function VoiceAIConsultation({
             text: content,
           },
         ]);
+
         setCurrentTranscript("");
         setIsSaving(true);
       });
@@ -124,6 +181,7 @@ export function VoiceAIConsultation({
         content,
         isHi ? "hi" : "en",
       );
+
       if (!result) {
         setError(
           isHi
@@ -168,6 +226,10 @@ export function VoiceAIConsultation({
   );
 
   useEffect(() => {
+    latestHandleUserMessageRef.current = handleUserMessage;
+  }, [handleUserMessage]);
+
+  useEffect(() => {
     const SpeechRecognition = getSpeechRecognitionConstructor();
 
     if (!SpeechRecognition) {
@@ -176,16 +238,19 @@ export function VoiceAIConsultation({
 
     const recognitionInstance = new SpeechRecognition();
 
-    recognitionInstance.continuous = true;
+    recognitionInstance.continuous = false;
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = isHi ? "hi-IN" : "en-US";
 
     recognitionInstance.onstart = () => {
-      onActivity?.();
+      recognitionStartingRef.current = false;
+      expectedStopRef.current = false;
+      setIsListening(true);
+      latestOnActivityRef.current?.();
     };
 
     recognitionInstance.onresult = (event: SpeechRecognitionResultEvent) => {
-      onActivity?.();
+      latestOnActivityRef.current?.();
 
       let finalTranscript = "";
       let interimTranscript = "";
@@ -207,31 +272,65 @@ export function VoiceAIConsultation({
       setCurrentTranscript(interimTranscript);
 
       if (finalTranscript.trim()) {
-        void handleUserMessage(finalTranscript);
+        expectedStopRef.current = true;
+        setIsListening(false);
+
+        try {
+          recognitionInstance.stop();
+        } catch {
+          // Recognition may already be ending.
+        }
+
+        void latestHandleUserMessageRef.current(finalTranscript.trim());
       }
     };
 
     recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error("Speech recognition error:", event.error);
+      recognitionStartingRef.current = false;
       setIsListening(false);
-      setError(
-        isHi
-          ? "वॉयस इनपुट में समस्या हुई। कृपया फिर से प्रयास करें।"
-          : "There was a problem with voice input. Please try again.",
-      );
+
+      if (event.error === "aborted" && expectedStopRef.current) {
+        expectedStopRef.current = false;
+        return;
+      }
+
+      expectedStopRef.current = false;
+
+      const message = getVoiceErrorMessage(event.error, isHi);
+
+      if (message) {
+        setError(message);
+      }
+
+      console.error("Speech recognition error:", event.error);
     };
 
     recognitionInstance.onend = () => {
+      recognitionStartingRef.current = false;
       setIsListening(false);
+
+      if (!expectedStopRef.current) {
+        setCurrentTranscript("");
+      }
+
+      expectedStopRef.current = false;
     };
 
     recognitionRef.current = recognitionInstance;
 
     return () => {
-      recognitionInstance.stop();
+      recognitionStartingRef.current = false;
+      expectedStopRef.current = true;
+
+      try {
+        recognitionInstance.stop();
+      } catch {
+        // Ignore cleanup errors.
+      }
+
       recognitionRef.current = null;
     };
-  }, [handleUserMessage, isHi, onActivity]);
+  }, [isHi]);
 
   const toggleListening = () => {
     const currentRecognition = recognitionRef.current;
@@ -240,18 +339,48 @@ export function VoiceAIConsultation({
       return;
     }
 
-    onActivity?.();
+    latestOnActivityRef.current?.();
+
+    if (recognitionStartingRef.current) {
+      return;
+    }
 
     if (isListening) {
-      currentRecognition.stop();
+      expectedStopRef.current = true;
       setIsListening(false);
+      setCurrentTranscript("");
+
+      try {
+        currentRecognition.stop();
+      } catch {
+        // Ignore if already stopped.
+      }
+
       return;
     }
 
     setError(null);
-    currentRecognition.start();
-    setIsListening(true);
+    setCurrentTranscript("");
+    expectedStopRef.current = false;
+    recognitionStartingRef.current = true;
+
+    try {
+      currentRecognition.start();
+    } catch (startError) {
+      recognitionStartingRef.current = false;
+      setIsListening(false);
+
+      setError(
+        isHi
+          ? "वॉयस पहचान शुरू नहीं हो सकी। कृपया फिर से प्रयास करें।"
+          : "Voice recognition could not be started. Please try again.",
+      );
+
+      console.error("Unable to start speech recognition:", startError);
+    }
   };
+
+  const speechRecognitionAvailable = getSpeechRecognitionConstructor() !== null;
 
   return (
     <div className="flex h-[80vh] w-full flex-col items-center">
@@ -316,10 +445,12 @@ export function VoiceAIConsultation({
 
               <div className="flex gap-1 rounded-xl rounded-tl-none bg-primary-tint p-3">
                 <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
+
                 <span
                   className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.2s" }}
                 />
+
                 <span
                   className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{ animationDelay: "0.4s" }}
@@ -344,7 +475,7 @@ export function VoiceAIConsultation({
                 ? "animate-pulse bg-danger"
                 : "bg-primary hover:bg-primary-dark"
             }`}
-            disabled={isSaving || completed}
+            disabled={!speechRecognitionAvailable || isSaving || completed}
             onClick={toggleListening}
             type="button"
           >
@@ -356,15 +487,21 @@ export function VoiceAIConsultation({
           </button>
 
           <span
-            className={`text-sm ${isListening ? "text-danger" : "text-text-secondary"}`}
+            className={`text-sm ${
+              isListening ? "text-danger" : "text-text-secondary"
+            }`}
           >
-            {isListening
+            {!speechRecognitionAvailable
               ? isHi
-                ? "सुन रहा है..."
-                : "Listening..."
-              : isHi
-                ? "बोलने के लिए टैप करें"
-                : "Tap to speak"}
+                ? "वॉयस इनपुट उपलब्ध नहीं है"
+                : "Voice input unavailable"
+              : isListening
+                ? isHi
+                  ? "सुन रहा है..."
+                  : "Listening..."
+                : isHi
+                  ? "बोलने के लिए टैप करें"
+                  : "Tap to speak"}
           </span>
         </div>
       </div>
