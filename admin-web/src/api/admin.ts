@@ -30,11 +30,26 @@ export interface AdminDashboardPatient {
   waiting_time_seconds: number | null;
 }
 
+export interface AdminDashboardPromotion {
+  promotion_request_id: string;
+  queue_entry_id: string;
+  patient_id: string;
+  patient_name: string;
+  current_doctor_id: string | null;
+  current_doctor_name: string | null;
+  target_doctor_id: string;
+  target_doctor_name: string;
+  reason: string;
+  status: string;
+  decision_deadline: string;
+}
+
 export interface AdminDashboard {
   department_id: string;
   stats: AdminDashboardStats;
   doctors: AdminDashboardDoctor[];
   patients: AdminDashboardPatient[];
+  promotions: AdminDashboardPromotion[];
 }
 
 export interface ReassignmentResponse {
@@ -43,6 +58,18 @@ export interface ReassignmentResponse {
   previous_doctor_id: string | null;
   doctor_id: string;
   assignment_id: string;
+}
+
+export interface PromotionResponse {
+  promotion_request_id: string;
+  queue_entry_id: string;
+  target_doctor_id: string;
+  reason: string;
+  status: string;
+  decision_deadline: string;
+  decided_by: string | null;
+  decision_reason: string | null;
+  decided_at: string | null;
 }
 
 export async function getAdminDashboard(
@@ -66,6 +93,38 @@ export async function reassignPatient(
     body: JSON.stringify({
       queue_entry_id: queueEntryId,
       doctor_id: doctorId,
+    }),
+  });
+
+  return response.data;
+}
+
+export async function approvePromotion(
+  promotionRequestId: string,
+  decisionReason?: string,
+): Promise<PromotionResponse> {
+  const response = await apiRequest<{
+    data: PromotionResponse;
+  }>(`/promotions/${encodeURIComponent(promotionRequestId)}/approve`, {
+    method: "POST",
+    body: JSON.stringify({
+      decision_reason: decisionReason ?? undefined,
+    }),
+  });
+
+  return response.data;
+}
+
+export async function denyPromotion(
+  promotionRequestId: string,
+  decisionReason?: string,
+): Promise<PromotionResponse> {
+  const response = await apiRequest<{
+    data: PromotionResponse;
+  }>(`/promotions/${encodeURIComponent(promotionRequestId)}/deny`, {
+    method: "POST",
+    body: JSON.stringify({
+      decision_reason: decisionReason ?? undefined,
     }),
   });
 

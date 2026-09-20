@@ -125,6 +125,9 @@ from backend.services.patient_intake_completion import (
 from backend.services.promotion import (
     PromotionService,
 )
+from backend.services.promotion_workflow import (
+    PromotionWorkflowService,
+)
 from backend.services.queue import (
     QueueService,
 )
@@ -151,6 +154,29 @@ def get_authentication_service() -> AuthenticationService:
 def get_promotion_service() -> PromotionService:
     return PromotionService(
         PromotionRepository(),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_promotion_workflow_service() -> PromotionWorkflowService:
+    return PromotionWorkflowService(
+        promotion_service=get_promotion_service(),
+        queue_service=QueueService(
+            QueueRepository(),
+        ),
+        reassignment_service=ReassignmentService(
+            queue_repository=QueueRepository(),
+            assignment_repository=(
+                AssignmentRepository()
+            ),
+            doctor_repository=(
+                DoctorRepository()
+            ),
+        ),
+        doctor_repository=DoctorRepository(),
+        assignment_repository=(
+            AssignmentRepository()
+        ),
     )
 
 
@@ -190,7 +216,9 @@ def get_intake_service() -> IntakeService:
         ),
         triage_service=TriageService(
             repository=TriageRepository(),
-            signal_repository=ClinicalSignalRepository(),
+            signal_repository=(
+                ClinicalSignalRepository()
+            ),
         ),
     )
 
@@ -204,7 +232,9 @@ def get_queue_service() -> QueueService:
 def get_triage_service() -> TriageService:
     return TriageService(
         repository=TriageRepository(),
-        signal_repository=ClinicalSignalRepository(),
+        signal_repository=(
+            ClinicalSignalRepository()
+        ),
     )
 
 
@@ -217,7 +247,10 @@ def get_healthcare_integration_service() -> HealthcareIntegrationService:
 
 
 def get_workflow_service() -> WorkflowService:
-    assignment_repository = AssignmentRepository()
+    assignment_repository = (
+        AssignmentRepository()
+    )
+
     assignment_service = AssignmentService(
         assignment_repository,
     )
@@ -229,18 +262,31 @@ def get_workflow_service() -> WorkflowService:
         queue_service=QueueService(
             QueueRepository(),
         ),
-        assignment_scheduler=AssignmentSchedulerService(
-            doctor_repository=DoctorRepository(),
-            assignment_repository=assignment_repository,
-            assignment_service=assignment_service,
+        assignment_scheduler=(
+            AssignmentSchedulerService(
+                doctor_repository=(
+                    DoctorRepository()
+                ),
+                assignment_repository=(
+                    assignment_repository
+                ),
+                assignment_service=(
+                    assignment_service
+                ),
+            )
         ),
         assignment_service=assignment_service,
         triage_service=TriageService(
             repository=TriageRepository(),
-            signal_repository=ClinicalSignalRepository(),
+            signal_repository=(
+                ClinicalSignalRepository()
+            ),
         ),
         healthcare_integration_service=(
             get_healthcare_integration_service()
+        ),
+        promotion_workflow=(
+            get_promotion_workflow_service()
         ),
     )
 
@@ -248,7 +294,9 @@ def get_workflow_service() -> WorkflowService:
 def get_reassignment_service() -> ReassignmentService:
     return ReassignmentService(
         queue_repository=QueueRepository(),
-        assignment_repository=AssignmentRepository(),
+        assignment_repository=(
+            AssignmentRepository()
+        ),
         doctor_repository=DoctorRepository(),
     )
 
@@ -337,9 +385,15 @@ def get_patient_registration_service() -> PatientRegistrationService:
         patient_service=PatientService(
             PatientRepository(),
         ),
-        verification_service=get_verification_service(),
-        conversation_service=get_conversation_service(),
-        document_service=get_document_service(),
+        verification_service=(
+            get_verification_service()
+        ),
+        conversation_service=(
+            get_conversation_service()
+        ),
+        document_service=(
+            get_document_service()
+        ),
         storage=get_storage(),
         ephemeral_identity_service=(
             get_ephemeral_identity_service()
@@ -371,8 +425,12 @@ def get_consent_service() -> ConsentService:
     )
 
     return ConsentService(
-        session_service=verification_service.session_service,
-        verification_service=verification_service,
+        session_service=(
+            verification_service.session_service
+        ),
+        verification_service=(
+            verification_service
+        ),
     )
 
 
@@ -390,15 +448,19 @@ def get_doctor_case_service() -> DoctorCaseService:
             ClinicalSessionRepository(),
         ),
         patient_service=PatientService(
-            PatientRepository(),
+            PatientRepository()
         ),
         summary_service=ClinicalSummaryService(
-            ClinicalSummaryRepository(),
+            ClinicalSummaryRepository()
         ),
-        document_service=get_document_service(),
+        document_service=(
+            get_document_service()
+        ),
         triage_service=TriageService(
             repository=TriageRepository(),
-            signal_repository=ClinicalSignalRepository(),
+            signal_repository=(
+                ClinicalSignalRepository()
+            ),
         ),
         assignment_service=AssignmentService(
             assignment_repository,
@@ -409,18 +471,22 @@ def get_doctor_case_service() -> DoctorCaseService:
 def get_interview_controller() -> InterviewController:
     return InterviewController(
         session_service=ClinicalSessionService(
-            ClinicalSessionRepository(),
+            ClinicalSessionRepository()
         ),
-        conversation_service=get_conversation_service(),
+        conversation_service=(
+            get_conversation_service()
+        ),
         signal_service=ClinicalSignalService(
-            ClinicalSignalRepository(),
+            ClinicalSignalRepository()
         ),
         summary_service=ClinicalSummaryService(
-            ClinicalSummaryRepository(),
+            ClinicalSummaryRepository()
         ),
         triage_service=TriageService(
             repository=TriageRepository(),
-            signal_repository=ClinicalSignalRepository(),
+            signal_repository=(
+                ClinicalSignalRepository()
+            ),
         ),
         extractor=InterviewExtractor(),
     )
@@ -428,39 +494,60 @@ def get_interview_controller() -> InterviewController:
 
 def get_clinical_intelligence_service() -> ClinicalIntelligenceService:
     return ClinicalIntelligenceService(
-        session_service=get_clinical_session_service(),
-        signal_service=get_clinical_signal_service(),
-        summary_service=get_clinical_summary_service(),
-        conversation_service=get_conversation_service(),
-        document_service=get_document_service(),
+        session_service=(
+            get_clinical_session_service()
+        ),
+        signal_service=(
+            get_clinical_signal_service()
+        ),
+        summary_service=(
+            get_clinical_summary_service()
+        ),
+        conversation_service=(
+            get_conversation_service()
+        ),
+        document_service=(
+            get_document_service()
+        ),
     )
 
 
 def get_patient_intake_completion_service() -> PatientIntakeCompletionService:
     return PatientIntakeCompletionService(
-        session_service=get_clinical_session_service(),
+        session_service=(
+            get_clinical_session_service()
+        ),
         ephemeral_identity_service=(
             get_ephemeral_identity_service()
         ),
-        interview_controller=get_interview_controller(),
-        workflow_service=get_workflow_service(),
+        interview_controller=(
+            get_interview_controller()
+        ),
+        workflow_service=(
+            get_workflow_service()
+        ),
     )
 
 
 def get_admin_dashboard_service() -> AdminDashboardService:
     return AdminDashboardService(
         doctor_repository=DoctorRepository(),
-        assignment_repository=AssignmentRepository(),
+        assignment_repository=(
+            AssignmentRepository()
+        ),
         queue_service=QueueService(
-            QueueRepository(),
+            QueueRepository()
         ),
         session_service=ClinicalSessionService(
-            ClinicalSessionRepository(),
+            ClinicalSessionRepository()
         ),
         patient_service=PatientService(
-            PatientRepository(),
+            PatientRepository()
         ),
         summary_service=ClinicalSummaryService(
-            ClinicalSummaryRepository(),
+            ClinicalSummaryRepository()
+        ),
+        promotion_service=(
+            get_promotion_service()
         ),
     )

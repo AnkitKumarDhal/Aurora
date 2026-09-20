@@ -2,14 +2,17 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from backend.api.dependencies import (
+    get_promotion_workflow_service,
+)
+from backend.api.routes.admin_dashboard import (
+    router as admin_dashboard_router,
+)
 from backend.api.routes.assignment import (
     router as assignment_router,
 )
 from backend.api.routes.auth import (
     router as auth_router,
-)
-from backend.api.routes.admin_dashboard import (
-    router as admin_dashboard_router,
 )
 from backend.api.routes.clinical_intelligence import (
     router as clinical_intelligence_router,
@@ -91,6 +94,14 @@ async def lifespan(
 
     await initialize_database_connection()
     await initialize_database()
+
+    promotion_workflow = (
+        get_promotion_workflow_service()
+    )
+
+    await promotion_workflow.initialize(
+        "general-medicine",
+    )
 
     yield
 

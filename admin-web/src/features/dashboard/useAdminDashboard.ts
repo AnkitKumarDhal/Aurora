@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+
 import { getAdminDashboard, type AdminDashboard } from "@/api/admin";
+
 import type {
+  AdminPromotion,
   DashboardDoctor,
   DashboardStats,
-  Patient,
   DoctorStatus,
+  Patient,
   PatientState,
 } from "@/types/admin";
 
@@ -15,6 +18,7 @@ interface AdminDashboardView {
   stats: DashboardStats;
   doctors: DashboardDoctor[];
   patients: Patient[];
+  promotions: AdminPromotion[];
 }
 
 function toDoctorStatus(status: string): DoctorStatus {
@@ -70,6 +74,20 @@ function mapDashboard(dashboard: AdminDashboard): AdminDashboardView {
       complaint: patient.chief_complaint,
       queuedAt: patient.queued_at,
       waitingTimeSeconds: patient.waiting_time_seconds,
+    })),
+
+    promotions: dashboard.promotions.map((promotion) => ({
+      promotionRequestId: promotion.promotion_request_id,
+      queueEntryId: promotion.queue_entry_id,
+      patientId: promotion.patient_id,
+      patientName: promotion.patient_name,
+      currentDoctorId: promotion.current_doctor_id,
+      currentDoctorName: promotion.current_doctor_name,
+      targetDoctorId: promotion.target_doctor_id,
+      targetDoctorName: promotion.target_doctor_name,
+      reason: promotion.reason,
+      status: promotion.status as AdminPromotion["status"],
+      decisionDeadline: promotion.decision_deadline,
     })),
   };
 }

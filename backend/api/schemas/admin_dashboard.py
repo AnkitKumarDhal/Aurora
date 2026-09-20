@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from backend.domain.enums import QueueStatus, UrgencyLevel
+from backend.domain.enums import PromotionStatus, QueueStatus, UrgencyLevel
 
 
 class AdminDashboardStats(BaseModel):
@@ -33,8 +33,23 @@ class AdminDashboardPatient(BaseModel):
     waiting_time_seconds: int | None
 
 
+class AdminDashboardPromotion(BaseModel):
+    promotion_request_id: str
+    queue_entry_id: str
+    patient_id: str
+    patient_name: str
+    current_doctor_id: str | None
+    current_doctor_name: str | None
+    target_doctor_id: str
+    target_doctor_name: str
+    reason: str
+    status: PromotionStatus
+    decision_deadline: datetime
+
+
 class AdminDashboardResponse(BaseModel):
     department_id: str
     stats: AdminDashboardStats
     doctors: list[AdminDashboardDoctor]
     patients: list[AdminDashboardPatient]
+    promotions: list[AdminDashboardPromotion]

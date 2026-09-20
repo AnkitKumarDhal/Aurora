@@ -5,6 +5,7 @@ from backend.domain.enums import PromotionStatus
 
 class PromotionCreateRequest(BaseModel):
     queue_entry_id: str = Field(min_length=1)
+    target_doctor_id: str = Field(min_length=1)
     reason: str = Field(min_length=1)
 
 
@@ -15,6 +16,7 @@ class PromotionDecisionRequest(BaseModel):
 class PromotionResponse(BaseModel):
     promotion_request_id: str
     queue_entry_id: str
+    target_doctor_id: str
     reason: str
     status: PromotionStatus
     decision_deadline: datetime

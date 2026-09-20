@@ -3,12 +3,27 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from backend.database.repositories.assignment import AssignmentRepository
-from backend.database.repositories.doctor import DoctorRepository
-from backend.services.clinical_session import ClinicalSessionService
-from backend.services.clinical_summary import ClinicalSummaryService
-from backend.services.patient import PatientService
-from backend.services.queue import QueueService
+from backend.database.repositories.assignment import (
+    AssignmentRepository,
+)
+from backend.database.repositories.doctor import (
+    DoctorRepository,
+)
+from backend.services.clinical_session import (
+    ClinicalSessionService,
+)
+from backend.services.clinical_summary import (
+    ClinicalSummaryService,
+)
+from backend.services.patient import (
+    PatientService,
+)
+from backend.services.promotion import (
+    PromotionService,
+)
+from backend.services.queue import (
+    QueueService,
+)
 
 
 DASHBOARD_TIMEZONE = ZoneInfo(
@@ -38,20 +53,35 @@ class AdminDashboardService:
         session_service: ClinicalSessionService,
         patient_service: PatientService,
         summary_service: ClinicalSummaryService,
+        promotion_service: PromotionService,
     ) -> None:
-        self.doctor_repository = doctor_repository
-        self.assignment_repository = assignment_repository
+        self.doctor_repository = (
+            doctor_repository
+        )
+        self.assignment_repository = (
+            assignment_repository
+        )
         self.queue_service = queue_service
-        self.session_service = session_service
-        self.patient_service = patient_service
-        self.summary_service = summary_service
+        self.session_service = (
+            session_service
+        )
+        self.patient_service = (
+            patient_service
+        )
+        self.summary_service = (
+            summary_service
+        )
+        self.promotion_service = (
+            promotion_service
+        )
 
     async def get_dashboard(
         self,
         department_id: str,
     ) -> dict:
         doctors = (
-            await self.doctor_repository.get_department_doctors(
+            await self.doctor_repository
+            .get_department_doctors(
                 department_id,
             )
         )
@@ -65,28 +95,31 @@ class AdminDashboardService:
 
         for doctor in doctors:
             assignments = (
-                await self.assignment_repository.get_doctor_assignments(
+                await self.assignment_repository
+                .get_doctor_assignments(
                     doctor.doctor_id,
                 )
             )
 
             doctor_rows.append(
                 {
-                    "doctor_id": doctor.doctor_id,
-                    "display_name": doctor.display_name,
+                    "doctor_id":
+                        doctor.doctor_id,
+                    "display_name":
+                        doctor.display_name,
                     "status": (
                         "Available"
                         if doctor.is_available
                         else "Unavailable"
                     ),
-                    "assigned_count": len(
-                        assignments,
-                    ),
+                    "assigned_count":
+                        len(assignments),
                 },
             )
 
         entries = (
-            await self.queue_service.get_department_entries(
+            await self.queue_service
+            .get_department_entries(
                 department_id,
             )
         )
@@ -97,30 +130,12 @@ class AdminDashboardService:
             if self._is_visible_entry(entry)
         ]
 
-        waiting_entries = [
-            entry
-            for entry in visible_entries
-            if entry.status.value
-            in {
-                "WAITING",
-                "READY",
-                "CALLED",
-                "PROMOTION_PENDING",
-            }
-        ]
-
-        consultation_entries = [
-            entry
-            for entry in visible_entries
-            if entry.status.value
-            == "IN_CONSULTATION"
-        ]
-
         patient_rows = []
 
         for entry in visible_entries:
             session = (
-                await self.session_service.get_session(
+                await self.session_service
+                .get_session(
                     entry.session_id,
                 )
             )
@@ -129,7 +144,8 @@ class AdminDashboardService:
                 continue
 
             patient = (
-                await self.patient_service.get_patient(
+                await self.patient_service
+                .get_patient(
                     session.patient_id,
                 )
             )
@@ -138,22 +154,32 @@ class AdminDashboardService:
                 continue
 
             summary = (
-                await self.summary_service.get_session_summary(
+                await self.summary_service
+                .get_session_summary(
                     entry.session_id,
                 )
             )
 
             patient_rows.append(
                 {
-                    "queue_entry_id": entry.queue_entry_id,
-                    "session_id": entry.session_id,
-                    "patient_id": patient.patient_id,
-                    "display_name": patient.display_name,
-                    "age": patient.age,
-                    "urgency_level": entry.urgency_level,
-                    "priority_score": entry.priority_score,
-                    "queue_status": entry.status,
-                    "doctor_id": entry.doctor_id,
+                    "queue_entry_id":
+                        entry.queue_entry_id,
+                    "session_id":
+                        entry.session_id,
+                    "patient_id":
+                        patient.patient_id,
+                    "display_name":
+                        patient.display_name,
+                    "age":
+                        patient.age,
+                    "urgency_level":
+                        entry.urgency_level,
+                    "priority_score":
+                        entry.priority_score,
+                    "queue_status":
+                        entry.status,
+                    "doctor_id":
+                        entry.doctor_id,
                     "doctor_name": (
                         doctor_map[
                             entry.doctor_id
@@ -167,11 +193,11 @@ class AdminDashboardService:
                         if summary is not None
                         else None
                     ),
-                    "queued_at": entry.queued_at,
-                    "waiting_time_seconds": (
+                    "queued_at":
+                        entry.queued_at,
+                    "waiting_time_seconds":
                         self._waiting_time_seconds(
                             entry,
-                        )
                     ),
                 },
             )
@@ -180,29 +206,105 @@ class AdminDashboardService:
             key=self._patient_sort_key,
         )
 
-        return {
-            "department_id": department_id,
-            "stats": {
-                "patients": len(
-                    patient_rows,
-                ),
-                "waiting": len(
-                    waiting_entries,
-                ),
-                "in_consultation": len(
-                    consultation_entries,
-                ),
-                "doctors": len(
-                    doctors,
-                ),
-            },
-            "doctors": doctor_rows,
-            "patients": patient_rows,
+        patient_map = {
+            patient["queue_entry_id"]:
+                patient
+            for patient in patient_rows
         }
 
-    @classmethod
+        promotions = []
+
+        pending_promotions = (
+            await self.promotion_service
+            .get_pending_requests()
+        )
+
+        for promotion in pending_promotions:
+            patient = patient_map.get(
+                promotion.queue_entry_id,
+            )
+
+            if patient is None:
+                continue
+
+            target_doctor = doctor_map.get(
+                promotion.target_doctor_id,
+            )
+
+            if target_doctor is None:
+                continue
+
+            promotions.append(
+                {
+                    "promotion_request_id":
+                        promotion
+                        .promotion_request_id,
+                    "queue_entry_id":
+                        promotion.queue_entry_id,
+                    "patient_id":
+                        patient["patient_id"],
+                    "patient_name":
+                        patient["display_name"],
+                    "current_doctor_id":
+                        patient["doctor_id"],
+                    "current_doctor_name":
+                        patient["doctor_name"],
+                    "target_doctor_id":
+                        promotion
+                        .target_doctor_id,
+                    "target_doctor_name":
+                        target_doctor.display_name,
+                    "reason":
+                        promotion.reason,
+                    "status":
+                        promotion.status,
+                    "decision_deadline":
+                        promotion.decision_deadline,
+                },
+            )
+
+        waiting_patients = [
+            patient
+            for patient in patient_rows
+            if self._is_waiting_patient(
+                patient,
+            )
+        ]
+
+        consultation_patients = [
+            patient
+            for patient in patient_rows
+            if patient[
+                "queue_status"
+            ].value
+            == "IN_CONSULTATION"
+        ]
+
+        return {
+            "department_id":
+                department_id,
+            "stats": {
+                "patients":
+                    len(patient_rows),
+                "waiting":
+                    len(waiting_patients),
+                "in_consultation":
+                    len(
+                        consultation_patients,
+                    ),
+                "doctors":
+                    len(doctors),
+            },
+            "doctors":
+                doctor_rows,
+            "patients":
+                patient_rows,
+            "promotions":
+                promotions,
+        }
+
+    @staticmethod
     def _is_visible_entry(
-        cls,
         entry,
     ) -> bool:
         status = entry.status.value
@@ -211,18 +313,49 @@ class AdminDashboardService:
             return True
 
         if status in TERMINAL_QUEUE_STATUSES:
-            return cls._has_today_activity(
-                entry,
+            return (
+                AdminDashboardService
+                ._has_today_activity(entry)
             )
 
         return False
 
-    @classmethod
+    @staticmethod
+    def _is_waiting_patient(
+        patient: dict,
+    ) -> bool:
+        status = patient[
+            "queue_status"
+        ].value
+
+        if status not in {
+            "WAITING",
+            "READY",
+            "CALLED",
+            "PROMOTION_PENDING",
+        }:
+            return False
+
+        if status == "PROMOTION_PENDING":
+            return False
+
+        urgency = patient[
+            "urgency_level"
+        ]
+
+        return not (
+            urgency is not None
+            and urgency.value >= 4
+        )
+
+    @staticmethod
     def _has_today_activity(
-        cls,
         entry,
     ) -> bool:
-        start_at, end_at = cls._today_window()
+        start_at, end_at = (
+            AdminDashboardService
+            ._today_window()
+        )
 
         timestamps = (
             entry.created_at,
@@ -235,7 +368,8 @@ class AdminDashboardService:
         return any(
             timestamp is not None
             and start_at
-            <= cls._as_utc(timestamp)
+            <= AdminDashboardService
+            ._as_utc(timestamp)
             < end_at
             for timestamp in timestamps
         )

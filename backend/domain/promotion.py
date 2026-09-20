@@ -6,6 +6,7 @@ from .enums import PromotionStatus
 class PromotionRequest(TimestampedModel):
     promotion_request_id: str
     queue_entry_id: str
+    target_doctor_id: str
     reason: str
     status: PromotionStatus = PromotionStatus.PENDING
     decision_deadline: datetime

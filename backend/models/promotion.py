@@ -8,6 +8,7 @@ from .common import PersistenceModel
 class PromotionRequestDocument(PersistenceModel):
     promotion_request_id: str = Field(min_length=1)
     queue_entry_id: str = Field(min_length=1)
+    target_doctor_id: str = Field(min_length=1)
     reason: str
     status: PromotionStatus = PromotionStatus.PENDING
     decision_deadline: datetime
@@ -16,4 +17,4 @@ class PromotionRequestDocument(PersistenceModel):
     decided_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    collection_name: ClassVar[str] = "promotion_requests"
+    collection_name: ClassVar[str] = ("promotion_requests")

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+
 import { Header } from "@/components/Header";
 import { PatientBoard } from "@/components/PatientBoard";
 import { PatientDrawer } from "@/components/PatientDrawer";
@@ -7,8 +8,11 @@ import { PromotionPanel } from "@/components/PromotionPanel";
 import { StatsStrip } from "@/components/StatsStrip";
 import { Toast } from "@/components/Toast";
 import LoginPage from "@/pages/LoginPage";
+
 import { useAdminDashboard } from "@/features/dashboard/useAdminDashboard";
+
 import { useAuth } from "@/auth/useAuth";
+
 import { initializeAuth } from "@/auth/store";
 
 export default function App() {
@@ -64,7 +68,10 @@ export default function App() {
         <aside className="sidebar">
           <DoctorsPanel doctors={dashboard.dashboard.doctors} />
 
-          <PromotionPanel />
+          <PromotionPanel
+            promotions={dashboard.dashboard.promotions}
+            onResolved={dashboard.reload}
+          />
         </aside>
       </div>
 

@@ -40,12 +40,25 @@ export interface DashboardStats {
   doctors: number;
 }
 
-export type PromotionState =
-  | "active"
-  | "accepted"
-  | "denied"
-  | "auto"
-  | "empty";
+export interface AdminPromotion {
+  promotionRequestId: string;
+  queueEntryId: string;
+  patientId: string;
+  patientName: string;
+  currentDoctorId: string | null;
+  currentDoctorName: string | null;
+  targetDoctorId: string;
+  targetDoctorName: string;
+  reason: string;
+  status:
+    | "PENDING"
+    | "APPROVED"
+    | "AUTO_APPROVED"
+    | "DENIED"
+    | "CANCELLED"
+    | "EXPIRED";
+  decisionDeadline: string;
+}
 
 export type ToastType = "success" | "deny" | "auto" | "default";
 
