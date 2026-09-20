@@ -1,7 +1,19 @@
 import json
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-
+from backend.api.dependencies import (
+    get_patient_intake_completion_service,
+    get_patient_registration_service,
+)
+from backend.api.schemas.patient_registration import (
+    PatientIntakeCompletionRequest,
+    PatientIntakeCompletionResponse,
+    PatientRegistrationDocument,
+    PatientRegistrationDraft,
+)
+from backend.services.patient_intake_completion import (
+    PatientIntakeCompletionService,
+)
 from backend.api.dependencies import get_patient_registration_service
 from backend.api.schemas.patient_registration import (
     PatientRegistrationDocument,
@@ -78,4 +90,46 @@ async def submit_patient_registration(
             "status": session.status.value,
             "visit_type": visit_type,
         },
+    }
+
+
+@router.post(
+    "/complete",
+    response_model=dict[str, PatientIntakeCompletionResponse],
+)
+async def complete_patient_intake(
+    request: PatientIntakeCompletionRequest,
+    service: PatientIntakeCompletionService = Depends(
+        get_patient_intake_completion_service,
+    ),
+) -> dict[str, PatientIntakeCompletionResponse]:
+    try:
+        result = await service.complete(
+            session_id=request.session_id,
+            draft_id=request.draft_id,
+            verification_token=request.verification_token,
+            identity_method=request.identity_method,
+            identity_identifier=request.identity_identifier,
+        )
+    except ValueError as exc:
+        message = str(exc)
+
+        response_status = (
+            status.HTTP_404_NOT_FOUND
+            if message == "Clinical session not found"
+            else status.HTTP_400_BAD_REQUEST
+        )
+
+        raise HTTPException(
+            status_code=response_status,
+            detail=message,
+        ) from exc
+
+    return {
+        "data": PatientIntakeCompletionResponse(
+            session_id=result["session_id"],
+            status=result["status"],
+            queue_entry_id=result["queue_entry_id"],
+            doctor_id=result["doctor_id"],
+        ),
     }

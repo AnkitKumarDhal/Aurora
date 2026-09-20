@@ -164,7 +164,7 @@ export function VoiceAIConsultation({
 
       setIsSaving(false);
     },
-    [completed, isHi, isSaving, onActivity, onConversationTurn],
+    [completed, isHi, isSaving, onConversationTurn],
   );
 
   useEffect(() => {

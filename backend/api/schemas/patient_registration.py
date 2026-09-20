@@ -1,5 +1,5 @@
 from typing import Literal
-
+from backend.domain.enums import SessionStatus
 from pydantic import BaseModel, Field
 
 
@@ -36,3 +36,18 @@ class PatientRegistrationDraft(BaseModel):
     conversation_turns: list[PatientRegistrationConversationTurn] = Field(
         default_factory=list,
     )
+
+
+class PatientIntakeCompletionRequest(BaseModel):
+    session_id: str = Field(min_length=1)
+    draft_id: str = Field(min_length=1)
+    verification_token: str = Field(min_length=1)
+    identity_method: Literal["ABHA", "AADHAAR"]
+    identity_identifier: str = Field(min_length=1)
+
+
+class PatientIntakeCompletionResponse(BaseModel):
+    session_id: str
+    status: SessionStatus
+    queue_entry_id: str
+    doctor_id: str | None

@@ -115,6 +115,19 @@ class InterviewController:
             raise ValueError(
                 "Session must be consented or have history in progress")
 
+        if session.status == SessionStatus.CONSENTED:
+            transitioned_session = await self.session_service.transition_session(
+                session_id,
+                SessionStatus.HISTORY_IN_PROGRESS,
+            )
+
+            if transitioned_session is None:
+                raise ValueError(
+                    "Clinical session could not enter history-in-progress state",
+                )
+
+            session = transitioned_session
+
         existing_turn = await self.conversation_service.get_turn(turn_id)
 
         if existing_turn is None:

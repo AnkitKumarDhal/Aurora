@@ -3,9 +3,9 @@ import { getConsentInformation, recordConsent } from "@/api/consent";
 import {
   prepareInterviewSession,
   submitInterviewTurn,
-  finalizeInterview,
   type InterviewTurnResult,
 } from "@/api/interview";
+import { completePatientIntake } from "@/api/intake";
 import {
   submitPatientRegistration,
   type RegistrationResponse,
@@ -556,6 +556,10 @@ export function usePatientFlow() {
         throw new Error("Identity verification and consent are required");
       }
 
+      if (!draft.identity_method || !draft.identity_identifier) {
+        throw new Error("Verified identity information is missing");
+      }
+
       registerActivity();
 
       const documents = await listPatientDraftDocuments(draftId);
@@ -563,9 +567,15 @@ export function usePatientFlow() {
       const registration: RegistrationResponse =
         await submitPatientRegistration(draft, documents);
 
-      await finalizeInterview(registration.session_id);
+      const completion = await completePatientIntake(
+        registration.session_id,
+        draft.draft_id,
+        draft.verification_token,
+        draft.identity_method,
+        draft.identity_identifier,
+      );
 
-      setSessionId(registration.session_id);
+      setSessionId(completion.session_id);
       setRegistrationSubmitted(true);
       setOtpChallengeId(null);
       setOtpDemoCode(null);

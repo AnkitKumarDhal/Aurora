@@ -39,6 +39,7 @@ from backend.services.intake import IntakeService
 from backend.services.interview_session import InterviewSessionPreparationService
 from backend.services.patient import PatientService
 from backend.services.patient_registration import PatientRegistrationService
+from backend.services.patient_intake_completion import PatientIntakeCompletionService
 from backend.services.promotion import PromotionService
 from backend.services.queue import QueueService
 from backend.services.triage import TriageService
@@ -291,4 +292,13 @@ def get_clinical_intelligence_service() -> ClinicalIntelligenceService:
         summary_service=get_clinical_summary_service(),
         conversation_service=get_conversation_service(),
         document_service=get_document_service(),
+    )
+
+
+def get_patient_intake_completion_service() -> PatientIntakeCompletionService:
+    return PatientIntakeCompletionService(
+        session_service=get_clinical_session_service(),
+        ephemeral_identity_service=get_ephemeral_identity_service(),
+        interview_controller=get_interview_controller(),
+        workflow_service=get_workflow_service(),
     )

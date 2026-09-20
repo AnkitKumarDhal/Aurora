@@ -84,6 +84,37 @@ class WorkflowService:
 
         return queued_entry
 
+    async def queue_and_assign(
+        self,
+        session_id: str,
+    ) -> QueueEntry:
+        existing_entry = await self.queue_service.get_session_entry(
+            session_id,
+        )
+
+        if existing_entry is None:
+            existing_entry = await self.queue_session_from_triage(
+                session_id,
+            )
+
+        if (
+            existing_entry.status == QueueStatus.WAITING
+            and existing_entry.doctor_id is None
+        ):
+            await self.assign_patient(
+                session_id,
+                existing_entry.queue_entry_id,
+            )
+
+            updated_entry = await self.queue_service.get_entry(
+                existing_entry.queue_entry_id,
+            )
+
+            if updated_entry is not None:
+                existing_entry = updated_entry
+
+        return existing_entry
+
     async def assign_patient(
         self,
         session_id: str,
