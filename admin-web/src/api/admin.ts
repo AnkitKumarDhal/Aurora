@@ -37,12 +37,37 @@ export interface AdminDashboard {
   patients: AdminDashboardPatient[];
 }
 
+export interface ReassignmentResponse {
+  queue_entry_id: string;
+  session_id: string;
+  previous_doctor_id: string;
+  doctor_id: string;
+  assignment_id: string;
+}
+
 export async function getAdminDashboard(
   departmentId: string,
 ): Promise<AdminDashboard> {
-  const response = await apiRequest<{ data: AdminDashboard }>(
-    `/admin/departments/${encodeURIComponent(departmentId)}/dashboard`,
-  );
+  const response = await apiRequest<{
+    data: AdminDashboard;
+  }>(`/admin/departments/${encodeURIComponent(departmentId)}/dashboard`);
+
+  return response.data;
+}
+
+export async function reassignPatient(
+  queueEntryId: string,
+  doctorId: string,
+): Promise<ReassignmentResponse> {
+  const response = await apiRequest<{
+    data: ReassignmentResponse;
+  }>("/admin/reassignments", {
+    method: "POST",
+    body: JSON.stringify({
+      queue_entry_id: queueEntryId,
+      doctor_id: doctorId,
+    }),
+  });
 
   return response.data;
 }

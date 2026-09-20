@@ -1,7 +1,13 @@
 import asyncio
 from datetime import date, datetime, timedelta, timezone
+
 from pwdlib import PasswordHash
-from backend.database.connection import close_database, get_database_instance, initialize_database_connection
+
+from backend.database.connection import (
+    close_database,
+    get_database_instance,
+    initialize_database_connection,
+)
 from backend.database.initialization import initialize_database
 from backend.domain.enums import (
     ActorRole,
@@ -14,15 +20,33 @@ from backend.domain.enums import (
     UrgencyLevel,
     VerificationStatus,
 )
-from backend.models.assignment import DoctorAssignmentDocument
-from backend.models.clinical_session import ClinicalSessionDocument
-from backend.models.clinical_summary import ClinicalSummaryDocument
-from backend.models.department import DepartmentDocument
-from backend.models.doctor import DoctorDocument
-from backend.models.patient import PatientDocument
-from backend.models.queue import QueueEntryDocument
-from backend.models.triage import TriageResultDocument
-from backend.models.user import UserDocument
+from backend.models.assignment import (
+    DoctorAssignmentDocument,
+)
+from backend.models.clinical_session import (
+    ClinicalSessionDocument,
+)
+from backend.models.clinical_summary import (
+    ClinicalSummaryDocument,
+)
+from backend.models.department import (
+    DepartmentDocument,
+)
+from backend.models.doctor import (
+    DoctorDocument,
+)
+from backend.models.patient import (
+    PatientDocument,
+)
+from backend.models.queue import (
+    QueueEntryDocument,
+)
+from backend.models.triage import (
+    TriageResultDocument,
+)
+from backend.models.user import (
+    UserDocument,
+)
 
 
 PASSWORD = "Aurora@123"
@@ -44,6 +68,12 @@ OLD_SESSION_IDS = (
     "session-demo-1",
     "session-demo-2",
 )
+
+OLD_QUEUE_IDS = (
+    "queue-demo-1",
+    "queue-demo-2",
+)
+
 
 DEMO_CASES = (
     {
@@ -68,10 +98,20 @@ DEMO_CASES = (
         "summary_status": SummaryStatus.READY,
         "confirmed_by": None,
         "confirmed_minutes": None,
-        "chief_complaint": "Severe chest pain radiating to left arm",
-        "history_of_present_illness": "Sudden onset of severe chest pain with sweating and breathlessness.",
-        "past_medical_history": ["Hypertension"],
-        "medications": ["Amlodipine 5mg OD"],
+        "doctor_id": DOCTOR_1_ID,
+        "chief_complaint": (
+            "Severe chest pain radiating to left arm"
+        ),
+        "history_of_present_illness": (
+            "Sudden onset of severe chest pain "
+            "with sweating and breathlessness."
+        ),
+        "past_medical_history": [
+            "Hypertension",
+        ],
+        "medications": [
+            "Amlodipine 5mg OD",
+        ],
         "allergies": [],
     },
     {
@@ -96,8 +136,14 @@ DEMO_CASES = (
         "summary_status": SummaryStatus.READY,
         "confirmed_by": None,
         "confirmed_minutes": None,
-        "chief_complaint": "Fever and cough for three days",
-        "history_of_present_illness": "Fever with cough and fatigue for approximately three days.",
+        "doctor_id": DOCTOR_2_ID,
+        "chief_complaint": (
+            "Fever and cough for three days"
+        ),
+        "history_of_present_illness": (
+            "Fever with cough and fatigue for "
+            "approximately three days."
+        ),
         "past_medical_history": [],
         "medications": [],
         "allergies": [],
@@ -124,8 +170,14 @@ DEMO_CASES = (
         "summary_status": SummaryStatus.READY,
         "confirmed_by": None,
         "confirmed_minutes": None,
-        "chief_complaint": "Persistent abdominal discomfort, moderate",
-        "history_of_present_illness": "Persistent abdominal discomfort with reduced appetite over the past several days.",
+        "doctor_id": DOCTOR_2_ID,
+        "chief_complaint": (
+            "Persistent abdominal discomfort, moderate"
+        ),
+        "history_of_present_illness": (
+            "Persistent abdominal discomfort with "
+            "reduced appetite over the past several days."
+        ),
         "past_medical_history": [],
         "medications": [],
         "allergies": [],
@@ -152,8 +204,14 @@ DEMO_CASES = (
         "summary_status": SummaryStatus.READY,
         "confirmed_by": None,
         "confirmed_minutes": None,
-        "chief_complaint": "Mild headache and nasal congestion",
-        "history_of_present_illness": "Mild intermittent headache with nasal congestion and no reported fever.",
+        "doctor_id": DOCTOR_1_ID,
+        "chief_complaint": (
+            "Mild headache and nasal congestion"
+        ),
+        "history_of_present_illness": (
+            "Mild intermittent headache with nasal "
+            "congestion and no reported fever."
+        ),
         "past_medical_history": [],
         "medications": [],
         "allergies": [],
@@ -180,8 +238,14 @@ DEMO_CASES = (
         "summary_status": SummaryStatus.READY,
         "confirmed_by": None,
         "confirmed_minutes": None,
-        "chief_complaint": "Lower back pain, moderate, three weeks",
-        "history_of_present_illness": "Lower back pain for approximately three weeks with intermittent stiffness.",
+        "doctor_id": DOCTOR_2_ID,
+        "chief_complaint": (
+            "Lower back pain, moderate, three weeks"
+        ),
+        "history_of_present_illness": (
+            "Lower back pain for approximately three "
+            "weeks with intermittent stiffness."
+        ),
         "past_medical_history": [],
         "medications": [],
         "allergies": [],
@@ -208,17 +272,29 @@ DEMO_CASES = (
         "summary_status": SummaryStatus.CONFIRMED,
         "confirmed_by": DOCTOR_1_ID,
         "confirmed_minutes": 2,
-        "chief_complaint": "Follow-up: hypertension review",
-        "history_of_present_illness": "Routine hypertension follow-up with review of home blood pressure readings.",
-        "past_medical_history": ["Hypertension"],
-        "medications": ["Amlodipine 5mg OD"],
+        "doctor_id": DOCTOR_1_ID,
+        "chief_complaint": (
+            "Follow-up: hypertension review"
+        ),
+        "history_of_present_illness": (
+            "Routine hypertension follow-up with review "
+            "of home blood pressure readings."
+        ),
+        "past_medical_history": [
+            "Hypertension",
+        ],
+        "medications": [
+            "Amlodipine 5mg OD",
+        ],
         "allergies": [],
     },
 )
 
 
 def now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(
+        timezone.utc,
+    )
 
 
 def build_user(
@@ -260,10 +336,16 @@ def mongo_safe(value):
         }
 
     if isinstance(value, list):
-        return [mongo_safe(item) for item in value]
+        return [
+            mongo_safe(item)
+            for item in value
+        ]
 
     if isinstance(value, tuple):
-        return tuple(mongo_safe(item) for item in value)
+        return tuple(
+            mongo_safe(item)
+            for item in value
+        )
 
     return value
 
@@ -275,7 +357,9 @@ async def replace_document(
 ) -> None:
     database = get_database_instance()
 
-    await database[collection_name].replace_one(
+    await database[
+        collection_name
+    ].replace_one(
         identifier,
         mongo_safe(document),
         upsert=True,
@@ -285,7 +369,10 @@ async def replace_document(
 def build_case_documents(
     case: dict,
     timestamp: datetime,
-) -> tuple[tuple[str, str, object], ...]:
+) -> tuple[
+    tuple[str, str, object],
+    ...,
+]:
     queued_at = timestamp - timedelta(
         minutes=case["queued_minutes"],
     )
@@ -293,15 +380,23 @@ def build_case_documents(
     called_at = None
 
     if case["called_minutes"] is not None:
-        called_at = timestamp - timedelta(
-            minutes=case["called_minutes"],
+        called_at = (
+            timestamp
+            - timedelta(
+                minutes=case["called_minutes"],
+            )
         )
 
     confirmed_at = None
 
     if case["confirmed_minutes"] is not None:
-        confirmed_at = timestamp - timedelta(
-            minutes=case["confirmed_minutes"],
+        confirmed_at = (
+            timestamp
+            - timedelta(
+                minutes=case[
+                    "confirmed_minutes"
+                ],
+            )
         )
 
     patient = PatientDocument(
@@ -310,10 +405,10 @@ def build_case_documents(
         date_of_birth=case["date_of_birth"],
         age=case["age"],
         abha_reference=case["abha_reference"],
-        hospital_reference=case["hospital_reference"],
-        created_at=timestamp - timedelta(
-            minutes=case["queued_minutes"],
-        ),
+        hospital_reference=case[
+            "hospital_reference"
+        ],
+        created_at=queued_at,
         updated_at=timestamp,
     )
 
@@ -322,12 +417,20 @@ def build_case_documents(
         patient_id=case["patient_id"],
         department_id=DEPARTMENT_ID,
         status=case["session_status"],
-        verification_status=VerificationStatus.VERIFIED,
-        consent_status=ConsentStatus.GRANTED,
+        verification_status=(
+            VerificationStatus.VERIFIED
+        ),
+        consent_status=(
+            ConsentStatus.GRANTED
+        ),
         started_at=(
-            timestamp - timedelta(
+            timestamp
+            - timedelta(
                 minutes=max(
-                    case["queued_minutes"] - 1,
+                    case[
+                        "queued_minutes"
+                    ]
+                    - 1,
                     1,
                 ),
             )
@@ -341,15 +444,23 @@ def build_case_documents(
         summary_id=case["summary_id"],
         session_id=case["session_id"],
         status=case["summary_status"],
-        chief_complaint=case["chief_complaint"],
-        history_of_present_illness=case["history_of_present_illness"],
-        past_medical_history=case["past_medical_history"],
+        chief_complaint=case[
+            "chief_complaint"
+        ],
+        history_of_present_illness=case[
+            "history_of_present_illness"
+        ],
+        past_medical_history=case[
+            "past_medical_history"
+        ],
         medications=case["medications"],
         allergies=case["allergies"],
         relevant_documents=[],
         clinical_signals=[],
         generated_at=queued_at,
-        confirmed_by=case["confirmed_by"],
+        confirmed_by=case[
+            "confirmed_by"
+        ],
         confirmed_at=confirmed_at,
         created_at=queued_at,
         updated_at=timestamp,
@@ -358,9 +469,15 @@ def build_case_documents(
     triage = TriageResultDocument(
         triage_result_id=case["triage_id"],
         session_id=case["session_id"],
-        urgency_level=case["urgency_level"],
-        priority_score=case["priority_score"],
-        red_flags_present=case["red_flags_present"],
+        urgency_level=case[
+            "urgency_level"
+        ],
+        priority_score=case[
+            "priority_score"
+        ],
+        red_flags_present=case[
+            "red_flags_present"
+        ],
         status=TriageStatus.ASSESSED,
         assessed_at=queued_at,
         created_at=queued_at,
@@ -373,9 +490,13 @@ def build_case_documents(
         department_id=DEPARTMENT_ID,
         status=case["queue_status"],
         position=case["position"],
-        urgency_level=case["urgency_level"],
-        priority_score=case["priority_score"],
-        doctor_id=DOCTOR_1_ID,
+        urgency_level=case[
+            "urgency_level"
+        ],
+        priority_score=case[
+            "priority_score"
+        ],
+        doctor_id=case["doctor_id"],
         queued_at=queued_at,
         called_at=called_at,
         completed_at=None,
@@ -384,9 +505,11 @@ def build_case_documents(
     )
 
     assignment = DoctorAssignmentDocument(
-        assignment_id=case["assignment_id"],
+        assignment_id=case[
+            "assignment_id"
+        ],
         session_id=case["session_id"],
-        doctor_id=DOCTOR_1_ID,
+        doctor_id=case["doctor_id"],
         department_id=DEPARTMENT_ID,
         status=AssignmentStatus.ACTIVE,
         assigned_at=queued_at,
@@ -396,12 +519,36 @@ def build_case_documents(
     )
 
     return (
-        ("patients", "patient_id", patient),
-        ("clinical_sessions", "session_id", session),
-        ("clinical_summaries", "summary_id", summary),
-        ("triage_results", "triage_result_id", triage),
-        ("queue_entries", "queue_entry_id", queue_entry),
-        ("doctor_assignments", "assignment_id", assignment),
+        (
+            "patients",
+            "patient_id",
+            patient,
+        ),
+        (
+            "clinical_sessions",
+            "session_id",
+            session,
+        ),
+        (
+            "clinical_summaries",
+            "summary_id",
+            summary,
+        ),
+        (
+            "triage_results",
+            "triage_result_id",
+            triage,
+        ),
+        (
+            "queue_entries",
+            "queue_entry_id",
+            queue_entry,
+        ),
+        (
+            "doctor_assignments",
+            "assignment_id",
+            assignment,
+        ),
     )
 
 
@@ -410,7 +557,13 @@ async def seed() -> None:
     await initialize_database()
 
     database = get_database_instance()
-    password_hash = PasswordHash.recommended().hash(PASSWORD)
+
+    password_hash = (
+        PasswordHash.recommended().hash(
+            PASSWORD,
+        )
+    )
+
     timestamp = now()
 
     department = DepartmentDocument(
@@ -496,75 +649,146 @@ async def seed() -> None:
         ),
     ]
 
-    for case in DEMO_CASES:
-        case_data = dict(case)
-        case_data["position"] = len(
-            seed_documents,
-        )
+    cleanup_session_ids = list(
+        OLD_SESSION_IDS,
+    )
 
-    case_documents = []
-
-    for index, case in enumerate(DEMO_CASES, start=1):
-        case_data = dict(case)
-        case_data["position"] = index
-
-        case_documents.extend(
-            build_case_documents(
-                case_data,
-                timestamp,
-            ),
-        )
-
-    seed_documents.extend(case_documents)
-
-    cleanup_session_ids = list(OLD_SESSION_IDS)
     cleanup_session_ids.extend(
         case["session_id"]
         for case in DEMO_CASES
     )
 
-    cleanup_patient_ids = list(OLD_PATIENT_IDS)
+    cleanup_patient_ids = list(
+        OLD_PATIENT_IDS,
+    )
+
     cleanup_patient_ids.extend(
         case["patient_id"]
         for case in DEMO_CASES
     )
 
-    cleanup_queue_ids = [
+    cleanup_queue_ids = list(
+        OLD_QUEUE_IDS,
+    )
+
+    cleanup_queue_ids.extend(
         case["queue_id"]
         for case in DEMO_CASES
+    )
+
+    document_cursor = (
+        database.documents.find(
+            {
+                "session_id": {
+                    "$in": cleanup_session_ids,
+                },
+            },
+            {
+                "document_id": 1,
+            },
+        )
+    )
+
+    document_ids = [
+        document["document_id"]
+        async for document
+        in document_cursor
     ]
 
-    document_cursor = database.documents.find(
+    if document_ids:
+        await database.document_extractions.delete_many(
+            {
+                "document_id": {
+                    "$in": document_ids,
+                },
+            },
+        )
+
+    await database.documents.delete_many(
         {
             "session_id": {
                 "$in": cleanup_session_ids,
             },
         },
+    )
+
+    await database.conversation_turns.delete_many(
         {
-            "document_id": 1,
+            "session_id": {
+                "$in": cleanup_session_ids,
+            },
         },
     )
 
-    document_ids = [
-        document["document_id"]
-        async for document in document_cursor
-    ]
+    await database.clinical_signals.delete_many(
+        {
+            "session_id": {
+                "$in": cleanup_session_ids,
+            },
+        },
+    )
 
-    if document_ids:
-        await database.document_extractions.delete_many({"document_id": {"$in": document_ids, }})
+    await database.promotion_requests.delete_many(
+        {
+            "queue_entry_id": {
+                "$in": cleanup_queue_ids,
+            },
+        },
+    )
 
-    await database.documents.delete_many({"session_id": {"$in": cleanup_session_ids}})
-    await database.conversation_turns.delete_many({"session_id": {"$in": cleanup_session_ids}})
-    await database.clinical_signals.delete_many({"session_id": {"$in": cleanup_session_ids}})
-    await database.promotion_requests.delete_many({"queue_entry_id": {"$in": cleanup_queue_ids}})
-    await database.queue_entries.delete_many({"queue_entry_id": {"$in": cleanup_queue_ids}})
-    await database.doctor_assignments.delete_many({"session_id": {"$in": cleanup_session_ids}})
-    await database.triage_results.delete_many({"session_id": {"$in": cleanup_session_ids}})
-    await database.clinical_summaries.delete_many({"session_id": {"$in": cleanup_session_ids}})
-    await database.clinical_sessions.delete_many({"session_id": {"$in": cleanup_session_ids}})
-    await database.patients.delete_many({"patient_id": {"$in": cleanup_patient_ids}})
+    await database.queue_entries.delete_many(
+        {
+            "queue_entry_id": {
+                "$in": cleanup_queue_ids,
+            },
+        },
+    )
 
-    for collection_name, field_name, model in seed_documents:
+    await database.doctor_assignments.delete_many(
+        {
+            "session_id": {
+                "$in": cleanup_session_ids,
+            },
+        },
+    )
+
+    await database.triage_results.delete_many(
+        {
+            "session_id": {
+                "$in": cleanup_session_ids,
+            },
+        },
+    )
+
+    await database.clinical_summaries.delete_many(
+        {
+            "session_id": {
+                "$in": cleanup_session_ids,
+            },
+        },
+    )
+
+    await database.clinical_sessions.delete_many(
+        {
+            "session_id": {
+                "$in": cleanup_session_ids,
+            },
+        },
+    )
+
+    await database.patients.delete_many(
+        {
+            "patient_id": {
+                "$in": cleanup_patient_ids,
+            },
+        },
+    )
+
+    for (
+        collection_name,
+        field_name,
+        model,
+    ) in seed_documents:
         await replace_document(
             collection_name,
             {
@@ -578,10 +802,48 @@ async def seed() -> None:
             ),
         )
 
-    print("Aurora demo data seeded.")
-    print("Doctor 1: doctor1 / Aurora@123")
-    print("Doctor 2: doctor2 / Aurora@123")
-    print("Admin: admin / Aurora@123")
+    for index, case in enumerate(
+        DEMO_CASES,
+        start=1,
+    ):
+        case_data = dict(case)
+        case_data["position"] = index
+
+        documents = build_case_documents(
+            case_data,
+            timestamp,
+        )
+
+        for (
+            collection_name,
+            field_name,
+            model,
+        ) in documents:
+            await replace_document(
+                collection_name,
+                {
+                    field_name: getattr(
+                        model,
+                        field_name,
+                    ),
+                },
+                model.model_dump(
+                    exclude_none=True,
+                ),
+            )
+
+    print(
+        "Aurora demo data seeded.",
+    )
+    print(
+        "Doctor 1: doctor1 / Aurora@123",
+    )
+    print(
+        "Doctor 2: doctor2 / Aurora@123",
+    )
+    print(
+        "Admin: admin / Aurora@123",
+    )
 
 
 async def main() -> None:

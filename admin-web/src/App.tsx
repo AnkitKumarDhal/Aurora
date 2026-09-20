@@ -68,7 +68,11 @@ export default function App() {
         </aside>
       </div>
 
-      <PatientDrawer patients={dashboard.dashboard.patients} />
+      <PatientDrawer
+        patients={dashboard.dashboard.patients}
+        doctors={dashboard.dashboard.doctors}
+        onReassigned={dashboard.reload}
+      />
 
       <Toast />
     </div>
