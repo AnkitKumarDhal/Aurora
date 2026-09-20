@@ -1370,3 +1370,11 @@ body,
     align-items: stretch;
   }
 }
+
+.lane.past .lane-title::before {
+  background: var(--color-success);
+}
+
+.patient-card.completed {
+  opacity: 0.78;
+}

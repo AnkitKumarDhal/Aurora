@@ -1,8 +1,11 @@
 export type PatientState =
   | "WAITING"
+  | "READY"
   | "CALLED"
   | "PROMOTION_PENDING"
-  | "IN_CONSULTATION";
+  | "IN_CONSULTATION"
+  | "COMPLETED"
+  | "CANCELLED";
 
 export type DoctorStatus = "Available" | "Unavailable";
 

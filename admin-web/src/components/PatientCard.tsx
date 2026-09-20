@@ -7,29 +7,39 @@ interface PatientCardProps {
   onClick: () => void;
 }
 
-function formatWait(patient: Patient): string {
-  if (patient.state === "IN_CONSULTATION") {
-    return "In session";
-  }
-
-  if (patient.waitingTimeSeconds === null) {
+function formatWait(seconds: number | null): string {
+  if (seconds === null) {
     return "—";
   }
 
-  return `${Math.floor(patient.waitingTimeSeconds / 60)} min`;
+  if (seconds < 60) {
+    return "<1m";
+  }
+
+  const totalMinutes = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  return `${totalMinutes}m`;
 }
 
 export function PatientCard({ patient, selected, onClick }: PatientCardProps) {
   const isPriority = patient.urgencyLevel !== null && patient.urgencyLevel >= 4;
-
+  const isPromotionPending = patient.state === "PROMOTION_PENDING";
   const isConsultation = patient.state === "IN_CONSULTATION";
+  const isPast = patient.state === "COMPLETED" || patient.state === "CANCELLED";
 
   return (
     <div
       className={cn(
         "patient-card",
-        isPriority && "priority",
+        (isPriority || isPromotionPending) && "priority",
         isConsultation && "consultation",
+        isPast && "completed",
         selected && "selected",
       )}
       data-id={patient.id}
@@ -46,7 +56,13 @@ export function PatientCard({ patient, selected, onClick }: PatientCardProps) {
       <div className="card-top">
         <div className="patient-id">{patient.id}</div>
 
-        <div className="priority-chip">{isPriority ? "HIGH" : "NORMAL"}</div>
+        <div className="priority-chip">
+          {isPriority || isPromotionPending
+            ? "HIGH"
+            : isPast
+              ? "CLOSED"
+              : "NORMAL"}
+        </div>
       </div>
 
       <div className="card-name">
@@ -60,7 +76,9 @@ export function PatientCard({ patient, selected, onClick }: PatientCardProps) {
 
       <div className="card-meta">
         <div className={cn("card-wait", isConsultation && "card-wait-session")}>
-          {formatWait(patient)}
+          {isConsultation
+            ? "In session"
+            : formatWait(patient.waitingTimeSeconds)}
         </div>
 
         <div className="card-triage">

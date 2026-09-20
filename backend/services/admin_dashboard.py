@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from backend.database.repositories.assignment import AssignmentRepository
 from backend.database.repositories.doctor import DoctorRepository
@@ -8,6 +9,11 @@ from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_summary import ClinicalSummaryService
 from backend.services.patient import PatientService
 from backend.services.queue import QueueService
+
+
+DASHBOARD_TIMEZONE = ZoneInfo(
+    "Asia/Kolkata",
+)
 
 
 class AdminDashboardService:
@@ -31,8 +37,10 @@ class AdminDashboardService:
         self,
         department_id: str,
     ) -> dict:
-        doctors = await self.doctor_repository.get_department_doctors(
-            department_id,
+        doctors = (
+            await self.doctor_repository.get_department_doctors(
+                department_id,
+            )
         )
 
         doctor_map = {
@@ -58,30 +66,29 @@ class AdminDashboardService:
                         if doctor.is_available
                         else "Unavailable"
                     ),
-                    "assigned_count": len(assignments),
+                    "assigned_count": len(
+                        assignments,
+                    ),
                 },
             )
 
-        entries = await self.queue_service.get_department_entries(
-            department_id,
-        )
+        start_at, end_at = self._today_window()
 
-        active_entries = [
-            entry
-            for entry in entries
-            if entry.status.value
-            not in {
-                "COMPLETED",
-                "CANCELLED",
-            }
-        ]
+        entries = (
+            await self.queue_service.get_department_entries(
+                department_id,
+                start_at=start_at,
+                end_at=end_at,
+            )
+        )
 
         waiting_entries = [
             entry
-            for entry in active_entries
+            for entry in entries
             if entry.status.value
             in {
                 "WAITING",
+                "READY",
                 "CALLED",
                 "PROMOTION_PENDING",
             }
@@ -89,29 +96,36 @@ class AdminDashboardService:
 
         consultation_entries = [
             entry
-            for entry in active_entries
-            if entry.status.value == "IN_CONSULTATION"
+            for entry in entries
+            if entry.status.value
+            == "IN_CONSULTATION"
         ]
 
         patient_rows = []
 
-        for entry in active_entries:
-            session = await self.session_service.get_session(
-                entry.session_id,
+        for entry in entries:
+            session = (
+                await self.session_service.get_session(
+                    entry.session_id,
+                )
             )
 
             if session is None:
                 continue
 
-            patient = await self.patient_service.get_patient(
-                session.patient_id,
+            patient = (
+                await self.patient_service.get_patient(
+                    session.patient_id,
+                )
             )
 
             if patient is None:
                 continue
 
-            summary = await self.summary_service.get_session_summary(
-                entry.session_id,
+            summary = (
+                await self.summary_service.get_session_summary(
+                    entry.session_id,
+                )
             )
 
             patient_rows.append(
@@ -126,8 +140,11 @@ class AdminDashboardService:
                     "queue_status": entry.status,
                     "doctor_id": entry.doctor_id,
                     "doctor_name": (
-                        doctor_map[entry.doctor_id].display_name
-                        if entry.doctor_id in doctor_map
+                        doctor_map[
+                            entry.doctor_id
+                        ].display_name
+                        if entry.doctor_id
+                        in doctor_map
                         else None
                     ),
                     "chief_complaint": (
@@ -136,76 +153,175 @@ class AdminDashboardService:
                         else None
                     ),
                     "queued_at": entry.queued_at,
-                    "waiting_time_seconds": self._waiting_time_seconds(
-                        entry.queued_at,
-                        entry.status.value,
-                        entry.called_at,
+                    "waiting_time_seconds": (
+                        self._waiting_time_seconds(
+                            entry,
+                        )
                     ),
                 },
             )
 
         patient_rows.sort(
-            key=lambda patient: (
-                0
-                if patient["queue_status"].value
-                == "PROMOTION_PENDING"
-                else 1,
-                -(
-                    patient["priority_score"]
-                    if patient["priority_score"] is not None
-                    else 0
-                ),
-                patient["queued_at"]
-                or datetime.max.replace(tzinfo=timezone.utc),
-            ),
+            key=self._patient_sort_key,
         )
 
         return {
             "department_id": department_id,
             "stats": {
-                "patients": len(active_entries),
-                "waiting": len(waiting_entries),
-                "in_consultation": len(consultation_entries),
-                "doctors": len(doctors),
+                "patients": len(
+                    patient_rows,
+                ),
+                "waiting": len(
+                    waiting_entries,
+                ),
+                "in_consultation": len(
+                    consultation_entries,
+                ),
+                "doctors": len(
+                    doctors,
+                ),
             },
             "doctors": doctor_rows,
             "patients": patient_rows,
         }
 
     @staticmethod
+    def _today_window() -> tuple[
+        datetime,
+        datetime,
+    ]:
+        now_local = datetime.now(
+            DASHBOARD_TIMEZONE,
+        )
+
+        start_local = now_local.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+
+        end_local = (
+            start_local
+            + timedelta(days=1)
+        )
+
+        return (
+            start_local.astimezone(
+                timezone.utc,
+            ),
+            end_local.astimezone(
+                timezone.utc,
+            ),
+        )
+
+    @staticmethod
     def _waiting_time_seconds(
-        queued_at,
-        status: str,
-        called_at=None,
+        entry,
     ) -> int | None:
-        if queued_at is None:
+        if entry.queued_at is None:
             return None
 
-        queued_time = (
-            queued_at.replace(tzinfo=timezone.utc)
-            if queued_at.tzinfo is None
-            else queued_at.astimezone(timezone.utc)
+        queued_at = (
+            entry.queued_at.replace(
+                tzinfo=timezone.utc,
+            )
+            if entry.queued_at.tzinfo is None
+            else entry.queued_at.astimezone(
+                timezone.utc,
+            )
         )
 
         if (
-            status in {
+            entry.status.value
+            in {
                 "CALLED",
                 "IN_CONSULTATION",
-                "COMPLETED",
             }
-            and called_at is not None
+            and entry.called_at is not None
         ):
-            end_time = (
-                called_at.replace(tzinfo=timezone.utc)
-                if called_at.tzinfo is None
-                else called_at.astimezone(timezone.utc)
+            end_at = (
+                entry.called_at.replace(
+                    tzinfo=timezone.utc,
+                )
+                if entry.called_at.tzinfo is None
+                else entry.called_at.astimezone(
+                    timezone.utc,
+                )
+            )
+        elif (
+            entry.status.value
+            in {
+                "COMPLETED",
+                "CANCELLED",
+            }
+            and entry.completed_at is not None
+        ):
+            end_at = (
+                entry.completed_at.replace(
+                    tzinfo=timezone.utc,
+                )
+                if entry.completed_at.tzinfo is None
+                else entry.completed_at.astimezone(
+                    timezone.utc,
+                )
             )
         else:
-            end_time = datetime.now(timezone.utc)
+            end_at = datetime.now(
+                timezone.utc,
+            )
 
         return max(
             0,
             int(
-                (end_time - queued_time).total_seconds(),
+                (
+                    end_at
+                    - queued_at
+                ).total_seconds(),
+            ),
+        )
+
+    @staticmethod
+    def _patient_sort_key(
+        patient: dict,
+    ) -> tuple:
+        status = patient[
+            "queue_status"
+        ].value
+
+        if status == "PROMOTION_PENDING":
+            group = 0
+        elif status == "IN_CONSULTATION":
+            group = 1
+        elif status in {
+            "WAITING",
+            "READY",
+            "CALLED",
+        }:
+            group = 2
+        else:
+            group = 3
+
+        return (
+            group,
+            -(
+                patient[
+                    "priority_score"
+                ]
+                if patient[
+                    "priority_score"
+                ]
+                is not None
+                else 0
+            ),
+            -(
+                patient[
+                    "waiting_time_seconds"
+                ]
+                if patient[
+                    "waiting_time_seconds"
+                ]
+                is not None
+                else 0
             ),
         )

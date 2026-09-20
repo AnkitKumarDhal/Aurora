@@ -8,7 +8,17 @@ interface PatientBoardProps {
 }
 
 function isPriority(patient: Patient): boolean {
-  return patient.urgencyLevel !== null && patient.urgencyLevel >= 4;
+  return (
+    patient.state === "PROMOTION_PENDING" ||
+    (patient.urgencyLevel !== null &&
+      patient.urgencyLevel >= 4 &&
+      patient.state !== "COMPLETED" &&
+      patient.state !== "CANCELLED")
+  );
+}
+
+function isPast(patient: Patient): boolean {
+  return patient.state === "COMPLETED" || patient.state === "CANCELLED";
 }
 
 function Lane({
@@ -20,7 +30,7 @@ function Lane({
   title: string;
   count: number;
   patients: Patient[];
-  variant?: "priority" | "consultation";
+  variant?: "priority" | "consultation" | "past";
 }) {
   const openPatient = useAdminStore((state) => state.openPatient);
 
@@ -61,12 +71,17 @@ export function PatientBoard({ patients }: PatientBoardProps) {
 
   const priorityPatients = filteredPatients.filter(isPriority);
 
-  const waitingPatients = filteredPatients.filter(
-    (patient) => patient.state !== "IN_CONSULTATION" && !isPriority(patient),
-  );
-
   const consultationPatients = filteredPatients.filter(
     (patient) => patient.state === "IN_CONSULTATION",
+  );
+
+  const pastPatients = filteredPatients.filter(isPast);
+
+  const waitingPatients = filteredPatients.filter(
+    (patient) =>
+      !isPriority(patient) &&
+      !isPast(patient) &&
+      patient.state !== "IN_CONSULTATION",
   );
 
   return (
@@ -76,10 +91,18 @@ export function PatientBoard({ patients }: PatientBoardProps) {
 
         <div className="board-flow">
           <span>Queue</span>
+
           <div className="flow-dot" />
+
           <span>Assign</span>
+
           <div className="flow-dot" />
+
           <span>Consult</span>
+
+          <div className="flow-dot" />
+
+          <span>History</span>
         </div>
       </div>
 
@@ -101,6 +124,13 @@ export function PatientBoard({ patients }: PatientBoardProps) {
         count={consultationPatients.length}
         patients={consultationPatients}
         variant="consultation"
+      />
+
+      <Lane
+        title="Past Today"
+        count={pastPatients.length}
+        patients={pastPatients}
+        variant="past"
       />
     </section>
   );

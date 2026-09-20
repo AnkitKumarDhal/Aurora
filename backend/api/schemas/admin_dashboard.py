@@ -1,7 +1,5 @@
 from datetime import datetime
-
 from pydantic import BaseModel
-
 from backend.domain.enums import QueueStatus, UrgencyLevel
 
 

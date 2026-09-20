@@ -25,12 +25,18 @@ function toPatientState(status: string): PatientState {
   switch (status) {
     case "WAITING":
       return "WAITING";
+    case "READY":
+      return "READY";
     case "CALLED":
       return "CALLED";
     case "PROMOTION_PENDING":
       return "PROMOTION_PENDING";
     case "IN_CONSULTATION":
       return "IN_CONSULTATION";
+    case "COMPLETED":
+      return "COMPLETED";
+    case "CANCELLED":
+      return "CANCELLED";
     default:
       return "WAITING";
   }
@@ -39,6 +45,7 @@ function toPatientState(status: string): PatientState {
 function mapDashboard(dashboard: AdminDashboard): AdminDashboardView {
   return {
     departmentId: dashboard.department_id,
+
     stats: dashboard.stats,
 
     doctors: dashboard.doctors.map((doctor) => ({
@@ -111,6 +118,7 @@ export function useAdminDashboard(enabled: boolean) {
 
     return () => {
       window.clearTimeout(initialLoad);
+
       window.clearInterval(refreshTimer);
     };
   }, [enabled, load]);

@@ -24,16 +24,26 @@ function formatTime(value: string | null): string {
   });
 }
 
-function formatWait(patient: Patient): string {
-  if (patient.state === "IN_CONSULTATION") {
-    return "In session";
-  }
-
-  if (patient.waitingTimeSeconds === null) {
+function formatWait(seconds: number | null): string {
+  if (seconds === null) {
     return "—";
   }
 
-  return `${Math.floor(patient.waitingTimeSeconds / 60)} min`;
+  if (seconds < 60) {
+    return "<1m";
+  }
+
+  const totalMinutes = Math.floor(seconds / 60);
+
+  const hours = Math.floor(totalMinutes / 60);
+
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  return `${totalMinutes}m`;
 }
 
 export function PatientDrawer({ patients }: PatientDrawerProps) {
@@ -73,7 +83,13 @@ export function PatientDrawer({ patients }: PatientDrawerProps) {
     return null;
   }
 
-  const isPriority = patient.urgencyLevel !== null && patient.urgencyLevel >= 4;
+  const isPriority =
+    patient.urgencyLevel !== null &&
+    patient.urgencyLevel >= 4 &&
+    patient.state !== "COMPLETED" &&
+    patient.state !== "CANCELLED";
+
+  const isPast = patient.state === "COMPLETED" || patient.state === "CANCELLED";
 
   return (
     <>
@@ -99,6 +115,7 @@ export function PatientDrawer({ patients }: PatientDrawerProps) {
               }}
             >
               {patient.name}
+
               {patient.age !== null && ` · ${patient.age}`}
             </div>
           </div>
@@ -126,9 +143,17 @@ export function PatientDrawer({ patients }: PatientDrawerProps) {
               }}
             >
               <span
-                className={cn("drawer-status-badge", isPriority && "priority")}
+                className={cn(
+                  "drawer-status-badge",
+                  isPriority && "priority",
+                  isPast && "closed",
+                )}
               >
-                {isPriority ? "High Priority" : "Normal"}
+                {isPast
+                  ? "Past Today"
+                  : isPriority
+                    ? "High Priority"
+                    : "Normal"}
               </span>
 
               <span className="drawer-status-badge">
@@ -144,7 +169,11 @@ export function PatientDrawer({ patients }: PatientDrawerProps) {
               <div className="drawer-field">
                 <div className="drawer-field-label">Wait Time</div>
 
-                <div className="drawer-field-value">{formatWait(patient)}</div>
+                <div className="drawer-field-value">
+                  {patient.state === "IN_CONSULTATION"
+                    ? "In session"
+                    : formatWait(patient.waitingTimeSeconds)}
+                </div>
               </div>
 
               <div className="drawer-field">

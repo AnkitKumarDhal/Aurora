@@ -40,9 +40,9 @@ export interface AdminDashboard {
 export async function getAdminDashboard(
   departmentId: string,
 ): Promise<AdminDashboard> {
-  const response = await apiRequest<{
-    data: AdminDashboard;
-  }>(`/admin/departments/${encodeURIComponent(departmentId)}/dashboard`);
+  const response = await apiRequest<{ data: AdminDashboard }>(
+    `/admin/departments/${encodeURIComponent(departmentId)}/dashboard`,
+  );
 
   return response.data;
 }
