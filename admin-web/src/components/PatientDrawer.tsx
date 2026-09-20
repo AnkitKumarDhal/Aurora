@@ -73,7 +73,9 @@ export function PatientDrawer({
 
   const [isPresented, setIsPresented] = useState(false);
 
-  const [isReassigning, setIsReassigning] = useState(false);
+  const [reassignPatientId, setReassignPatientId] = useState<string | null>(
+    null,
+  );
 
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
 
@@ -82,6 +84,9 @@ export function PatientDrawer({
   const [reassignError, setReassignError] = useState<string | null>(null);
 
   const patient = patients.find((item) => item.id === selectedPatientId);
+
+  const isReassigning =
+    patient !== undefined && reassignPatientId === patient.id;
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -92,13 +97,6 @@ export function PatientDrawer({
       window.cancelAnimationFrame(frame);
     };
   }, [isDrawerOpen]);
-
-  useEffect(() => {
-    setIsReassigning(false);
-    setSelectedDoctorId("");
-    setReassignError(null);
-    setIsSubmitting(false);
-  }, [selectedPatientId]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -116,13 +114,17 @@ export function PatientDrawer({
     return null;
   }
 
-  const isPriority =
-    patient.urgencyLevel !== null &&
-    patient.urgencyLevel >= 4 &&
-    patient.state !== "COMPLETED" &&
-    patient.state !== "CANCELLED";
+  const currentPatient = patient;
 
-  const isPast = patient.state === "COMPLETED" || patient.state === "CANCELLED";
+  const isPriority =
+    currentPatient.urgencyLevel !== null &&
+    currentPatient.urgencyLevel >= 4 &&
+    currentPatient.state !== "COMPLETED" &&
+    currentPatient.state !== "CANCELLED";
+
+  const isPast =
+    currentPatient.state === "COMPLETED" ||
+    currentPatient.state === "CANCELLED";
 
   async function handleConfirmReassign(): Promise<void> {
     if (!selectedDoctorId || isSubmitting) {
@@ -134,7 +136,7 @@ export function PatientDrawer({
 
     try {
       const result = await reassignPatient(
-        patient.queueEntryId,
+        currentPatient.queueEntryId,
         selectedDoctorId,
       );
 
@@ -143,14 +145,15 @@ export function PatientDrawer({
       );
 
       showToast(
-        `Reassigned ${patient.name} to ${
+        `Reassigned ${currentPatient.name} to ${
           targetDoctor?.name ?? result.doctor_id
         }`,
         "success",
       );
 
-      setIsReassigning(false);
+      setReassignPatientId(null);
       setSelectedDoctorId("");
+      setReassignError(null);
       closeDrawer();
 
       await onReassigned();
@@ -161,6 +164,18 @@ export function PatientDrawer({
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function openReassignPanel(): void {
+    setReassignPatientId(currentPatient.id);
+    setSelectedDoctorId("");
+    setReassignError(null);
+  }
+
+  function closeReassignPanel(): void {
+    setReassignPatientId(null);
+    setSelectedDoctorId("");
+    setReassignError(null);
   }
 
   return (
@@ -176,7 +191,7 @@ export function PatientDrawer({
       >
         <div className="drawer-header">
           <div>
-            <div className="drawer-patient-id">{patient.id}</div>
+            <div className="drawer-patient-id">{currentPatient.id}</div>
 
             <div
               style={{
@@ -186,9 +201,9 @@ export function PatientDrawer({
                 marginTop: "4px",
               }}
             >
-              {patient.name}
+              {currentPatient.name}
 
-              {patient.age !== null && ` · ${patient.age}`}
+              {currentPatient.age !== null && ` · ${currentPatient.age}`}
             </div>
           </div>
 
@@ -230,7 +245,7 @@ export function PatientDrawer({
                 </span>
 
                 <span className="drawer-status-badge">
-                  {patient.state.replaceAll("_", " ")}
+                  {currentPatient.state.replaceAll("_", " ")}
                 </span>
               </div>
             </div>
@@ -243,9 +258,9 @@ export function PatientDrawer({
                   <div className="drawer-field-label">Wait Time</div>
 
                   <div className="drawer-field-value">
-                    {patient.state === "IN_CONSULTATION"
+                    {currentPatient.state === "IN_CONSULTATION"
                       ? "In session"
-                      : formatWait(patient.waitingTimeSeconds)}
+                      : formatWait(currentPatient.waitingTimeSeconds)}
                   </div>
                 </div>
 
@@ -253,7 +268,7 @@ export function PatientDrawer({
                   <div className="drawer-field-label">Assigned</div>
 
                   <div className="drawer-field-value">
-                    {patient.doctor ?? "Unassigned"}
+                    {currentPatient.doctor ?? "Unassigned"}
                   </div>
                 </div>
 
@@ -261,8 +276,8 @@ export function PatientDrawer({
                   <div className="drawer-field-label">Urgency</div>
 
                   <div className="drawer-field-value">
-                    {patient.urgencyLevel !== null
-                      ? `Level ${patient.urgencyLevel}`
+                    {currentPatient.urgencyLevel !== null
+                      ? `Level ${currentPatient.urgencyLevel}`
                       : "—"}
                   </div>
                 </div>
@@ -271,7 +286,7 @@ export function PatientDrawer({
                   <div className="drawer-field-label">Priority Score</div>
 
                   <div className="drawer-field-value">
-                    {patient.priorityScore ?? "—"}
+                    {currentPatient.priorityScore ?? "—"}
                   </div>
                 </div>
               </div>
@@ -287,7 +302,7 @@ export function PatientDrawer({
                   lineHeight: "1.5",
                 }}
               >
-                {patient.complaint ?? "No complaint recorded."}
+                {currentPatient.complaint ?? "No complaint recorded."}
               </div>
             </div>
 
@@ -299,20 +314,22 @@ export function PatientDrawer({
                   <div>Entered queue</div>
 
                   <div className="timeline-time">
-                    {formatTime(patient.queuedAt)}
+                    {formatTime(currentPatient.queuedAt)}
                   </div>
                 </div>
 
                 <div className="timeline-item">
                   <div>
-                    {patient.doctor
-                      ? `Assigned to ${patient.doctor}`
+                    {currentPatient.doctor
+                      ? `Assigned to ${currentPatient.doctor}`
                       : "Awaiting doctor assignment"}
                   </div>
                 </div>
 
                 <div className="timeline-item current">
-                  <div>Current state: {patient.state.replaceAll("_", " ")}</div>
+                  <div>
+                    Current state: {currentPatient.state.replaceAll("_", " ")}
+                  </div>
                 </div>
               </div>
             </div>
@@ -328,7 +345,7 @@ export function PatientDrawer({
                 <div className="reassign-info-label">Current Doctor</div>
 
                 <div className="reassign-info-value">
-                  {patient.doctor ?? "Unassigned"}
+                  {currentPatient.doctor ?? "Unassigned"}
                 </div>
               </div>
             </div>
@@ -349,7 +366,7 @@ export function PatientDrawer({
                 <option value="">Select a doctor…</option>
 
                 {doctors.map((doctor) => {
-                  const isCurrent = doctor.id === patient.doctorId;
+                  const isCurrent = doctor.id === currentPatient.doctorId;
 
                   const disabled = isCurrent || doctor.status === "Unavailable";
 
@@ -384,11 +401,7 @@ export function PatientDrawer({
                 className="btn btn-cancel"
                 type="button"
                 disabled={isSubmitting}
-                onClick={() => {
-                  setIsReassigning(false);
-                  setSelectedDoctorId("");
-                  setReassignError(null);
-                }}
+                onClick={closeReassignPanel}
               >
                 Cancel
               </button>
@@ -411,15 +424,11 @@ export function PatientDrawer({
               Close
             </button>
 
-            {canReassign(patient) && (
+            {canReassign(currentPatient) && (
               <button
                 className="btn btn-primary"
                 type="button"
-                onClick={() => {
-                  setIsReassigning(true);
-                  setSelectedDoctorId("");
-                  setReassignError(null);
-                }}
+                onClick={openReassignPanel}
               >
                 Reassign
               </button>

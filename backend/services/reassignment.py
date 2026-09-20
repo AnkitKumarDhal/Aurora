@@ -15,6 +15,9 @@ from backend.domain.enums import (
     AssignmentStatus,
     QueueStatus,
 )
+from backend.domain.assignment import (
+    DoctorAssignment,
+)
 from backend.services.assignment import (
     AssignmentService,
 )
@@ -35,7 +38,7 @@ REASSIGNABLE_STATUSES = {
 class ReassignmentResult:
     queue_entry_id: str
     session_id: str
-    previous_doctor_id: str
+    previous_doctor_id: str | None
     doctor_id: str
     assignment_id: str
 
@@ -110,30 +113,41 @@ class ReassignmentService:
             )
         )
 
-        if active_assignment is None:
-            raise ValueError(
-                "Active doctor assignment not found",
-            )
-
         previous_doctor_id = (
             active_assignment.doctor_id
+            if active_assignment is not None
+            else entry.doctor_id
         )
 
-        if previous_doctor_id == doctor_id:
+        if (
+            previous_doctor_id is not None
+            and previous_doctor_id == doctor_id
+        ):
             raise ValueError(
                 "Patient is already assigned to this doctor",
             )
 
-        released_assignment = (
-            await self.assignment_service.release_assignment(
-                active_assignment.assignment_id,
-            )
-        )
-
-        if released_assignment is None:
+        if (
+            active_assignment is None
+            and entry.doctor_id is not None
+        ):
             raise ValueError(
-                "Current doctor assignment could not be released",
+                "Patient assignment state is inconsistent",
             )
+
+        released_assignment = None
+
+        if active_assignment is not None:
+            released_assignment = (
+                await self.assignment_service.release_assignment(
+                    active_assignment.assignment_id,
+                )
+            )
+
+            if released_assignment is None:
+                raise ValueError(
+                    "Current doctor assignment could not be released",
+                )
 
         timestamp = datetime.now(
             timezone.utc,
@@ -145,11 +159,11 @@ class ReassignmentService:
             new_assignment = (
                 await self.assignment_service.create_assignment(
                     self._build_assignment(
-                        queue_entry_id,
-                        entry.session_id,
-                        entry.department_id,
-                        doctor_id,
-                        timestamp,
+                        queue_entry_id=queue_entry_id,
+                        session_id=entry.session_id,
+                        department_id=entry.department_id,
+                        doctor_id=doctor_id,
+                        timestamp=timestamp,
                     ),
                 )
             )
@@ -175,16 +189,17 @@ class ReassignmentService:
                     new_assignment.assignment_id,
                 )
 
-            await self.assignment_repository.update_assignment(
-                active_assignment.assignment_id,
-                {
-                    "status": AssignmentStatus.ACTIVE,
-                    "released_at": None,
-                    "updated_at": datetime.now(
-                        timezone.utc,
-                    ),
-                },
-            )
+            if released_assignment is not None:
+                await self.assignment_repository.update_assignment(
+                    released_assignment.assignment_id,
+                    {
+                        "status": AssignmentStatus.ACTIVE,
+                        "released_at": None,
+                        "updated_at": datetime.now(
+                            timezone.utc,
+                        ),
+                    },
+                )
 
             await self.queue_service.update_entry(
                 queue_entry_id,
@@ -213,11 +228,7 @@ class ReassignmentService:
         department_id: str,
         doctor_id: str,
         timestamp: datetime,
-    ):
-        from backend.domain.assignment import (
-            DoctorAssignment,
-        )
-
+    ) -> DoctorAssignment:
         return DoctorAssignment(
             assignment_id=(
                 f"assignment-reassign-"

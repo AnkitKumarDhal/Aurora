@@ -13,6 +13,6 @@ class ReassignmentRequest(BaseModel):
 class ReassignmentResponse(BaseModel):
     queue_entry_id: str
     session_id: str
-    previous_doctor_id: str
+    previous_doctor_id: str | None
     doctor_id: str
     assignment_id: str

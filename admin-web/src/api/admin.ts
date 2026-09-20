@@ -40,7 +40,7 @@ export interface AdminDashboard {
 export interface ReassignmentResponse {
   queue_entry_id: string;
   session_id: string;
-  previous_doctor_id: string;
+  previous_doctor_id: string | null;
   doctor_id: string;
   assignment_id: string;
 }
