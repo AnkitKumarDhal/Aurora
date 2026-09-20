@@ -31,9 +31,45 @@ QUESTIONS: dict[str, str] = {
 }
 
 
+QUESTIONS_HI: dict[str, str] = {
+    "chief_complaint": "आज आपको मुख्य समस्या क्या हो रही है?",
+    "onset": "यह समस्या कब शुरू हुई?",
+    "site": "आपको यह समस्या शरीर में ठीक कहाँ महसूस होती है?",
+    "severity": "0 से 10 के पैमाने पर यह समस्या कितनी गंभीर है?",
+    "character": "यह कैसा महसूस होता है — जैसे दबाव, जलन, धड़कना, चुभना या कुछ और?",
+    "timing": "क्या यह लगातार रहता है या बीच-बीच में होता है?",
+    "aggravating_factors": "किस चीज़ से यह समस्या बढ़ जाती है?",
+    "relieving_factors": "किस चीज़ से यह समस्या कम होती है?",
+    "radiation": "क्या यह तकलीफ़ शरीर के किसी और हिस्से तक फैलती है?",
+    "associated_symptoms": "इसके साथ आपको और कौन से लक्षण हुए हैं?",
+    "breathing_difficulty": "क्या आपको सांस लेने में दिक्कत या सांस फूलने की समस्या हुई है?",
+    "nausea_vomiting": "क्या आपको मतली या उल्टी हुई है?",
+    "vision_or_neuro": "क्या आपकी दृष्टि में बदलाव, कमजोरी, सुन्नपन, भ्रम या कोई और असामान्य न्यूरोलॉजिकल लक्षण हुआ है?",
+    "cough": "क्या आपको खांसी हुई है?",
+    "wheeze": "क्या सांस लेते समय सीटी जैसी आवाज़ या घरघराहट होती है?",
+    "location": "आपके पेट या पाचन तंत्र में यह समस्या कहाँ है?",
+    "bowel_changes": "क्या आपके मल त्याग में कोई बदलाव आया है?",
+    "appearance": "प्रभावित त्वचा का हिस्सा कैसा दिखाई देता है?",
+    "itch_or_pain": "क्या उस जगह पर खुजली, दर्द या दोनों हैं?",
+    "spread": "क्या प्रभावित जगह फैली है या उसका आकार बदला है?",
+    "urinary_frequency": "क्या आप सामान्य से ज्यादा या कम बार पेशाब कर रहे हैं?",
+    "urinary_burning": "क्या पेशाब करते समय जलन या दर्द होता है?",
+    "urinary_blood": "क्या आपने पेशाब में खून देखा है?",
+    "fever": "क्या आपको बुखार हुआ है?",
+    "fatigue": "क्या आपको सामान्य से बहुत ज्यादा थकान महसूस हुई है?",
+    "weight_change": "क्या आपके वजन में बिना किसी खास कारण के बदलाव हुआ है?",
+}
+
+
 QUESTION_TO_FIELD = {
     question: field
     for field, question in QUESTIONS.items()
+}
+
+
+QUESTION_HI_TO_FIELD = {
+    question: field
+    for field, question in QUESTIONS_HI.items()
 }
 
 
@@ -54,10 +90,16 @@ BOOLEAN_FIELDS = {
 }
 
 
-def question_for(field: str) -> str:
-    return QUESTIONS.get(
+def question_for(field: str, language: str | None = "en") -> str:
+    questions = QUESTIONS_HI if language == "hi" else QUESTIONS
+
+    return questions.get(
         field,
-        "Is there anything else important about this symptom that you think the doctor should know?",
+        (
+            "इस लक्षण के बारे में डॉक्टर को बताने लायक और कुछ महत्वपूर्ण है?"
+            if language == "hi"
+            else "Is there anything else important about this symptom that you think the doctor should know?"
+        ),
     )
 
 
@@ -65,7 +107,12 @@ def field_for_question(question: str | None) -> str | None:
     if not question:
         return None
 
-    return QUESTION_TO_FIELD.get(question.strip())
+    normalized = question.strip()
+
+    return (
+        QUESTION_TO_FIELD.get(normalized)
+        or QUESTION_HI_TO_FIELD.get(normalized)
+    )
 
 
 def is_boolean_field(field: str | None) -> bool:

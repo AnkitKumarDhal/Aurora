@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any
 from uuid import uuid4
-
+import re
 from backend.ai.clinical_schema import InterviewExtraction
 from backend.ai.interview.extractor import InterviewExtractor
 from backend.ai.interview.objectives import missing_objectives, normalize_topic
@@ -73,7 +73,12 @@ class InterviewController:
             completed = True
         else:
             missing = missing_objectives(topic, known_fields)
-            next_question = question_for(missing[0]) if missing else None
+
+            language = next((turn.language for turn in reversed(
+                patient_turns) if turn.language), "en")
+
+            next_question = question_for(
+                missing[0], language) if missing else None
             completed = (
                 not missing
                 or len(patient_turns) >= settings.interview_max_turns
@@ -235,7 +240,8 @@ class InterviewController:
                 or patient_turn_count >= settings.interview_max_turns
             )
 
-            next_question = None if completed else question_for(missing[0])
+            next_question = None if completed else question_for(
+                missing[0], language)
 
         assistant_response = next_question
 
@@ -503,8 +509,7 @@ class InterviewController:
         if not is_boolean_field(field):
             return
 
-        normalized = patient_text.strip().lower()
-
+        normalized = re.sub(r"[,.!?।]+", "", patient_text.strip().lower())
         negative_answers = {
             "no",
             "nope",
@@ -515,6 +520,12 @@ class InterviewController:
             "negative",
             "no other symptoms",
             "nothing else",
+            "नहीं",
+            "नहीं है",
+            "बिल्कुल नहीं",
+            "कोई नहीं",
+            "कुछ नहीं",
+            "और कुछ नहीं",
         }
 
         positive_answers = {
@@ -525,6 +536,12 @@ class InterviewController:
             "yes, i do",
             "yes i have",
             "yes, i have",
+            "हां",
+            "हाँ",
+            "जी हां",
+            "जी हाँ",
+            "हां है",
+            "हाँ है",
         }
 
         if normalized in negative_answers:

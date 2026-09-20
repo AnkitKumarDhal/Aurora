@@ -14,9 +14,11 @@ export interface ConsentRecordResponse {
   recorded_at: string;
 }
 
-export async function getConsentInformation(): Promise<ConsentInformation> {
+export async function getConsentInformation(
+  language: "en" | "hi" = "en",
+): Promise<ConsentInformation> {
   const response = await apiRequest<{ data: ConsentInformation }>(
-    "/consent-information",
+    `/consent-information?language=${encodeURIComponent(language)}`,
   );
 
   return response.data;

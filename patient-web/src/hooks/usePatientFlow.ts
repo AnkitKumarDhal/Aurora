@@ -387,7 +387,7 @@ export function usePatientFlow() {
         setIsLoadingConsent(true);
         setCurrentScreen("consent");
 
-        const consent = await getConsentInformation();
+        const consent = await getConsentInformation(language);
 
         setConsentVersion(consent.version);
         setConsentText(consent.text);
@@ -413,6 +413,7 @@ export function usePatientFlow() {
       draftId,
       identityIdentifier,
       identityType,
+      language,
       isVerifying,
       otpChallengeId,
       registerActivity,

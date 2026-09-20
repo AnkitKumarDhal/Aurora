@@ -9,7 +9,8 @@ from backend.services.verification import VerificationService
 
 class ConsentService:
     CONSENT_VERSION = "1.0"
-    CONSENT_TEXT = "Consent text approved for the current deployment."
+    CONSENT_TEXT_EN = "Consent text approved for the current deployment."
+    CONSENT_TEXT_HI = "वर्तमान तैनाती के लिए स्वीकृत सहमति पाठ।"
     SUPPORTED_LANGUAGES = ["en", "hi", "od"]
 
     def __init__(
@@ -123,13 +124,21 @@ class ConsentService:
 
         return session.consent_status
 
-    @staticmethod
-    def get_information() -> dict:
+    @classmethod
+    def get_information(cls, language: str = "en") -> dict:
+        normalized_language = language.strip().lower()
+
+        consent_text = (
+            cls.CONSENT_TEXT_HI
+            if normalized_language == "hi"
+            else cls.CONSENT_TEXT_EN
+        )
+
         return {
-            "version": ConsentService.CONSENT_VERSION,
-            "text": ConsentService.CONSENT_TEXT,
+            "version": cls.CONSENT_VERSION,
+            "text": consent_text,
             "audio_available": True,
-            "supported_languages": ConsentService.SUPPORTED_LANGUAGES,
+            "supported_languages": cls.SUPPORTED_LANGUAGES,
         }
 
     def _validate_version(self, version: str) -> None:

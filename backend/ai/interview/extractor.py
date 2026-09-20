@@ -178,20 +178,78 @@ class InterviewExtractor:
         return InterviewExtraction(topic=topic, fields=fields, negatives=negatives)
 
     @staticmethod
-    def _fallback(patient_text: str, known_fields: dict[str, Any], topic: str | None) -> InterviewExtraction:
+    def _fallback(
+        patient_text: str,
+        known_fields: dict[str, Any],
+        topic: str | None,
+    ) -> InterviewExtraction:
         text = patient_text.strip()
-        normalized = text.lower()
+        normalized = re.sub(r"[,.!?।]+", "", text.lower())
         fields: dict[str, Any] = {}
 
         topic_value = topic
 
         topic_keywords = {
-            "headache": ("headache", "head pain", "migraine"),
-            "chest_pain": ("chest pain", "chest pressure", "chest discomfort"),
-            "respiratory": ("cough", "breathless", "shortness of breath", "breathing problem"),
-            "gastrointestinal": ("stomach", "abdomen", "abdominal", "diarrhea", "vomiting", "nausea"),
-            "skin": ("rash", "itching", "skin"),
-            "urinary": ("urine", "urination", "burning while urinating"),
+            "headache": (
+                "headache",
+                "head pain",
+                "migraine",
+                "सिरदर्द",
+                "सिर में दर्द",
+                "माइग्रेन",
+            ),
+            "chest_pain": (
+                "chest pain",
+                "chest pressure",
+                "chest discomfort",
+                "सीने में दर्द",
+                "सीने में दबाव",
+                "सीने में तकलीफ",
+                "सीने में तकलीफ़",
+            ),
+            "respiratory": (
+                "cough",
+                "breathless",
+                "shortness of breath",
+                "breathing problem",
+                "खांसी",
+                "खाँसी",
+                "सांस फूलना",
+                "साँस फूलना",
+                "सांस लेने में दिक्कत",
+                "साँस लेने में दिक्कत",
+            ),
+            "gastrointestinal": (
+                "stomach",
+                "abdomen",
+                "abdominal",
+                "diarrhea",
+                "vomiting",
+                "nausea",
+                "पेट",
+                "पेट में दर्द",
+                "दस्त",
+                "उल्टी",
+                "मतली",
+            ),
+            "skin": (
+                "rash",
+                "itching",
+                "skin",
+                "दाने",
+                "चकत्ते",
+                "खुजली",
+                "त्वचा",
+            ),
+            "urinary": (
+                "urine",
+                "urination",
+                "burning while urinating",
+                "पेशाब",
+                "मूत्र",
+                "पेशाब में जलन",
+                "पेशाब करते समय जलन",
+            ),
         }
 
         for candidate, keywords in topic_keywords.items():
@@ -200,30 +258,81 @@ class InterviewExtractor:
                 break
 
         severity_match = re.search(
-            r"\b(10|[0-9])\s*(?:/|out of)\s*10\b", normalized)
+            r"\b(10|[0-9])\s*(?:/|out of|में से)\s*10\b",
+            normalized,
+        )
 
         if severity_match:
             fields["severity"] = int(severity_match.group(1))
 
         onset_match = re.search(
-            r"\b(\d+)\s*(day|days|hour|hours|week|weeks|month|months|year|years)\b",
+            r"\b(\d+)\s*(day|days|hour|hours|week|weeks|month|months|year|years|"
+            r"दिन|दिनों|घंटा|घंटे|घंटों|हफ्ता|हफ्ते|हफ्तों|सप्ताह|सप्ताहों|"
+            r"महीना|महीने|महीनों|साल)\b",
             normalized,
         )
 
         if onset_match:
-            fields["onset"] = f"{onset_match.group(1)} {onset_match.group(2)}"
+            fields["onset"] = (
+                f"{onset_match.group(1)} {onset_match.group(2)}"
+            )
 
         if not known_fields.get("chief_complaint") and topic_value:
             fields["chief_complaint"] = topic_value.replace("_", " ")
 
         negative_patterns = {
-            "nausea_vomiting": ("no nausea", "no vomiting", "not nauseous", "no nausea or vomiting"),
-            "breathing_difficulty": ("no breathing difficulty", "no shortness of breath", "breathing is normal"),
-            "cough": ("no cough",),
-            "wheeze": ("no wheezing", "no wheeze"),
-            "urinary_burning": ("no burning while urinating", "no burning during urination"),
-            "urinary_blood": ("no blood in urine",),
-            "vision_or_neuro": ("no numbness", "no weakness", "no vision changes"),
+            "nausea_vomiting": (
+                "no nausea",
+                "no vomiting",
+                "not nauseous",
+                "no nausea or vomiting",
+                "मतली नहीं",
+                "उल्टी नहीं",
+                "मतली या उल्टी नहीं",
+            ),
+            "breathing_difficulty": (
+                "no breathing difficulty",
+                "no shortness of breath",
+                "breathing is normal",
+                "सांस लेने में दिक्कत नहीं",
+                "साँस लेने में दिक्कत नहीं",
+                "सांस सामान्य है",
+                "साँस सामान्य है",
+            ),
+            "cough": (
+                "no cough",
+                "खांसी नहीं",
+                "खाँसी नहीं",
+            ),
+            "wheeze": (
+                "no wheezing",
+                "no wheeze",
+                "घरघराहट नहीं",
+                "सीटी जैसी आवाज नहीं",
+                "सीटी जैसी आवाज़ नहीं",
+            ),
+            "urinary_burning": (
+                "no burning while urinating",
+                "no burning during urination",
+                "पेशाब में जलन नहीं",
+                "पेशाब करते समय जलन नहीं",
+            ),
+            "urinary_blood": (
+                "no blood in urine",
+                "पेशाब में खून नहीं",
+                "पेशाब में रक्त नहीं",
+            ),
+            "vision_or_neuro": (
+                "no numbness",
+                "no weakness",
+                "no vision changes",
+                "सुन्नपन नहीं",
+                "कमजोरी नहीं",
+                "कमज़ोरी नहीं",
+                "दृष्टि में बदलाव नहीं",
+                "नजर में बदलाव नहीं",
+                "नज़र में बदलाव नहीं",
+            ),
         }
 
         negatives = [
@@ -232,4 +341,8 @@ class InterviewExtractor:
             if any(phrase in normalized for phrase in phrases)
         ]
 
-        return InterviewExtraction(topic=topic_value, fields=fields, negatives=negatives)
+        return InterviewExtraction(
+            topic=topic_value,
+            fields=fields,
+            negatives=negatives,
+        )
