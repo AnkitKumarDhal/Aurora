@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAdminStore } from "@/store/adminStore";
 import type { Patient } from "@/types/admin";
@@ -43,7 +43,19 @@ export function PatientDrawer({ patients }: PatientDrawerProps) {
 
   const closeDrawer = useAdminStore((state) => state.closeDrawer);
 
+  const [isPresented, setIsPresented] = useState(false);
+
   const patient = patients.find((item) => item.id === selectedPatientId);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setIsPresented(isDrawerOpen);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [isDrawerOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -66,12 +78,12 @@ export function PatientDrawer({ patients }: PatientDrawerProps) {
   return (
     <>
       <div
-        className={cn("drawer-overlay", isDrawerOpen && "open")}
+        className={cn("drawer-overlay", isPresented && "open")}
         onClick={closeDrawer}
       />
 
       <aside
-        className={cn("drawer", isDrawerOpen && "open")}
+        className={cn("drawer", isPresented && "open")}
         aria-hidden={!isDrawerOpen}
       >
         <div className="drawer-header">

@@ -6,13 +6,9 @@ interface AdminStore {
   isDrawerOpen: boolean;
   selectedDoctorFilter: string | null;
   toast: ToastState | null;
-
   showToast: (message: string, type?: ToastType) => void;
-
   openPatient: (patientId: string) => void;
-
   closeDrawer: () => void;
-
   setDoctorFilter: (doctorId: string) => void;
 }
 
@@ -46,7 +42,6 @@ export const useAdminStore = create<AdminStore>((set) => ({
 
   closeDrawer: () => {
     set({
-      selectedPatientId: null,
       isDrawerOpen: false,
     });
   },
