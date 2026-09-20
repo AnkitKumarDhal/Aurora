@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getAdminDashboard, type AdminDashboard } from "@/api/admin";
+import { subscribeToEvents } from "@/api/events";
 
 import type {
   AdminPromotion,
@@ -49,16 +50,13 @@ function toPatientState(status: string): PatientState {
 function mapDashboard(dashboard: AdminDashboard): AdminDashboardView {
   return {
     departmentId: dashboard.department_id,
-
     stats: dashboard.stats,
-
     doctors: dashboard.doctors.map((doctor) => ({
       id: doctor.doctor_id,
       name: doctor.display_name,
       status: toDoctorStatus(doctor.status),
       assignedCount: doctor.assigned_count,
     })),
-
     patients: dashboard.patients.map((patient) => ({
       id: patient.patient_id,
       queueEntryId: patient.queue_entry_id,
@@ -75,7 +73,6 @@ function mapDashboard(dashboard: AdminDashboard): AdminDashboardView {
       queuedAt: patient.queued_at,
       waitingTimeSeconds: patient.waiting_time_seconds,
     })),
-
     promotions: dashboard.promotions.map((promotion) => ({
       promotionRequestId: promotion.promotion_request_id,
       queueEntryId: promotion.queue_entry_id,
@@ -94,12 +91,12 @@ function mapDashboard(dashboard: AdminDashboard): AdminDashboardView {
 
 export function useAdminDashboard(enabled: boolean) {
   const [dashboard, setDashboard] = useState<AdminDashboardView | null>(null);
-
   const [isLoading, setIsLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const refreshTimerRef = useRef<number | null>(null);
+
+  const load = useCallback(async (): Promise<void> => {
     if (!enabled) {
       return;
     }
@@ -126,18 +123,33 @@ export function useAdminDashboard(enabled: boolean) {
       return;
     }
 
+    const scheduleRefresh = (): void => {
+      if (refreshTimerRef.current !== null) {
+        window.clearTimeout(refreshTimerRef.current);
+      }
+
+      refreshTimerRef.current = window.setTimeout(() => {
+        refreshTimerRef.current = null;
+        void load();
+      }, 100);
+    };
+
     const initialLoad = window.setTimeout(() => {
       void load();
     }, 0);
 
-    const refreshTimer = window.setInterval(() => {
-      void load();
-    }, 5000);
+    const unsubscribe = subscribeToEvents(DEPARTMENT_ID, () => {
+      scheduleRefresh();
+    });
 
     return () => {
       window.clearTimeout(initialLoad);
+      unsubscribe();
 
-      window.clearInterval(refreshTimer);
+      if (refreshTimerRef.current !== null) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
   }, [enabled, load]);
 

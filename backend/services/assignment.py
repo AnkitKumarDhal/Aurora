@@ -3,57 +3,141 @@ from datetime import datetime, timezone
 from backend.database.repositories.assignment import AssignmentRepository
 from backend.domain.assignment import DoctorAssignment
 from backend.domain.enums import AssignmentStatus
+from backend.events import EventType, get_event_bus
 from backend.models.assignment import DoctorAssignmentDocument
 
 
 class AssignmentService:
-    def __init__(self, repository: AssignmentRepository) -> None:
+    def __init__(
+        self,
+        repository: AssignmentRepository,
+    ) -> None:
         self.repository = repository
+        self.event_bus = get_event_bus()
 
-    async def get_session_assignment(self, session_id: str) -> DoctorAssignment | None:
-        document = await self.repository.get_session_assignment(session_id,)
+    async def get_session_assignment(
+        self,
+        session_id: str,
+    ) -> DoctorAssignment | None:
+        document = await self.repository.get_session_assignment(
+            session_id,
+        )
+
         if document is None:
             return None
+
         return self._to_domain(document)
 
-    async def get_session_assignment_history(self, session_id: str) -> DoctorAssignment | None:
-        document = await self.repository.get_session_assignment_history(session_id)
+    async def get_session_assignment_history(
+        self,
+        session_id: str,
+    ) -> DoctorAssignment | None:
+        document = await self.repository.get_session_assignment_history(
+            session_id,
+        )
+
         if document is None:
             return None
+
         return self._to_domain(document)
 
-    async def get_doctor_assignments(self, doctor_id: str) -> list[DoctorAssignment]:
-        documents = await self.repository.get_doctor_assignments(doctor_id)
+    async def get_doctor_assignments(
+        self,
+        doctor_id: str,
+    ) -> list[DoctorAssignment]:
+        documents = await self.repository.get_doctor_assignments(
+            doctor_id,
+        )
         return [self._to_domain(document) for document in documents]
 
-    async def create_assignment(self, assignment: DoctorAssignment) -> DoctorAssignment:
+    async def create_assignment(
+        self,
+        assignment: DoctorAssignment,
+    ) -> DoctorAssignment:
         if assignment.assigned_at is None:
             assignment.assigned_at = datetime.now(timezone.utc)
+
         document = self._to_document(assignment)
-        await self.repository.create_assignment(document)
+
+        await self.repository.create_assignment(
+            document,
+        )
+
+        await self.event_bus.emit(
+            EventType.ASSIGNMENT_UPDATED,
+            assignment.department_id,
+            assignment.session_id,
+        )
+
         return assignment
 
-    async def release_assignment(self, assignment_id: str) -> DoctorAssignment | None:
-        document = await self.repository.update_assignment(assignment_id, {
-            "status": AssignmentStatus.RELEASED,
-            "released_at": datetime.now(timezone.utc),
-        },
+    async def release_assignment(
+        self,
+        assignment_id: str,
+    ) -> DoctorAssignment | None:
+        existing = await self.repository.get_assignment(
+            assignment_id,
         )
-        if document is None:
-            return None
-        return self._to_domain(document)
 
-    async def complete_assignment(self, assignment_id: str) -> DoctorAssignment | None:
-        document = await self.repository.update_assignment(assignment_id, {
-            "status": AssignmentStatus.COMPLETED,
-        },
+        if existing is None:
+            return None
+
+        document = await self.repository.update_assignment(
+            assignment_id,
+            {
+                "status": AssignmentStatus.RELEASED,
+                "released_at": datetime.now(timezone.utc),
+            },
         )
+
         if document is None:
             return None
-        return self._to_domain(document)
+
+        assignment = self._to_domain(document)
+
+        await self.event_bus.emit(
+            EventType.ASSIGNMENT_UPDATED,
+            assignment.department_id,
+            assignment.session_id,
+        )
+
+        return assignment
+
+    async def complete_assignment(
+        self,
+        assignment_id: str,
+    ) -> DoctorAssignment | None:
+        existing = await self.repository.get_assignment(
+            assignment_id,
+        )
+
+        if existing is None:
+            return None
+
+        document = await self.repository.update_assignment(
+            assignment_id,
+            {
+                "status": AssignmentStatus.COMPLETED,
+            },
+        )
+
+        if document is None:
+            return None
+
+        assignment = self._to_domain(document)
+
+        await self.event_bus.emit(
+            EventType.ASSIGNMENT_UPDATED,
+            assignment.department_id,
+            assignment.session_id,
+        )
+
+        return assignment
 
     @staticmethod
-    def _to_domain(document: DoctorAssignmentDocument) -> DoctorAssignment:
+    def _to_domain(
+        document: DoctorAssignmentDocument,
+    ) -> DoctorAssignment:
         return DoctorAssignment(
             assignment_id=document.assignment_id,
             session_id=document.session_id,
@@ -67,7 +151,9 @@ class AssignmentService:
         )
 
     @staticmethod
-    def _to_document(assignment: DoctorAssignment) -> DoctorAssignmentDocument:
+    def _to_document(
+        assignment: DoctorAssignment,
+    ) -> DoctorAssignmentDocument:
         return DoctorAssignmentDocument(
             assignment_id=assignment.assignment_id,
             session_id=assignment.session_id,

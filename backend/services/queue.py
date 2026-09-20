@@ -1,75 +1,160 @@
 from datetime import datetime, timezone
+
 from backend.database.repositories.queue import QueueRepository
 from backend.domain.enums import QueueStatus
 from backend.domain.queue import QueueEntry
+from backend.events import EventType, get_event_bus
 from backend.models.queue import QueueEntryDocument
 from backend.services.queue_engine import QueueEngine
 
 
 class QueueService:
-    def __init__(self, repository: QueueRepository, engine: QueueEngine | None = None) -> None:
+    def __init__(
+        self,
+        repository: QueueRepository,
+        engine: QueueEngine | None = None,
+    ) -> None:
         self.repository = repository
         self.engine = engine or QueueEngine()
+        self.event_bus = get_event_bus()
 
-    async def get_department_queue(self, department_id: str) -> list[QueueEntry]:
-        documents = await self.repository.get_department_queue(department_id)
+    async def get_department_queue(
+        self,
+        department_id: str,
+    ) -> list[QueueEntry]:
+        documents = await self.repository.get_department_queue(
+            department_id,
+        )
         entries = [self._to_domain(document) for document in documents]
         return self.engine.sort_entries(entries)
 
-    async def get_department_entries(self, department_id: str, start_at: datetime | None = None, end_at: datetime | None = None) -> list[QueueEntry]:
-        documents = await self.repository.get_department_entries(department_id, start_at, end_at,)
+    async def get_department_entries(
+        self,
+        department_id: str,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
+    ) -> list[QueueEntry]:
+        documents = await self.repository.get_department_entries(
+            department_id,
+            start_at,
+            end_at,
+        )
         return [self._to_domain(document) for document in documents]
 
-    async def get_entry(self, queue_entry_id: str) -> QueueEntry | None:
-        document = await self.repository.get_entry(queue_entry_id)
+    async def get_entry(
+        self,
+        queue_entry_id: str,
+    ) -> QueueEntry | None:
+        document = await self.repository.get_entry(
+            queue_entry_id,
+        )
+
         if document is None:
             return None
+
         return self._to_domain(document)
 
-    async def get_session_entry(self, session_id: str) -> QueueEntry | None:
-        document = await self.repository.get_session_entry(session_id)
+    async def get_session_entry(
+        self,
+        session_id: str,
+    ) -> QueueEntry | None:
+        document = await self.repository.get_session_entry(
+            session_id,
+        )
+
         if document is None:
             return None
+
         return self._to_domain(document)
 
-    async def enqueue(self, entry: QueueEntry) -> QueueEntry:
+    async def enqueue(
+        self,
+        entry: QueueEntry,
+    ) -> QueueEntry:
         if entry.status != QueueStatus.WAITING:
             raise ValueError(
-                "Queue entry must be waiting when added to the queue")
+                "Queue entry must be waiting when added to the queue",
+            )
+
         if entry.queued_at is None:
             entry.queued_at = datetime.now(timezone.utc)
+
         document = self._to_document(entry)
-        await self.repository.create_entry(document)
+
+        await self.repository.create_entry(
+            document,
+        )
+
+        await self.event_bus.emit(
+            EventType.QUEUE_UPDATED,
+            entry.department_id,
+            entry.queue_entry_id,
+        )
+
         return entry
 
-    async def update_entry(self, queue_entry_id: str, updates: dict) -> QueueEntry | None:
-        document = await self.repository.update_entry(queue_entry_id, updates)
+    async def update_entry(
+        self,
+        queue_entry_id: str,
+        updates: dict,
+    ) -> QueueEntry | None:
+        document = await self.repository.update_entry(
+            queue_entry_id,
+            updates,
+        )
+
         if document is None:
             return None
-        return self._to_domain(document)
 
-    async def mark_called(self, queue_entry_id: str) -> QueueEntry | None:
-        return await self.update_entry(queue_entry_id, {
-            "status": QueueStatus.CALLED,
-            "called_at": datetime.now(timezone.utc),
-        },
+        entry = self._to_domain(document)
+
+        await self.event_bus.emit(
+            EventType.QUEUE_UPDATED,
+            entry.department_id,
+            entry.queue_entry_id,
         )
 
-    async def start_consultation(self, queue_entry_id: str) -> QueueEntry | None:
-        return await self.update_entry(queue_entry_id, {
-            "status": QueueStatus.IN_CONSULTATION,
-        },
+        return entry
+
+    async def mark_called(
+        self,
+        queue_entry_id: str,
+    ) -> QueueEntry | None:
+        return await self.update_entry(
+            queue_entry_id,
+            {
+                "status": QueueStatus.CALLED,
+                "called_at": datetime.now(timezone.utc),
+            },
         )
 
-    async def complete(self, queue_entry_id: str) -> QueueEntry | None:
-        return await self.update_entry(queue_entry_id, {
-            "status": QueueStatus.COMPLETED,
-            "completed_at": datetime.now(timezone.utc),
-        },
+    async def start_consultation(
+        self,
+        queue_entry_id: str,
+    ) -> QueueEntry | None:
+        return await self.update_entry(
+            queue_entry_id,
+            {
+                "status": QueueStatus.IN_CONSULTATION,
+            },
+        )
+
+    async def complete(
+        self,
+        queue_entry_id: str,
+    ) -> QueueEntry | None:
+        return await self.update_entry(
+            queue_entry_id,
+            {
+                "status": QueueStatus.COMPLETED,
+                "completed_at": datetime.now(timezone.utc),
+            },
         )
 
     @staticmethod
-    def _to_domain(document: QueueEntryDocument) -> QueueEntry:
+    def _to_domain(
+        document: QueueEntryDocument,
+    ) -> QueueEntry:
         return QueueEntry(
             queue_entry_id=document.queue_entry_id,
             session_id=document.session_id,
@@ -87,7 +172,9 @@ class QueueService:
         )
 
     @staticmethod
-    def _to_document(entry: QueueEntry) -> QueueEntryDocument:
+    def _to_document(
+        entry: QueueEntry,
+    ) -> QueueEntryDocument:
         return QueueEntryDocument(
             queue_entry_id=entry.queue_entry_id,
             session_id=entry.session_id,

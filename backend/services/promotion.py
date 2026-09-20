@@ -1,16 +1,12 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from backend.database.repositories.promotion import (
-    PromotionRepository,
-)
+from backend.database.repositories.promotion import PromotionRepository
+from backend.database.repositories.queue import QueueRepository
 from backend.domain.enums import PromotionStatus
-from backend.domain.promotion import (
-    PromotionRequest,
-)
-from backend.models.promotion import (
-    PromotionRequestDocument,
-)
+from backend.domain.promotion import PromotionRequest
+from backend.events import EventType, get_event_bus
+from backend.models.promotion import PromotionRequestDocument
 
 
 class PromotionService:
@@ -19,75 +15,58 @@ class PromotionService:
     def __init__(
         self,
         repository: PromotionRepository,
+        queue_repository: QueueRepository | None = None,
     ) -> None:
         self.repository = repository
+        self.queue_repository = queue_repository or QueueRepository()
+        self.event_bus = get_event_bus()
 
     async def get_request(
         self,
         promotion_request_id: str,
     ) -> PromotionRequest | None:
-        document = (
-            await self.repository
-            .get_request(
-                promotion_request_id,
-            )
+        document = await self.repository.get_request(
+            promotion_request_id,
         )
 
         if document is None:
             return None
 
-        return self._to_domain(
-            document,
-        )
+        return self._to_domain(document)
 
     async def get_queue_request(
         self,
         queue_entry_id: str,
     ) -> PromotionRequest | None:
-        document = (
-            await self.repository
-            .get_queue_request(
-                queue_entry_id,
-            )
+        document = await self.repository.get_queue_request(
+            queue_entry_id,
         )
 
         if document is None:
             return None
 
-        return self._to_domain(
-            document,
-        )
+        return self._to_domain(document)
 
     async def get_latest_queue_request(
         self,
         queue_entry_id: str,
     ) -> PromotionRequest | None:
-        document = (
-            await self.repository
-            .get_latest_queue_request(
-                queue_entry_id,
-            )
+        document = await self.repository.get_latest_queue_request(
+            queue_entry_id,
         )
 
         if document is None:
             return None
 
-        return self._to_domain(
-            document,
-        )
+        return self._to_domain(document)
 
     async def get_pending_requests(
         self,
     ) -> list[PromotionRequest]:
-        documents = (
-            await self.repository
-            .get_pending_requests()
-        )
+        documents = await self.repository.get_pending_requests()
 
         return [
-            self._to_domain(
-                document,
-            )
+            self._to_domain(document)
             for document in documents
         ]
 
@@ -95,12 +74,14 @@ class PromotionService:
         self,
         request: PromotionRequest,
     ) -> PromotionRequest:
-        document = self._to_document(
-            request,
-        )
+        document = self._to_document(request)
 
         await self.repository.create_request(
             document,
+        )
+
+        await self._publish_event(
+            request,
         )
 
         return request
@@ -111,11 +92,8 @@ class PromotionService:
         target_doctor_id: str,
         reason: str,
     ) -> PromotionRequest:
-        existing = (
-            await self.repository
-            .get_queue_request(
-                queue_entry_id,
-            )
+        existing = await self.repository.get_queue_request(
+            queue_entry_id,
         )
 
         if existing is not None:
@@ -123,28 +101,18 @@ class PromotionService:
                 "A pending promotion request already exists",
             )
 
-        now = datetime.now(
-            timezone.utc,
-        )
+        now = datetime.now(timezone.utc)
 
         request = PromotionRequest(
-            promotion_request_id=(
-                f"promotion_{uuid4().hex}"
-            ),
-            queue_entry_id=(
-                queue_entry_id
-            ),
-            target_doctor_id=(
-                target_doctor_id
-            ),
+            promotion_request_id=f"promotion_{uuid4().hex}",
+            queue_entry_id=queue_entry_id,
+            target_doctor_id=target_doctor_id,
             reason=reason,
             status=PromotionStatus.PENDING,
             decision_deadline=(
                 now
                 + timedelta(
-                    seconds=(
-                        self.DECISION_WINDOW_SECONDS
-                    ),
+                    seconds=self.DECISION_WINDOW_SECONDS,
                 )
             ),
             decided_by=None,
@@ -154,9 +122,7 @@ class PromotionService:
             updated_at=now,
         )
 
-        return await self.create_request(
-            request,
-        )
+        return await self.create_request(request)
 
     async def approve(
         self,
@@ -164,27 +130,17 @@ class PromotionService:
         decided_by: str | None = None,
         decision_reason: str | None = None,
     ) -> PromotionRequest | None:
-        request = (
-            await self.repository
-            .get_request(
-                promotion_request_id,
-            )
+        request = await self.repository.get_request(
+            promotion_request_id,
         )
 
         if request is None:
             return None
 
-        if (
-            request.status
-            != PromotionStatus.PENDING
-        ):
-            return self._to_domain(
-                request,
-            )
+        if request.status != PromotionStatus.PENDING:
+            return self._to_domain(request)
 
-        if self._is_expired(
-            request,
-        ):
+        if self._is_expired(request):
             return await self.auto_approve(
                 promotion_request_id,
             )
@@ -202,27 +158,17 @@ class PromotionService:
         decided_by: str | None = None,
         decision_reason: str | None = None,
     ) -> PromotionRequest | None:
-        request = (
-            await self.repository
-            .get_request(
-                promotion_request_id,
-            )
+        request = await self.repository.get_request(
+            promotion_request_id,
         )
 
         if request is None:
             return None
 
-        if (
-            request.status
-            != PromotionStatus.PENDING
-        ):
-            return self._to_domain(
-                request,
-            )
+        if request.status != PromotionStatus.PENDING:
+            return self._to_domain(request)
 
-        if self._is_expired(
-            request,
-        ):
+        if self._is_expired(request):
             return await self.auto_approve(
                 promotion_request_id,
             )
@@ -238,23 +184,15 @@ class PromotionService:
         self,
         promotion_request_id: str,
     ) -> PromotionRequest | None:
-        request = (
-            await self.repository
-            .get_request(
-                promotion_request_id,
-            )
+        request = await self.repository.get_request(
+            promotion_request_id,
         )
 
         if request is None:
             return None
 
-        if (
-            request.status
-            != PromotionStatus.PENDING
-        ):
-            return self._to_domain(
-                request,
-            )
+        if request.status != PromotionStatus.PENDING:
+            return self._to_domain(request)
 
         return await self._update_decision(
             promotion_request_id,
@@ -268,27 +206,17 @@ class PromotionService:
         promotion_request_id: str,
         reason: str | None = None,
     ) -> PromotionRequest | None:
-        request = (
-            await self.repository
-            .get_request(
-                promotion_request_id,
-            )
+        request = await self.repository.get_request(
+            promotion_request_id,
         )
 
         if request is None:
             return None
 
-        if (
-            request.status
-            != PromotionStatus.PENDING
-        ):
-            return self._to_domain(
-                request,
-            )
+        if request.status != PromotionStatus.PENDING:
+            return self._to_domain(request)
 
-        if self._is_expired(
-            request,
-        ):
+        if self._is_expired(request):
             return await self.auto_approve(
                 promotion_request_id,
             )
@@ -303,27 +231,17 @@ class PromotionService:
     async def expire_pending_requests(
         self,
     ) -> list[PromotionRequest]:
-        requests = (
-            await self.repository
-            .get_pending_requests()
-        )
-
+        requests = await self.repository.get_pending_requests()
         expired: list[PromotionRequest] = []
 
         for request in requests:
-            if self._is_expired(
-                request,
-            ):
-                result = (
-                    await self.auto_approve(
-                        request.promotion_request_id,
-                    )
+            if self._is_expired(request):
+                result = await self.auto_approve(
+                    request.promotion_request_id,
                 )
 
                 if result is not None:
-                    expired.append(
-                        result,
-                    )
+                    expired.append(result)
 
         return expired
 
@@ -334,113 +252,89 @@ class PromotionService:
         decided_by: str | None,
         decision_reason: str | None,
     ) -> PromotionRequest | None:
-        timestamp = datetime.now(
-            timezone.utc,
-        )
+        timestamp = datetime.now(timezone.utc)
 
-        document = (
-            await self.repository
-            .update_request(
-                promotion_request_id,
-                {
-                    "status": status,
-                    "decided_by": decided_by,
-                    "decision_reason":
-                        decision_reason,
-                    "decided_at":
-                        timestamp,
-                    "updated_at":
-                        timestamp,
-                },
-            )
+        document = await self.repository.update_request(
+            promotion_request_id,
+            {
+                "status": status,
+                "decided_by": decided_by,
+                "decision_reason": decision_reason,
+                "decided_at": timestamp,
+                "updated_at": timestamp,
+            },
         )
 
         if document is None:
             return None
 
-        return self._to_domain(
-            document,
+        request = self._to_domain(document)
+
+        await self._publish_event(request)
+
+        return request
+
+    async def _publish_event(
+        self,
+        request: PromotionRequest,
+    ) -> None:
+        queue_entry = await self.queue_repository.get_entry(
+            request.queue_entry_id,
+        )
+
+        if queue_entry is None:
+            return
+
+        await self.event_bus.emit(
+            EventType.PROMOTION_UPDATED,
+            queue_entry.department_id,
+            request.promotion_request_id,
         )
 
     @staticmethod
     def _is_expired(
         request: PromotionRequestDocument,
     ) -> bool:
-        deadline = (
-            PromotionService._as_utc(
-                request.decision_deadline,
-            )
+        deadline = PromotionService._as_utc(
+            request.decision_deadline,
         )
 
-        return (
-            datetime.now(
-                timezone.utc,
-            )
-            >= deadline
-        )
+        return datetime.now(timezone.utc) >= deadline
 
     @staticmethod
     def _as_utc(
         value: datetime,
     ) -> datetime:
         if value.tzinfo is None:
-            return value.replace(
-                tzinfo=timezone.utc,
-            )
+            return value.replace(tzinfo=timezone.utc)
 
-        return value.astimezone(
-            timezone.utc,
-        )
+        return value.astimezone(timezone.utc)
 
     @staticmethod
     def _to_domain(
         document: PromotionRequestDocument,
     ) -> PromotionRequest:
         return PromotionRequest(
-            promotion_request_id=(
-                document
-                .promotion_request_id
-            ),
-            queue_entry_id=(
-                document
-                .queue_entry_id
-            ),
-            target_doctor_id=(
-                document
-                .target_doctor_id
-            ),
+            promotion_request_id=document.promotion_request_id,
+            queue_entry_id=document.queue_entry_id,
+            target_doctor_id=document.target_doctor_id,
             reason=document.reason,
             status=document.status,
-            decision_deadline=(
-                PromotionService._as_utc(
-                    document
-                    .decision_deadline,
-                )
+            decision_deadline=PromotionService._as_utc(
+                document.decision_deadline,
             ),
-            decided_by=(
-                document.decided_by
-            ),
-            decision_reason=(
-                document
-                .decision_reason
-            ),
+            decided_by=document.decided_by,
+            decision_reason=document.decision_reason,
             decided_at=(
-                PromotionService._as_utc(
-                    document.decided_at
-                )
-                if document.decided_at
-                is not None
+                PromotionService._as_utc(document.decided_at)
+                if document.decided_at is not None
                 else None
             ),
-            created_at=(
-                PromotionService._as_utc(
-                    document.created_at,
-                )
+            created_at=PromotionService._as_utc(
+                document.created_at,
             ),
-            updated_at=(
-                PromotionService._as_utc(
-                    document.updated_at,
-                )
+            updated_at=PromotionService._as_utc(
+                document.updated_at,
             ),
         )
 
@@ -449,57 +343,29 @@ class PromotionService:
         request: PromotionRequest,
     ) -> PromotionRequestDocument:
         return PromotionRequestDocument(
-            promotion_request_id=(
-                request
-                .promotion_request_id
-            ),
-            queue_entry_id=(
-                request
-                .queue_entry_id
-            ),
-            target_doctor_id=(
-                request
-                .target_doctor_id
-            ),
+            promotion_request_id=request.promotion_request_id,
+            queue_entry_id=request.queue_entry_id,
+            target_doctor_id=request.target_doctor_id,
             reason=request.reason,
             status=request.status,
-            decision_deadline=(
-                PromotionService._as_utc(
-                    request
-                    .decision_deadline,
-                )
+            decision_deadline=PromotionService._as_utc(
+                request.decision_deadline,
             ),
             decided_by=request.decided_by,
-            decision_reason=(
-                request
-                .decision_reason
-            ),
+            decision_reason=request.decision_reason,
             decided_at=(
-                PromotionService._as_utc(
-                    request.decided_at
-                )
-                if request.decided_at
-                is not None
+                PromotionService._as_utc(request.decided_at)
+                if request.decided_at is not None
                 else None
             ),
             created_at=(
-                PromotionService._as_utc(
-                    request.created_at,
-                )
-                if request.created_at
-                is not None
-                else datetime.now(
-                    timezone.utc,
-                )
+                PromotionService._as_utc(request.created_at)
+                if request.created_at is not None
+                else datetime.now(timezone.utc)
             ),
             updated_at=(
-                PromotionService._as_utc(
-                    request.updated_at,
-                )
-                if request.updated_at
-                is not None
-                else datetime.now(
-                    timezone.utc,
-                )
+                PromotionService._as_utc(request.updated_at)
+                if request.updated_at is not None
+                else datetime.now(timezone.utc)
             ),
         )

@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { getApiErrorMessage } from "@/api/client";
 import { getDoctorCase } from "@/api/case";
 import { getDoctorQueueEntry } from "@/api/queue";
+import { subscribeToEvents } from "@/api/events";
+
 import type { DoctorCaseResponse, DoctorQueueEntry } from "@/types/api";
+
+const DEPARTMENT_ID = "general-medicine";
 
 interface UseCaseDataResult {
   caseData: DoctorCaseResponse | null;
@@ -18,13 +23,7 @@ export function useCaseData(sessionId: string | undefined): UseCaseDataResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const applyCase = useCallback(
-    (response: DoctorCaseResponse, entry: DoctorQueueEntry | null): void => {
-      setCaseData(response);
-      setQueueEntry(entry);
-    },
-    [],
-  );
+  const refreshTimerRef = useRef<number | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!sessionId) {
@@ -37,58 +36,50 @@ export function useCaseData(sessionId: string | undefined): UseCaseDataResult {
         getDoctorQueueEntry(sessionId),
       ]);
 
-      applyCase(response, entry);
+      setCaseData(response);
+      setQueueEntry(entry);
       setError("");
+    } catch (error) {
+      setError(getApiErrorMessage(error, "Unable to load patient case."));
     } finally {
       setIsLoading(false);
     }
-  }, [applyCase, sessionId]);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
       return;
     }
 
-    let cancelled = false;
-
-    const initialLoad = window.setTimeout(() => {
-      Promise.all([getDoctorCase(sessionId), getDoctorQueueEntry(sessionId)])
-        .then(([response, entry]) => {
-          if (cancelled) {
-            return;
-          }
-
-          applyCase(response, entry);
-          setError("");
-        })
-        .catch((error: unknown) => {
-          if (cancelled) {
-            return;
-          }
-
-          setError(getApiErrorMessage(error, "Unable to load patient case."));
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setIsLoading(false);
-          }
-        });
-    }, 0);
-
-    const interval = window.setInterval(() => {
-      if (cancelled) {
-        return;
+    const scheduleRefresh = (): void => {
+      if (refreshTimerRef.current !== null) {
+        window.clearTimeout(refreshTimerRef.current);
       }
 
-      void refresh().catch(() => {});
-    }, 15000);
+      refreshTimerRef.current = window.setTimeout(() => {
+        refreshTimerRef.current = null;
+        void refresh();
+      }, 100);
+    };
+
+    const initialLoad = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+
+    const unsubscribe = subscribeToEvents(DEPARTMENT_ID, () => {
+      scheduleRefresh();
+    });
 
     return () => {
-      cancelled = true;
       window.clearTimeout(initialLoad);
-      window.clearInterval(interval);
+      unsubscribe();
+
+      if (refreshTimerRef.current !== null) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
-  }, [applyCase, refresh, sessionId]);
+  }, [refresh, sessionId]);
 
   return {
     caseData,
