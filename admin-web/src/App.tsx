@@ -68,17 +68,13 @@ export default function App() {
         <aside className="sidebar">
           <DoctorsPanel doctors={dashboard.dashboard.doctors} />
 
-          <PromotionPanel
-            promotions={dashboard.dashboard.promotions}
-            onResolved={dashboard.reload}
-          />
+          <PromotionPanel promotions={dashboard.dashboard.promotions} />
         </aside>
       </div>
 
       <PatientDrawer
         patients={dashboard.dashboard.patients}
         doctors={dashboard.dashboard.doctors}
-        onReassigned={dashboard.reload}
       />
 
       <Toast />

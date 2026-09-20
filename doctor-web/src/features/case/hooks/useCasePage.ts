@@ -23,7 +23,6 @@ export function useCasePage(sessionId: string | undefined) {
     sessionId,
     caseData,
     queueEntry,
-    refresh,
   );
 
   const liveWaitingSeconds = useElapsedSeconds(
@@ -46,8 +45,8 @@ export function useCasePage(sessionId: string | undefined) {
     form,
     setForm,
     handleCall: call,
-    handleStart: start,
     handleComplete: complete,
+    handleStart: start,
     handleEdit: beginEditing,
     handleSaveSummary: saveSummary,
     handleConfirmSummary: confirm,

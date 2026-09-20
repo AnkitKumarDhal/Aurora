@@ -6,7 +6,6 @@ import type { AdminPromotion } from "@/types/admin";
 
 interface PromotionPanelProps {
   promotions: AdminPromotion[];
-  onResolved: () => Promise<void>;
 }
 
 function formatRemaining(deadline: string): {
@@ -19,7 +18,6 @@ function formatRemaining(deadline: string): {
   );
 
   const minutes = Math.floor(remaining / 60);
-
   const seconds = remaining % 60;
 
   return {
@@ -30,10 +28,7 @@ function formatRemaining(deadline: string): {
   };
 }
 
-export function PromotionPanel({
-  promotions,
-  onResolved,
-}: PromotionPanelProps) {
+export function PromotionPanel({ promotions }: PromotionPanelProps) {
   const promotion = promotions[0] ?? null;
 
   const [remaining, setRemaining] = useState(
@@ -46,7 +41,6 @@ export function PromotionPanel({
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,8 +73,6 @@ export function PromotionPanel({
       } else {
         await denyPromotion(promotion.promotionRequestId);
       }
-
-      await onResolved();
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Unable to resolve promotion.",

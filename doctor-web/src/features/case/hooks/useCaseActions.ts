@@ -19,7 +19,6 @@ export function useCaseActions(
   sessionId: string | undefined,
   caseData: DoctorCaseResponse | null,
   queueEntry: DoctorQueueEntry | null,
-  refresh: () => Promise<void>,
 ): UseCaseActionsResult {
   const [isActing, setIsActing] = useState(false);
 
@@ -32,14 +31,13 @@ export function useCaseActions(
 
     try {
       await callPatient(sessionId, queueEntry.queue_entry_id);
-      await refresh();
       toast.success("Patient called");
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Unable to call patient."));
     } finally {
       setIsActing(false);
     }
-  }, [queueEntry, refresh, sessionId]);
+  }, [queueEntry, sessionId]);
 
   const start = useCallback(async (): Promise<void> => {
     if (!sessionId || !queueEntry) {
@@ -50,14 +48,13 @@ export function useCaseActions(
 
     try {
       await startConsultation(sessionId, queueEntry.queue_entry_id);
-      await refresh();
       toast.success("Consultation started");
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Unable to start consultation."));
     } finally {
       setIsActing(false);
     }
-  }, [queueEntry, refresh, sessionId]);
+  }, [queueEntry, sessionId]);
 
   const complete = useCallback(async (): Promise<void> => {
     if (
@@ -72,7 +69,6 @@ export function useCaseActions(
 
     try {
       await completeConsultation(sessionId, queueEntry.queue_entry_id);
-      await refresh();
       toast.success("Consultation completed");
     } catch (error) {
       toast.error(
@@ -81,7 +77,7 @@ export function useCaseActions(
     } finally {
       setIsActing(false);
     }
-  }, [caseData, queueEntry, refresh, sessionId]);
+  }, [caseData, queueEntry, sessionId]);
 
   return {
     isActing,

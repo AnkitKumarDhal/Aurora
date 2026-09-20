@@ -7,7 +7,6 @@ import type { DashboardDoctor, Patient } from "@/types/admin";
 interface PatientDrawerProps {
   patients: Patient[];
   doctors: DashboardDoctor[];
-  onReassigned: () => Promise<void>;
 }
 
 function formatTime(value: string | null): string {
@@ -37,9 +36,7 @@ function formatWait(seconds: number | null): string {
   }
 
   const totalMinutes = Math.floor(seconds / 60);
-
   const hours = Math.floor(totalMinutes / 60);
-
   const minutes = totalMinutes % 60;
 
   if (hours > 0) {
@@ -58,29 +55,18 @@ function canReassign(patient: Patient): boolean {
   );
 }
 
-export function PatientDrawer({
-  patients,
-  doctors,
-  onReassigned,
-}: PatientDrawerProps) {
+export function PatientDrawer({ patients, doctors }: PatientDrawerProps) {
   const selectedPatientId = useAdminStore((state) => state.selectedPatientId);
-
   const isDrawerOpen = useAdminStore((state) => state.isDrawerOpen);
-
   const closeDrawer = useAdminStore((state) => state.closeDrawer);
-
   const showToast = useAdminStore((state) => state.showToast);
 
   const [isPresented, setIsPresented] = useState(false);
-
   const [reassignPatientId, setReassignPatientId] = useState<string | null>(
     null,
   );
-
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [reassignError, setReassignError] = useState<string | null>(null);
 
   const patient = patients.find((item) => item.id === selectedPatientId);
@@ -155,8 +141,6 @@ export function PatientDrawer({
       setSelectedDoctorId("");
       setReassignError(null);
       closeDrawer();
-
-      await onReassigned();
     } catch (error) {
       setReassignError(
         error instanceof Error ? error.message : "Unable to reassign patient.",
@@ -367,7 +351,6 @@ export function PatientDrawer({
 
                 {doctors.map((doctor) => {
                   const isCurrent = doctor.id === currentPatient.doctorId;
-
                   const disabled = isCurrent || doctor.status === "Unavailable";
 
                   return (
