@@ -125,7 +125,7 @@ export default function DoctorHeader({
             >
               <DropdownMenuItem
                 className="cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold text-danger focus:bg-accent-tint focus:text-accent-dark"
-                onSelect={() => {
+                onClick={() => {
                   onLogout();
                 }}
               >
