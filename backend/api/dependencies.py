@@ -23,6 +23,7 @@ from backend.integrations.identity import MockIdentityProvider
 from backend.integrations.storage import LocalStorage
 from backend.services.assignment import AssignmentService
 from backend.services.assignment_scheduler import AssignmentSchedulerService
+from backend.services.clinical_intelligence import ClinicalIntelligenceService
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_signal import ClinicalSignalService
 from backend.services.clinical_summary import ClinicalSummaryService
@@ -31,6 +32,7 @@ from backend.services.conversation import ConversationService
 from backend.services.doctor_case import DoctorCaseService
 from backend.services.doctor_queue import DoctorQueueService
 from backend.services.document import DocumentService
+from backend.services.document_processing import DocumentProcessingService
 from backend.services.ephemeral_identity import EphemeralIdentityService
 from backend.services.healthcare_integration import HealthcareIntegrationService
 from backend.services.intake import IntakeService
@@ -164,6 +166,33 @@ def get_ephemeral_identity_service() -> EphemeralIdentityService:
     )
 
 
+def get_document_processing_service() -> DocumentProcessingService:
+    return DocumentProcessingService(
+        document_repository=DocumentRepository(),
+        extraction_repository=DocumentExtractionRepository(),
+    )
+
+
+def get_document_service() -> DocumentService:
+    return DocumentService(
+        document_repository=DocumentRepository(),
+        extraction_repository=DocumentExtractionRepository(),
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
+        processing_service=get_document_processing_service(),
+    )
+
+
+def get_conversation_service() -> ConversationService:
+    return ConversationService(
+        repository=ConversationRepository(),
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
+    )
+
+
 def get_patient_registration_service() -> PatientRegistrationService:
     return PatientRegistrationService(
         session_service=ClinicalSessionService(
@@ -207,27 +236,8 @@ def get_consent_service() -> ConsentService:
     )
 
 
-def get_conversation_service() -> ConversationService:
-    return ConversationService(
-        repository=ConversationRepository(),
-        session_service=ClinicalSessionService(
-            ClinicalSessionRepository(),
-        ),
-    )
-
-
 def get_storage() -> LocalStorage:
     return LocalStorage()
-
-
-def get_document_service() -> DocumentService:
-    return DocumentService(
-        document_repository=DocumentRepository(),
-        extraction_repository=DocumentExtractionRepository(),
-        session_service=ClinicalSessionService(
-            ClinicalSessionRepository(),
-        ),
-    )
 
 
 def get_doctor_case_service() -> DoctorCaseService:
@@ -243,13 +253,7 @@ def get_doctor_case_service() -> DoctorCaseService:
         summary_service=ClinicalSummaryService(
             ClinicalSummaryRepository(),
         ),
-        document_service=DocumentService(
-            document_repository=DocumentRepository(),
-            extraction_repository=DocumentExtractionRepository(),
-            session_service=ClinicalSessionService(
-                ClinicalSessionRepository(),
-            ),
-        ),
+        document_service=get_document_service(),
         triage_service=TriageService(
             repository=TriageRepository(),
             signal_repository=ClinicalSignalRepository(),
@@ -265,12 +269,7 @@ def get_interview_controller() -> InterviewController:
         session_service=ClinicalSessionService(
             ClinicalSessionRepository(),
         ),
-        conversation_service=ConversationService(
-            repository=ConversationRepository(),
-            session_service=ClinicalSessionService(
-                ClinicalSessionRepository(),
-            ),
-        ),
+        conversation_service=get_conversation_service(),
         signal_service=ClinicalSignalService(
             ClinicalSignalRepository(),
         ),
@@ -282,4 +281,14 @@ def get_interview_controller() -> InterviewController:
             signal_repository=ClinicalSignalRepository(),
         ),
         extractor=InterviewExtractor(),
+    )
+
+
+def get_clinical_intelligence_service() -> ClinicalIntelligenceService:
+    return ClinicalIntelligenceService(
+        session_service=get_clinical_session_service(),
+        signal_service=get_clinical_signal_service(),
+        summary_service=get_clinical_summary_service(),
+        conversation_service=get_conversation_service(),
+        document_service=get_document_service(),
     )

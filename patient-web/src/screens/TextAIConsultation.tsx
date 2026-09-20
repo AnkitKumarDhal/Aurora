@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Bot, Send, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getInterviewState, type InterviewTurnResult } from "@/api/interview";
@@ -58,13 +59,14 @@ export function TextAIConsultation({
 
     void getInterviewState(sessionId)
       .then((state) => {
-        if (state.patient_turns > 0 && state.next_question) {
+        const next_question = state.next_question;
+        if (state.patient_turns > 0 && next_question) {
           setMessages((previous) => [
             ...previous,
             {
               id: "restored-question",
               sender: "ai",
-              text: state.next_question,
+              text: next_question,
             },
           ]);
         }
@@ -88,17 +90,24 @@ export function TextAIConsultation({
     const localMessageId = `user-${Date.now()}`;
 
     setError(null);
-    setInput("");
-    setCanContinue(true);
-    setMessages((previous) => [
-      ...previous,
-      {
-        id: localMessageId,
-        sender: "user",
-        text: content,
-      },
-    ]);
-    setIsThinking(true);
+
+    flushSync(() => {
+      setInput("");
+      setCanContinue(true);
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: localMessageId,
+          sender: "user",
+          text: content,
+        },
+      ]);
+      setIsThinking(true);
+    });
+
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
 
     const result = await onConversationTurn(
       "TEXT",
@@ -106,6 +115,7 @@ export function TextAIConsultation({
       isHi ? "hi" : "en",
     );
 
+    // keep the rest unchanged...
     if (!result) {
       setError(
         isHi

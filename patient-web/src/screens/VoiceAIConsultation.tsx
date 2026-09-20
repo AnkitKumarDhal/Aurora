@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Bot, Mic, MicOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getInterviewState, type InterviewTurnResult } from "@/api/interview";
@@ -68,13 +69,14 @@ export function VoiceAIConsultation({
 
     void getInterviewState(sessionId)
       .then((state) => {
-        if (state.patient_turns > 0 && state.next_question) {
+        const next_question = state.next_question;
+        if (state.patient_turns > 0 && next_question) {
           setMessages((previous) => [
             ...previous,
             {
               id: "restored-question",
               sender: "ai",
-              text: state.next_question,
+              text: next_question,
             },
           ]);
         }
@@ -98,26 +100,30 @@ export function VoiceAIConsultation({
 
       const localMessageId = `user-${Date.now()}`;
 
-      onActivity?.();
-      setError(null);
-      setCanContinue(true);
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: localMessageId,
-          sender: "user",
-          text: content,
-        },
-      ]);
-      setCurrentTranscript("");
-      setIsSaving(true);
+      flushSync(() => {
+        setError(null);
+        setCanContinue(true);
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: localMessageId,
+            sender: "user",
+            text: content,
+          },
+        ]);
+        setCurrentTranscript("");
+        setIsSaving(true);
+      });
+
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
 
       const result = await onConversationTurn(
         "AUDIO",
         content,
         isHi ? "hi" : "en",
       );
-
       if (!result) {
         setError(
           isHi

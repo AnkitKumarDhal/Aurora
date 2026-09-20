@@ -558,12 +558,12 @@ export function usePatientFlow() {
 
       registerActivity();
 
-      await finalizeInterview(sessionId);
-
       const documents = await listPatientDraftDocuments(draftId);
 
       const registration: RegistrationResponse =
         await submitPatientRegistration(draft, documents);
+
+      await finalizeInterview(registration.session_id);
 
       setSessionId(registration.session_id);
       setRegistrationSubmitted(true);

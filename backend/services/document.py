@@ -1,16 +1,11 @@
 from datetime import datetime, timezone
 
-from backend.database.repositories.document import (
-    DocumentExtractionRepository,
-    DocumentRepository,
-)
+from backend.database.repositories.document import DocumentExtractionRepository, DocumentRepository
 from backend.domain.document import Document, DocumentExtraction
 from backend.domain.enums import DocumentStatus, SessionStatus
-from backend.models.document import (
-    DocumentDocument,
-    DocumentExtractionDocument,
-)
+from backend.models.document import DocumentDocument, DocumentExtractionDocument
 from backend.services.clinical_session import ClinicalSessionService
+from backend.services.document_processing import DocumentProcessingService
 
 
 class DocumentService:
@@ -19,18 +14,18 @@ class DocumentService:
         document_repository: DocumentRepository,
         extraction_repository: DocumentExtractionRepository,
         session_service: ClinicalSessionService | None = None,
+        processing_service: DocumentProcessingService | None = None,
     ) -> None:
         self.document_repository = document_repository
         self.extraction_repository = extraction_repository
         self.session_service = session_service
+        self.processing_service = processing_service
 
     async def get_document(
         self,
         document_id: str,
     ) -> Document | None:
-        document = await self.document_repository.get_document(
-            document_id,
-        )
+        document = await self.document_repository.get_document(document_id)
 
         if document is None:
             return None
@@ -41,9 +36,7 @@ class DocumentService:
         self,
         session_id: str,
     ) -> list[Document]:
-        documents = await self.document_repository.get_session_documents(
-            session_id,
-        )
+        documents = await self.document_repository.get_session_documents(session_id)
 
         return [
             self._document_to_domain(document)
@@ -55,9 +48,7 @@ class DocumentService:
         document: Document,
     ) -> Document:
         if self.session_service is not None:
-            session = await self.session_service.get_session(
-                document.session_id,
-            )
+            session = await self.session_service.get_session(document.session_id)
 
             if session is None:
                 raise ValueError("Clinical session not found")
@@ -68,8 +59,7 @@ class DocumentService:
                 SessionStatus.DOCUMENT_PROCESSING,
             }:
                 raise ValueError(
-                    "Documents cannot be added in the current session state",
-                )
+                    "Documents cannot be added in the current session state")
 
             if session.status != SessionStatus.DOCUMENT_PROCESSING:
                 await self.session_service.transition_session(
@@ -90,6 +80,14 @@ class DocumentService:
         )
 
         await self.create_extraction(extraction)
+
+        if self.processing_service is not None:
+            processed_document = await self.processing_service.process_document(
+                document.document_id,
+            )
+
+            if processed_document is not None:
+                return self._document_to_domain(processed_document)
 
         return document
 
@@ -139,10 +137,8 @@ class DocumentService:
         self,
         document_id: str,
     ) -> DocumentExtraction | None:
-        extraction = (
-            await self.extraction_repository.get_document_extraction(
-                document_id,
-            )
+        extraction = await self.extraction_repository.get_document_extraction(
+            document_id,
         )
 
         if extraction is None:

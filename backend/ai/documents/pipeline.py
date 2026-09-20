@@ -3,24 +3,15 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
-from document_ocr import ocr_document
-from document_extractor import extract_document
-from lab_document_extractor import extract_lab_report
-from discharge_document_extractor import extract_discharge_summary
+from backend.ai.documents.discharge import extract_discharge_summary
+from backend.ai.documents.extractor import extract_document
+from backend.ai.documents.laboratory import extract_lab_report
+from backend.ai.ocr.engine import ocr_document
 
 
-def process_medical_document(image_path: str) -> Dict[str, Any]:
-    """
-    Main MediKiosk medical-document pipeline.
-
-    Image
-        -> OCR
-        -> document classification
-        -> appropriate structured extractor
-    """
-
+def process_medical_document(image_path: str) -> dict[str, Any]:
     image_path = str(Path(image_path).resolve())
 
     ocr = ocr_document(image_path)
@@ -37,15 +28,10 @@ def process_medical_document(image_path: str) -> Dict[str, Any]:
         ocr.get("document_type") or "unknown"
     ).lower()
 
-    if document_type == "prescription":
-        structured = extract_document(ocr)
-
-    elif document_type == "lab_report":
+    if document_type == "lab_report":
         structured = extract_lab_report(ocr)
-
     elif document_type == "discharge_summary":
         structured = extract_discharge_summary(ocr)
-
     else:
         structured = extract_document(ocr)
 
@@ -57,23 +43,17 @@ def process_medical_document(image_path: str) -> Dict[str, Any]:
     }
 
 
-def print_result(result: Dict[str, Any]) -> None:
+def print_result(result: dict[str, Any]) -> None:
     print("=" * 70)
-    print("             MEDIKIOSK MEDICAL DOCUMENT PIPELINE")
+    print("AURORA MEDICAL DOCUMENT PIPELINE")
     print("=" * 70)
-
-    print("\n========== OCR ==========")
-
-    ocr = result.get("ocr", {})
-
-    print("Status:", ocr.get("status"))
-    print("Document type:", ocr.get("document_type"))
-    print("Confidence:", ocr.get("mean_confidence"))
-    print("Raw text:")
-    print(ocr.get("text"))
-
-    print("\n========== STRUCTURED DOCUMENT ==========")
-
+    print()
+    print("OCR status:", result.get("ocr", {}).get("status"))
+    print("Document type:", result.get("ocr", {}).get("document_type"))
+    print("OCR confidence:", result.get("ocr", {}).get("mean_confidence"))
+    print()
+    print(result.get("ocr", {}).get("text"))
+    print()
     print(
         json.dumps(
             result.get("structured_document"),
@@ -81,16 +61,14 @@ def print_result(result: Dict[str, Any]) -> None:
             ensure_ascii=False,
         )
     )
-
-    print("\n========== PIPELINE RESULT ==========")
-
+    print()
     print("Overall status:", result.get("status"))
     print("Image:", result.get("image_path"))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Process a medical document image through MediKiosk."
+        description="Process a medical document image through Aurora.",
     )
 
     parser.add_argument(
@@ -99,9 +77,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-
     result = process_medical_document(args.image)
-
     print_result(result)
 
     if result.get("status") != "success":

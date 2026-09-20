@@ -23,7 +23,7 @@ def _document_type_from_text(text: str) -> str:
 
     prescription_terms = [
         "prescription",
-        "rx",
+        "rx:",
         "tablet",
         "capsule",
         "syrup",
@@ -31,10 +31,8 @@ def _document_type_from_text(text: str) -> str:
         "dosage",
         "mg",
         "ml",
-        "before food",
-        "after food",
-        "before breakfast",
-        "after breakfast",
+        "dispense/supply",
+        "sig:",
     ]
 
     lab_terms = [
@@ -71,26 +69,27 @@ def _document_type_from_text(text: str) -> str:
 
 
 def _extract_identity(text: str) -> Dict[str, Optional[str]]:
-    # OCR often flattens the whole page into one line, so do not depend
-    # on newline boundaries here.
     patient_name = _first_match(
         text,
         [
-            r"\bpatient\s*[:\-]?\s*([A-Za-z][A-Za-z .'-]{1,60}?)(?=\s+\bdate\b|\s+\bdob\b|\s+\bage\b|$)",
-            r"\bname\s*[:\-]?\s*([A-Za-z][A-Za-z .'-]{1,60}?)(?=\s+\bdate\b|\s+\bdob\b|\s+\bage\b|$)",
+            r"\bpatient\s+name\s*[:\-]?\s*(.*?)(?=\s*[^A-Za-z0-9]*(?:birthdate|date|dob|age|sex|mrn|allergies)\b|$)",
+            r"\bname\s*[:\-]?\s*(.*?)(?=\s*[^A-Za-z0-9]*(?:birthdate|date|dob|age|sex|mrn|allergies)\b|$)",
         ],
     )
 
     date = _first_match(
         text,
         [
+            r"\bdate\s+issued\s*[:\-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b",
             r"\bdate\s*[:\-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b",
             r"\bdate\s*[:\-]?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})\b",
         ],
     )
 
     return {
-        "patient_name": patient_name,
+        "patient_name": patient_name.strip(" .:-'\"‘’")
+        if patient_name
+        else None,
         "date": date,
     }
 
@@ -99,7 +98,11 @@ def _split_prescription_items(text: str) -> List[str]:
     normalized = _clean(text)
 
     matches = list(
-        re.finditer(r"(?:^|\s)(\d+)\.\s*", normalized)
+        re.finditer(
+            r"\bRx\s*:\s*",
+            normalized,
+            flags=re.IGNORECASE,
+        )
     )
 
     if not matches:
@@ -107,119 +110,232 @@ def _split_prescription_items(text: str) -> List[str]:
 
     items: List[str] = []
 
-    for i, match in enumerate(matches):
+    stop_match = re.search(
+        r"\b(?:DISPENSE\s+AS\s+WRITTEN|SUBSTITUTION\s+PERMITTED)\b",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+
+    stop_position = stop_match.start() if stop_match else len(normalized)
+
+    for index, match in enumerate(matches):
         start = match.end()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(normalized)
-        item = normalized[start:end].strip(" .")
+
+        next_rx = (
+            matches[index + 1].start()
+            if index + 1 < len(matches)
+            else stop_position
+        )
+
+        end = min(next_rx, stop_position)
+
+        if start >= end:
+            continue
+
+        item = normalized[start:end].strip(" .,:;-")
+
         if item:
             items.append(item)
 
     return items
 
 
-def _extract_follow_up(text: str) -> Optional[str]:
-    match = re.search(
-        r"\bfollow[- ]?up\b\s*(?:after|in|on)?\s*([^.;]+)",
-        text,
-        flags=re.IGNORECASE,
+def _extract_strength(item: str) -> tuple[Optional[str], Optional[re.Match[str]]]:
+    patterns = [
+        r"\b\d+(?:\s*[-/]\s*\d+)?\s*(?:mg|mcg|g|ml)(?:\s*/\s*\d+\s*(?:hours?|hrs?|hr|h))?\b",
+        r"\b\d+(?:\s*[-/]\s*\d+)?\s*(?:mg|mcg|g|ml)\b",
+    ]
+
+    for pattern in patterns:
+        match = re.search(
+            pattern,
+            item,
+            flags=re.IGNORECASE,
+        )
+
+        if match:
+            return _clean(match.group(0)), match
+
+    return None, None
+
+
+def _extract_dose(item: str) -> Optional[str]:
+    patterns = [
+        r"\b\d+(?:\.\d+)?\s*(?:tablets?|tabs?|capsules?|caps?|drops?|puffs?|ml)\b",
+        r"=\s*[|Il1]\s*(?:tab|tabs|tablet|tablets|cap|capsule|capsules)\b",
+    ]
+
+    for pattern in patterns:
+        match = re.search(
+            pattern,
+            item,
+            flags=re.IGNORECASE,
+        )
+
+        if match:
+            value = _clean(match.group(0))
+
+            if value.startswith("="):
+                return "1 tab"
+
+            return value
+
+    return None
+
+
+def _extract_frequency(item: str) -> Optional[str]:
+    matches: List[str] = []
+
+    qh_matches = list(
+        re.finditer(
+            r"\bQ\d+\s*H(?:\s+PRN)?\b",
+            item,
+            flags=re.IGNORECASE,
+        )
     )
 
-    if not match:
-        return None
+    for match in qh_matches:
+        value = _clean(match.group(0))
 
-    value = _clean(match.group(0))
-    return value or None
+        if value not in matches:
+            matches.append(value.upper())
+
+    daily_matches = list(
+        re.finditer(
+            r"\b(?:once|twice|three|four)\s+(?:a|per)\s+day\b",
+            item,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    for match in daily_matches:
+        value = _clean(match.group(0)).lower()
+
+        if value not in matches:
+            matches.append(value)
+
+    numeric_daily_matches = list(
+        re.finditer(
+            r"\b\d+\s+times\s+(?:a|per)\s+day\b",
+            item,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    for match in numeric_daily_matches:
+        value = _clean(match.group(0)).lower()
+
+        if value not in matches:
+            matches.append(value)
+
+    simple_matches = list(
+        re.finditer(
+            r"\b(?:once|twice|three|four)\s+daily\b",
+            item,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    for match in simple_matches:
+        value = _clean(match.group(0)).lower()
+
+        if value not in matches:
+            matches.append(value)
+
+    cadence_matches = list(
+        re.finditer(
+            r"\b(?:daily|weekly|monthly)\b",
+            item,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    for match in cadence_matches:
+        value = _clean(match.group(0)).lower()
+
+        if value not in matches:
+            matches.append(value)
+
+    prn_present = bool(
+        re.search(
+            r"\bPRN\b|\bas\s+needed\b",
+            item,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    if prn_present and not any(
+        "PRN" in value.upper()
+        for value in matches
+    ):
+        matches.append("PRN")
+
+    acronym_matches = list(
+        re.finditer(
+            r"\b(?:OD|BD|TID|QID)\b",
+            item,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    for match in acronym_matches:
+        value = _clean(match.group(0)).upper()
+
+        if value not in matches:
+            matches.append(value)
+
+    return " ".join(matches) if matches else None
 
 
-def _remove_follow_up(text: str) -> str:
-    cleaned = re.sub(
-        r"\s+follow[- ]?up\b.*$",
-        "",
-        text,
-        flags=re.IGNORECASE,
-    ).strip(" .,-")
-    return cleaned
+def _extract_timing(item: str) -> Optional[str]:
+    patterns = [
+        r"\b(?:before|after)\s+(?:food|meals?|breakfast|lunch|dinner)\b",
+        r"\bat\s+bedtime\b",
+    ]
+
+    for pattern in patterns:
+        match = re.search(
+            pattern,
+            item,
+            flags=re.IGNORECASE,
+        )
+
+        if match:
+            return _clean(match.group(0))
+
+    return None
 
 
 def _extract_medication_item(item: str) -> Dict[str, Optional[str]]:
-    item = _remove_follow_up(item)
+    item = _clean(item)
 
-    strength_match = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*(mg|mcg|g|ml)\b",
-        item,
-        flags=re.IGNORECASE,
-    )
+    strength, strength_match = _extract_strength(item)
+    dose = _extract_dose(item)
+    frequency = _extract_frequency(item)
+    timing = _extract_timing(item)
 
-    strength = (
-        f"{strength_match.group(1)} {strength_match.group(2)}"
-        if strength_match
-        else None
-    )
+    cut_positions: List[int] = []
 
-    dose_match = re.search(
-        r"\b(\d+(?:/\d+)?\s*(?:tablet|tablets|tab|capsule|capsules|cap|ml|drop|drops|puff|puffs))\b",
-        item,
-        flags=re.IGNORECASE,
-    )
+    if strength_match:
+        cut_positions.append(strength_match.start())
 
-    dose = _clean(dose_match.group(1)) if dose_match else None
+    for pattern in [
+        r"\bstart\s+date\b",
+        r"\bsig\s*:",
+        r"\bdispense\s*/\s*supply\b",
+        r"\brefill\b",
+        r"\bq\d+\s*h\b",
+        r"\bdaily\b",
+        r"\bprn\b",
+        r"\bbefore\s+(?:food|meals?|breakfast|lunch|dinner)\b",
+        r"\bafter\s+(?:food|meals?|breakfast|lunch|dinner)\b",
+    ]:
+        match = re.search(
+            pattern,
+            item,
+            flags=re.IGNORECASE,
+        )
 
-    frequency_patterns = [
-        r"\b(once\s+daily)\b",
-        r"\b(twice\s+daily)\b",
-        r"\b(three\s+times\s+daily)\b",
-        r"\b(four\s+times\s+daily)\b",
-        r"\b(once\s+a\s+day)\b",
-        r"\b(twice\s+a\s+day)\b",
-        r"\b(three\s+times\s+a\s+day)\b",
-        r"\b(OD)\b",
-        r"\b(BD)\b",
-        r"\b(TID)\b",
-        r"\b(QID)\b",
-    ]
-
-    frequency = None
-
-    for pattern in frequency_patterns:
-        match = re.search(pattern, item, flags=re.IGNORECASE)
-        if match:
-            frequency = _clean(match.group(1))
-            break
-
-    timing_patterns = [
-        r"\b(before\s+food)\b",
-        r"\b(after\s+food)\b",
-        r"\b(before\s+meals?)\b",
-        r"\b(after\s+meals?)\b",
-        r"\b(before\s+breakfast)\b",
-        r"\b(after\s+breakfast)\b",
-        r"\b(before\s+lunch)\b",
-        r"\b(after\s+lunch)\b",
-        r"\b(before\s+dinner)\b",
-        r"\b(after\s+dinner)\b",
-        r"\b(at\s+bedtime)\b",
-    ]
-
-    timing = None
-
-    for pattern in timing_patterns:
-        match = re.search(pattern, item, flags=re.IGNORECASE)
-        if match:
-            timing = _clean(match.group(1))
-            break
-
-    # Medicine name is the text before strength/dose/instructions.
-    cut_positions = [
-        match.start()
-        for match in [
-            strength_match,
-            dose_match,
-        ]
-        if match is not None
-    ]
-
-    for pattern in frequency_patterns + timing_patterns:
-        match = re.search(pattern, item, flags=re.IGNORECASE)
         if match:
             cut_positions.append(match.start())
 
@@ -227,8 +343,14 @@ def _extract_medication_item(item: str) -> Dict[str, Optional[str]]:
 
     name = _clean(item[:cut_at]).strip(" ,-:")
 
-    # Remove an OCR artifact such as "Rx" accidentally attached.
-    name = re.sub(r"^\s*rx\s+", "", name, flags=re.IGNORECASE).strip()
+    name = re.sub(
+        r"\b(?:oral|tablet|tablets|capsule|capsules|tab|tabs|cap|caps)\b",
+        " ",
+        name,
+        flags=re.IGNORECASE,
+    )
+
+    name = re.sub(r"\s+", " ", name).strip(" ,-:")
 
     return {
         "name": name or None,
@@ -244,7 +366,14 @@ def _extract_prescription(text: str) -> Dict[str, Any]:
     identity = _extract_identity(text)
     items = _split_prescription_items(text)
 
-    medications = [_extract_medication_item(item) for item in items]
+    medications = [
+        medication
+        for medication in (
+            _extract_medication_item(item)
+            for item in items
+        )
+        if medication.get("name")
+    ]
 
     return {
         "document_type": "prescription",
@@ -253,6 +382,20 @@ def _extract_prescription(text: str) -> Dict[str, Any]:
         "medications": medications,
         "follow_up": _extract_follow_up(text),
     }
+
+
+def _extract_follow_up(text: str) -> Optional[str]:
+    match = re.search(
+        r"\bfollow[- ]?up\b\s*(?:after|in|on)?\s*([^.;]+)",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if not match:
+        return None
+
+    value = _clean(match.group(0))
+    return value or None
 
 
 def _extract_lab(text: str) -> Dict[str, Any]:
@@ -276,10 +419,12 @@ def _extract_lab(text: str) -> Dict[str, Any]:
 
     for raw_line in text.splitlines():
         line = _clean(raw_line)
+
         if not line:
             continue
 
         match = pattern.fullmatch(line)
+
         if not match:
             continue
 
@@ -339,10 +484,11 @@ def extract_document(ocr_result: Dict[str, Any]) -> Dict[str, Any]:
         raise TypeError("ocr_result must be a dictionary")
 
     raw_text = str(ocr_result.get("text") or "")
+
     document_type = str(
         ocr_result.get("document_type")
         or _document_type_from_text(raw_text)
-    )
+    ).strip().lower()
 
     if document_type == "prescription":
         structured = _extract_prescription(raw_text)
@@ -352,31 +498,32 @@ def extract_document(ocr_result: Dict[str, Any]) -> Dict[str, Any]:
         structured = _extract_discharge(raw_text)
     else:
         identity = _extract_identity(raw_text)
+
         structured = {
             "document_type": "unknown",
             "patient_name": identity["patient_name"],
             "date": identity["date"],
         }
 
-    review_reasons = list(ocr_result.get("review_reasons") or [])
-    manual_review = bool(ocr_result.get("manual_review_required", False))
+    review_reasons = list(
+        ocr_result.get("review_reasons") or []
+    )
 
-    # Missing patient identity/date is not necessarily an OCR failure, but
-    # it should be visible to the physician rather than silently treated
-    # as complete.
-    if document_type == "prescription":
-        if not structured.get("medications"):
-            manual_review = True
-            review_reasons.append(
-                "No prescription medication entries could be confidently extracted."
-            )
+    manual_review = bool(
+        ocr_result.get("manual_review_required", False)
+    )
 
-    if document_type == "lab_report":
-        if not structured.get("tests"):
-            manual_review = True
-            review_reasons.append(
-                "No laboratory test/value pairs could be confidently extracted."
-            )
+    if document_type == "prescription" and not structured.get("medications"):
+        manual_review = True
+        review_reasons.append(
+            "No prescription medication entries could be confidently extracted."
+        )
+
+    if document_type == "lab_report" and not structured.get("tests"):
+        manual_review = True
+        review_reasons.append(
+            "No laboratory test/value pairs could be confidently extracted."
+        )
 
     if document_type == "unknown":
         manual_review = True
@@ -392,12 +539,23 @@ def extract_document(ocr_result: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "status": "success",
-        "document_type": structured.get("document_type", document_type),
-        "patient_name": structured.get("patient_name"),
-        "date": structured.get("date"),
+        "document_type": structured.get(
+            "document_type",
+            document_type,
+        ),
+        "patient_name": structured.get(
+            "patient_name",
+        ),
+        "date": structured.get(
+            "date",
+        ),
         "structured_data": structured,
         "raw_text": raw_text,
-        "ocr_confidence": ocr_result.get("mean_confidence"),
+        "ocr_confidence": ocr_result.get(
+            "mean_confidence",
+        ),
         "manual_review_required": manual_review,
-        "review_reasons": list(dict.fromkeys(review_reasons)),
+        "review_reasons": list(
+            dict.fromkeys(review_reasons)
+        ),
     }

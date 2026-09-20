@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from backend.api.routes.assignment import router as assignment_router
 from backend.api.routes.auth import router as auth_router
+from backend.api.routes.clinical_intelligence import router as clinical_intelligence_router
 from backend.api.routes.clinical_summary import router as clinical_summary_router
 from backend.api.routes.consent import router as consent_router
 from backend.api.routes.consent_information import router as consent_information_router
@@ -55,7 +56,9 @@ app.include_router(consent_router, prefix="/api/v1")
 app.include_router(consent_information_router, prefix="/api/v1")
 app.include_router(conversation_router, prefix="/api/v1")
 app.include_router(interview_router, prefix="/api/v1")
+app.include_router(interview_session_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
+app.include_router(clinical_intelligence_router, prefix="/api/v1")
 app.include_router(doctor_case_router, prefix="/api/v1")
 app.include_router(patient_verification_router, prefix="/api/v1")
 app.include_router(patient_registration_router, prefix="/api/v1")
@@ -66,7 +69,6 @@ app.include_router(triage_router, prefix="/api/v1")
 app.include_router(queue_router, prefix="/api/v1")
 app.include_router(workflow_router, prefix="/api/v1")
 app.include_router(promotion_router, prefix="/api/v1")
-app.include_router(interview_session_router, prefix="/api/v1")
 
 
 @app.get("/health")
