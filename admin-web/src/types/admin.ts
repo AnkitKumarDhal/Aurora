@@ -1,6 +1,41 @@
-export type PatientState = "Waiting" | "In Consultation";
+export type PatientState =
+  | "WAITING"
+  | "CALLED"
+  | "PROMOTION_PENDING"
+  | "IN_CONSULTATION";
 
-export type DoctorStatus = "Available" | "Consulting" | "Unavailable";
+export type DoctorStatus = "Available" | "Unavailable";
+
+export interface Patient {
+  id: string;
+  queueEntryId: string;
+  sessionId: string;
+  patientId: string;
+  name: string;
+  age: number | null;
+  urgencyLevel: number | null;
+  priorityScore: number | null;
+  state: PatientState;
+  doctorId: string | null;
+  doctor: string | null;
+  complaint: string | null;
+  queuedAt: string | null;
+  waitingTimeSeconds: number | null;
+}
+
+export interface DashboardDoctor {
+  id: string;
+  name: string;
+  status: DoctorStatus;
+  assignedCount: number;
+}
+
+export interface DashboardStats {
+  patients: number;
+  waiting: number;
+  in_consultation: number;
+  doctors: number;
+}
 
 export type PromotionState =
   | "active"
@@ -10,30 +45,6 @@ export type PromotionState =
   | "empty";
 
 export type ToastType = "success" | "deny" | "auto" | "default";
-
-export interface Patient {
-  id: string;
-  name: string;
-  ageSex: string;
-  mrn: string;
-  priority: "High Priority" | "Normal";
-  state: PatientState;
-  wait: string;
-  waitMinutes: number | null;
-  doctor: string;
-  complaint: string;
-  cardComplaint: string;
-  triage: string;
-  severity: string;
-  stale?: boolean;
-}
-
-export interface Doctor {
-  id: string;
-  name: string;
-  status: DoctorStatus;
-  assignedCount: number;
-}
 
 export interface ToastState {
   message: string;

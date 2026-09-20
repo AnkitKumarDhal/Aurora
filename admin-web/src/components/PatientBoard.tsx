@@ -3,6 +3,14 @@ import { PatientCard } from "@/components/PatientCard";
 import { useAdminStore } from "@/store/adminStore";
 import type { Patient } from "@/types/admin";
 
+interface PatientBoardProps {
+  patients: Patient[];
+}
+
+function isPriority(patient: Patient): boolean {
+  return patient.urgencyLevel !== null && patient.urgencyLevel >= 4;
+}
+
 function Lane({
   title,
   count,
@@ -15,20 +23,23 @@ function Lane({
   variant?: "priority" | "consultation";
 }) {
   const openPatient = useAdminStore((state) => state.openPatient);
+
   const selectedPatientId = useAdminStore((state) => state.selectedPatientId);
+
   const isDrawerOpen = useAdminStore((state) => state.isDrawerOpen);
 
   return (
     <div className={cn("lane", variant)}>
       <div className="lane-header">
         <div className="lane-title">{title}</div>
+
         <div className="lane-count">{count}</div>
       </div>
 
       <div className="lane-cards">
         {patients.map((patient) => (
           <PatientCard
-            key={patient.id}
+            key={patient.queueEntryId}
             patient={patient}
             selected={isDrawerOpen && selectedPatientId === patient.id}
             onClick={() => openPatient(patient.id)}
@@ -39,25 +50,30 @@ function Lane({
   );
 }
 
-export function PatientBoard() {
-  const patients = useAdminStore((state) => state.patients);
-
-  const priorityPatients = patients.filter(
-    (patient) => patient.priority === "High Priority",
+export function PatientBoard({ patients }: PatientBoardProps) {
+  const selectedDoctorFilter = useAdminStore(
+    (state) => state.selectedDoctorFilter,
   );
 
-  const waitingPatients = patients.filter(
-    (patient) => patient.state === "Waiting" && patient.priority === "Normal",
+  const filteredPatients = selectedDoctorFilter
+    ? patients.filter((patient) => patient.doctorId === selectedDoctorFilter)
+    : patients;
+
+  const priorityPatients = filteredPatients.filter(isPriority);
+
+  const waitingPatients = filteredPatients.filter(
+    (patient) => patient.state !== "IN_CONSULTATION" && !isPriority(patient),
   );
 
-  const consultationPatients = patients.filter(
-    (patient) => patient.state === "In Consultation",
+  const consultationPatients = filteredPatients.filter(
+    (patient) => patient.state === "IN_CONSULTATION",
   );
 
   return (
     <section className="board">
       <div className="board-header">
         <div className="board-title">Patient Flow</div>
+
         <div className="board-flow">
           <span>Queue</span>
           <div className="flow-dot" />

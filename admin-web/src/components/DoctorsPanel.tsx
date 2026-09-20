@@ -1,11 +1,16 @@
 import { cn } from "@/lib/utils";
-import { initialDoctors } from "@/data/mockData";
 import { useAdminStore } from "@/store/adminStore";
+import type { DashboardDoctor } from "@/types/admin";
 
-export function DoctorsPanel() {
+interface DoctorsPanelProps {
+  doctors: DashboardDoctor[];
+}
+
+export function DoctorsPanel({ doctors }: DoctorsPanelProps) {
   const selectedDoctorFilter = useAdminStore(
     (state) => state.selectedDoctorFilter,
   );
+
   const setDoctorFilter = useAdminStore((state) => state.setDoctorFilter);
 
   return (
@@ -13,7 +18,7 @@ export function DoctorsPanel() {
       <div className="panel-title">Doctors</div>
 
       <div className="doctor-list">
-        {initialDoctors.map((doctor) => {
+        {doctors.map((doctor) => {
           const active = selectedDoctorFilter === doctor.id;
 
           return (
@@ -26,6 +31,7 @@ export function DoctorsPanel() {
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
+
                   setDoctorFilter(doctor.id);
                 }
               }}
@@ -34,20 +40,21 @@ export function DoctorsPanel() {
                 className={cn(
                   "doctor-dot",
                   doctor.status === "Available" && "available",
-                  doctor.status === "Consulting" && "consulting",
                   doctor.status === "Unavailable" && "unavailable",
                 )}
               />
+
               <div className="doctor-name">{doctor.name}</div>
+
               <div
                 className={cn(
                   "doctor-status",
-                  doctor.status === "Consulting" && "consulting",
                   doctor.status === "Unavailable" && "unavailable",
                 )}
               >
                 {doctor.status}
               </div>
+
               <div className="doctor-count">{doctor.assignedCount}</div>
             </div>
           );

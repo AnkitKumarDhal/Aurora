@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from backend.api.routes.assignment import router as assignment_router
 from backend.api.routes.auth import router as auth_router
+from backend.api.routes.admin_dashboard import router as admin_dashboard_router
 from backend.api.routes.clinical_intelligence import router as clinical_intelligence_router
 from backend.api.routes.clinical_summary import router as clinical_summary_router
 from backend.api.routes.consent import router as consent_router
@@ -49,6 +50,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(admin_dashboard_router, prefix="/api/v1")
 app.include_router(assignment_router, prefix="/api/v1")
 app.include_router(sessions_router, prefix="/api/v1")
 app.include_router(verification_router, prefix="/api/v1")

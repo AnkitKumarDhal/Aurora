@@ -21,6 +21,7 @@ from backend.integrations.fhir import MockFhirClient
 from backend.integrations.his import MockHisClient
 from backend.integrations.identity import MockIdentityProvider
 from backend.integrations.storage import LocalStorage
+from backend.services.admin_dashboard import AdminDashboardService
 from backend.services.assignment import AssignmentService
 from backend.services.assignment_scheduler import AssignmentSchedulerService
 from backend.services.clinical_intelligence import ClinicalIntelligenceService
@@ -301,4 +302,23 @@ def get_patient_intake_completion_service() -> PatientIntakeCompletionService:
         ephemeral_identity_service=get_ephemeral_identity_service(),
         interview_controller=get_interview_controller(),
         workflow_service=get_workflow_service(),
+    )
+
+
+def get_admin_dashboard_service() -> AdminDashboardService:
+    return AdminDashboardService(
+        doctor_repository=DoctorRepository(),
+        assignment_repository=AssignmentRepository(),
+        queue_service=QueueService(
+            QueueRepository(),
+        ),
+        session_service=ClinicalSessionService(
+            ClinicalSessionRepository(),
+        ),
+        patient_service=PatientService(
+            PatientRepository(),
+        ),
+        summary_service=ClinicalSummaryService(
+            ClinicalSummaryRepository(),
+        ),
     )

@@ -7,9 +7,22 @@ interface PatientCardProps {
   onClick: () => void;
 }
 
+function formatWait(patient: Patient): string {
+  if (patient.state === "IN_CONSULTATION") {
+    return "In session";
+  }
+
+  if (patient.waitingTimeSeconds === null) {
+    return "—";
+  }
+
+  return `${Math.floor(patient.waitingTimeSeconds / 60)} min`;
+}
+
 export function PatientCard({ patient, selected, onClick }: PatientCardProps) {
-  const isPriority = patient.priority === "High Priority";
-  const isConsultation = patient.state === "In Consultation";
+  const isPriority = patient.urgencyLevel !== null && patient.urgencyLevel >= 4;
+
+  const isConsultation = patient.state === "IN_CONSULTATION";
 
   return (
     <div
@@ -17,7 +30,6 @@ export function PatientCard({ patient, selected, onClick }: PatientCardProps) {
         "patient-card",
         isPriority && "priority",
         isConsultation && "consultation",
-        patient.stale && "stale",
         selected && "selected",
       )}
       data-id={patient.id}
@@ -33,29 +45,37 @@ export function PatientCard({ patient, selected, onClick }: PatientCardProps) {
     >
       <div className="card-top">
         <div className="patient-id">{patient.id}</div>
+
         <div className="priority-chip">{isPriority ? "HIGH" : "NORMAL"}</div>
       </div>
 
       <div className="card-name">
-        {patient.name} · {patient.ageSex}
+        {patient.name}
+        {patient.age !== null && ` · ${patient.age}`}
       </div>
 
-      <div className="card-complaint">{patient.cardComplaint}</div>
+      <div className="card-complaint">
+        {patient.complaint ?? "No complaint recorded"}
+      </div>
 
       <div className="card-meta">
         <div className={cn("card-wait", isConsultation && "card-wait-session")}>
-          {patient.wait}
-          {patient.waitMinutes !== null && <span>min</span>}
+          {formatWait(patient)}
         </div>
-        <div className="card-triage">{patient.triage}</div>
+
+        <div className="card-triage">
+          {patient.urgencyLevel !== null
+            ? `Level ${patient.urgencyLevel}`
+            : "Level —"}
+        </div>
       </div>
 
-      {patient.doctor === "Unassigned" ? (
-        <div className="card-assign unassigned">⚠ Unassigned</div>
-      ) : (
+      {patient.doctor ? (
         <div className="card-assign">
           <span className="arrow">→</span> {patient.doctor}
         </div>
+      ) : (
+        <div className="card-assign unassigned">⚠ Unassigned</div>
       )}
     </div>
   );
