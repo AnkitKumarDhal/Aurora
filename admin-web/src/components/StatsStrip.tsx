@@ -8,7 +8,7 @@ export function StatsStrip({ stats }: StatsStripProps) {
   const items = [
     {
       value: stats.patients,
-      label: "Patients Today",
+      label: "Patients",
     },
     {
       value: stats.waiting,

@@ -15,6 +15,19 @@ DASHBOARD_TIMEZONE = ZoneInfo(
     "Asia/Kolkata",
 )
 
+ACTIVE_QUEUE_STATUSES = {
+    "WAITING",
+    "READY",
+    "CALLED",
+    "PROMOTION_PENDING",
+    "IN_CONSULTATION",
+}
+
+TERMINAL_QUEUE_STATUSES = {
+    "COMPLETED",
+    "CANCELLED",
+}
+
 
 class AdminDashboardService:
     def __init__(
@@ -72,19 +85,21 @@ class AdminDashboardService:
                 },
             )
 
-        start_at, end_at = self._today_window()
-
         entries = (
             await self.queue_service.get_department_entries(
                 department_id,
-                start_at=start_at,
-                end_at=end_at,
             )
         )
 
-        waiting_entries = [
+        visible_entries = [
             entry
             for entry in entries
+            if self._is_visible_entry(entry)
+        ]
+
+        waiting_entries = [
+            entry
+            for entry in visible_entries
             if entry.status.value
             in {
                 "WAITING",
@@ -96,14 +111,14 @@ class AdminDashboardService:
 
         consultation_entries = [
             entry
-            for entry in entries
+            for entry in visible_entries
             if entry.status.value
             == "IN_CONSULTATION"
         ]
 
         patient_rows = []
 
-        for entry in entries:
+        for entry in visible_entries:
             session = (
                 await self.session_service.get_session(
                     entry.session_id,
@@ -185,6 +200,59 @@ class AdminDashboardService:
             "patients": patient_rows,
         }
 
+    @classmethod
+    def _is_visible_entry(
+        cls,
+        entry,
+    ) -> bool:
+        status = entry.status.value
+
+        if status in ACTIVE_QUEUE_STATUSES:
+            return True
+
+        if status in TERMINAL_QUEUE_STATUSES:
+            return cls._has_today_activity(
+                entry,
+            )
+
+        return False
+
+    @classmethod
+    def _has_today_activity(
+        cls,
+        entry,
+    ) -> bool:
+        start_at, end_at = cls._today_window()
+
+        timestamps = (
+            entry.created_at,
+            entry.queued_at,
+            entry.called_at,
+            entry.completed_at,
+            entry.updated_at,
+        )
+
+        return any(
+            timestamp is not None
+            and start_at
+            <= cls._as_utc(timestamp)
+            < end_at
+            for timestamp in timestamps
+        )
+
+    @staticmethod
+    def _as_utc(
+        value: datetime,
+    ) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(
+                tzinfo=timezone.utc,
+            )
+
+        return value.astimezone(
+            timezone.utc,
+        )
+
     @staticmethod
     def _today_window() -> tuple[
         datetime,
@@ -215,21 +283,16 @@ class AdminDashboardService:
             ),
         )
 
-    @staticmethod
+    @classmethod
     def _waiting_time_seconds(
+        cls,
         entry,
     ) -> int | None:
         if entry.queued_at is None:
             return None
 
-        queued_at = (
-            entry.queued_at.replace(
-                tzinfo=timezone.utc,
-            )
-            if entry.queued_at.tzinfo is None
-            else entry.queued_at.astimezone(
-                timezone.utc,
-            )
+        queued_at = cls._as_utc(
+            entry.queued_at,
         )
 
         if (
@@ -240,31 +303,23 @@ class AdminDashboardService:
             }
             and entry.called_at is not None
         ):
-            end_at = (
-                entry.called_at.replace(
-                    tzinfo=timezone.utc,
-                )
-                if entry.called_at.tzinfo is None
-                else entry.called_at.astimezone(
-                    timezone.utc,
-                )
+            end_at = cls._as_utc(
+                entry.called_at,
             )
         elif (
             entry.status.value
-            in {
-                "COMPLETED",
-                "CANCELLED",
-            }
+            == "COMPLETED"
             and entry.completed_at is not None
         ):
-            end_at = (
-                entry.completed_at.replace(
-                    tzinfo=timezone.utc,
-                )
-                if entry.completed_at.tzinfo is None
-                else entry.completed_at.astimezone(
-                    timezone.utc,
-                )
+            end_at = cls._as_utc(
+                entry.completed_at,
+            )
+        elif (
+            entry.status.value
+            == "CANCELLED"
+        ):
+            end_at = cls._as_utc(
+                entry.updated_at,
             )
         else:
             end_at = datetime.now(
