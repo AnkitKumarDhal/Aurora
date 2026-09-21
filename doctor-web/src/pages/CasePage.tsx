@@ -81,7 +81,7 @@ export default function CasePage() {
             />
 
             <div className="mt-5 grid items-start gap-5 lg:grid-cols-[1.6fr_1fr]">
-              <div>
+              <div className="min-w-0">
                 <ClinicalSummaryPanel
                   form={form}
                   isConfirming={isConfirming}
@@ -96,11 +96,11 @@ export default function CasePage() {
                 />
 
                 <DocumentsPanel documents={caseData.documents} />
-
-                {sessionId && <ConversationPanel sessionId={sessionId} />}
               </div>
 
-              <div>
+              <div className="min-w-0">
+                {sessionId && <ConversationPanel sessionId={sessionId} />}
+
                 <TriagePanel triage={caseData.triage} />
 
                 <IdentityPanel patient={caseData.patient} />

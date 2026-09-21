@@ -40,7 +40,11 @@ function formatScalar(value: unknown): string {
     return String(value);
   }
 
-  return JSON.stringify(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -117,7 +121,7 @@ function ValueContent({ value }: { value: unknown }) {
             className="rounded-lg border border-border bg-surface px-3 py-2.5"
             key={key}
           >
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-text-secondary">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-text-secondary">
               {formatLabel(key)}
             </p>
 
@@ -137,20 +141,20 @@ function ValueContent({ value }: { value: unknown }) {
   );
 }
 
-function ExtractionFields({ extraction }: { extraction: DocumentExtraction }) {
+function getStructuredFields(
+  extraction: DocumentExtraction,
+): Record<string, unknown> {
   const data = extraction.structured_data;
 
   if (!data) {
-    return (
-      <div className="rounded-xl border border-border bg-surface-alt px-4 py-4 text-xs text-text-secondary">
-        No structured information was extracted.
-      </div>
-    );
+    return {};
   }
 
-  const nestedStructured = isRecord(data.structured) ? data.structured : null;
+  if (isRecord(data.structured) && Object.keys(data.structured).length > 0) {
+    return data.structured;
+  }
 
-  const fallbackData = Object.fromEntries(
+  return Object.fromEntries(
     Object.entries(data).filter(
       ([key]) =>
         ![
@@ -164,36 +168,46 @@ function ExtractionFields({ extraction }: { extraction: DocumentExtraction }) {
         ].includes(key),
     ),
   );
+}
 
-  const fields =
-    nestedStructured && Object.keys(nestedStructured).length > 0
-      ? nestedStructured
-      : fallbackData;
+function getMetadataValue(extraction: DocumentExtraction, key: string): string {
+  const data = extraction.structured_data;
 
-  if (Object.keys(fields).length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-surface-alt px-4 py-4 text-xs text-text-secondary">
-        No structured information was extracted.
-      </div>
-    );
+  if (!data) {
+    return "Not available";
   }
 
-  return (
-    <div className="space-y-2">
-      {Object.entries(fields).map(([key, value]) => (
-        <div
-          className="rounded-xl border border-border bg-surface-alt px-3.5 py-3"
-          key={key}
-        >
-          <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-text-secondary">
-            {formatLabel(key)}
-          </p>
+  const direct = data[key];
 
-          <ValueContent value={value} />
-        </div>
-      ))}
-    </div>
-  );
+  if (typeof direct === "string" || typeof direct === "number") {
+    return String(direct);
+  }
+
+  if (isRecord(data.structured)) {
+    const nested = data.structured[key];
+
+    if (typeof nested === "string" || typeof nested === "number") {
+      return String(nested);
+    }
+  }
+
+  return "Not available";
+}
+
+function getOcrConfidence(extraction: DocumentExtraction): string {
+  const data = extraction.structured_data;
+
+  if (!data || !isRecord(data.ocr)) {
+    return "Not available";
+  }
+
+  const confidence = data.ocr.mean_confidence;
+
+  if (typeof confidence !== "number") {
+    return "Not available";
+  }
+
+  return `${Math.round(confidence * 100)}%`;
 }
 
 function ReviewStatus({ extraction }: { extraction: DocumentExtraction }) {
@@ -265,7 +279,7 @@ function SourceViewer({
 
   if (!fileUrl) {
     return (
-      <div className="flex h-full min-h-90 items-center justify-center rounded-xl border border-border bg-surface-alt">
+      <div className="flex h-full min-h-105 items-center justify-center rounded-xl border border-border bg-surface-alt">
         <div className="px-6 text-center">
           <FileText className="mx-auto mb-3 size-8 text-text-secondary" />
 
@@ -283,28 +297,32 @@ function SourceViewer({
 
   if (isPdf) {
     return (
-      <iframe
-        className="h-full min-h-110 w-full rounded-xl border border-border bg-white"
-        src={fileUrl}
-        title={`Original ${document.filename}`}
-      />
-    );
-  }
-
-  if (document.content_type.startsWith("image/")) {
-    return (
-      <div className="flex h-full min-h-110 items-center justify-center overflow-auto rounded-xl border border-border bg-black/5 p-3">
-        <img
-          alt={`Original ${document.filename}`}
-          className="max-h-full max-w-full rounded-lg object-contain"
+      <div className="h-full min-h-105 overflow-hidden rounded-xl border border-border bg-white">
+        <iframe
+          className="h-full min-h-105 w-full"
           src={fileUrl}
+          title={`Original ${document.filename}`}
         />
       </div>
     );
   }
 
+  if (document.content_type.startsWith("image/")) {
+    return (
+      <div className="h-full min-h-105 overflow-auto rounded-xl border border-border bg-surface p-3">
+        <div className="flex min-h-full w-full items-start justify-center">
+          <img
+            alt={`Original ${document.filename}`}
+            className="block h-auto w-auto max-w-full rounded-lg object-contain"
+            src={fileUrl}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full min-h-90 items-center justify-center rounded-xl border border-border bg-surface-alt px-6 text-center">
+    <div className="flex h-full min-h-105 items-center justify-center rounded-xl border border-border bg-surface-alt px-6 text-center">
       <div>
         <FileText className="mx-auto mb-3 size-8 text-text-secondary" />
 
@@ -331,23 +349,26 @@ function ExtractionContent({
   fileUrl: string | null;
   isLoading: boolean;
 }) {
+  const fields = extraction ? getStructuredFields(extraction) : {};
+
   return (
-    <div className="grid min-h-125 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)]">
-      <div className="grid min-h-0 gap-4 lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(350px,0.85fr)_minmax(0,1.15fr)]">
+      <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+        {/* Structured extraction */}
         <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-surface">
-          <div className="border-b border-border px-4 py-3">
+          <div className="shrink-0 border-b border-border px-4 py-3">
             <p className="text-[12px] font-bold text-primary-dark">
               Extracted information
             </p>
 
             <p className="mt-0.5 text-[10.5px] text-text-secondary">
-              Structured values detected from the source.
+              Structured values detected from the submitted document.
             </p>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3.5">
             {isLoading && !extraction ? (
-              <div className="flex min-h-45 items-center justify-center">
+              <div className="flex h-full min-h-30 items-center justify-center">
                 <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
                   <LoaderCircle className="size-4 animate-spin" />
                   Loading extracted information
@@ -365,12 +386,9 @@ function ExtractionContent({
                     ],
                     [
                       "Patient name",
-                      getStructuredMetadata(extraction, "patient_name"),
+                      getMetadataValue(extraction, "patient_name"),
                     ],
-                    [
-                      "Document date",
-                      getStructuredMetadata(extraction, "date"),
-                    ],
+                    ["Document date", getMetadataValue(extraction, "date")],
                     ["OCR confidence", getOcrConfidence(extraction)],
                   ].map(([label, value]) => (
                     <div
@@ -388,10 +406,29 @@ function ExtractionContent({
                   ))}
                 </div>
 
-                <ExtractionFields extraction={extraction} />
+                {Object.keys(fields).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.entries(fields).map(([key, value]) => (
+                      <div
+                        className="rounded-xl border border-border bg-surface-alt px-3.5 py-3"
+                        key={key}
+                      >
+                        <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-text-secondary">
+                          {formatLabel(key)}
+                        </p>
+
+                        <ValueContent value={value} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border bg-surface-alt px-4 py-4 text-xs text-text-secondary">
+                    No structured information was extracted.
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex min-h-45 items-center justify-center text-center">
+              <div className="flex h-full min-h-30 items-center justify-center text-center">
                 <div>
                   <AlertTriangle className="mx-auto mb-3 size-7 text-warning" />
 
@@ -408,14 +445,15 @@ function ExtractionContent({
           </div>
         </section>
 
+        {/* Raw OCR */}
         <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-surface">
-          <div className="border-b border-border px-4 py-3">
+          <div className="shrink-0 border-b border-border px-4 py-3">
             <p className="text-[12px] font-bold text-primary-dark">
               Raw OCR extraction
             </p>
 
             <p className="mt-0.5 text-[10.5px] text-text-secondary">
-              Original machine-read text. Verify important values against the
+              Machine-read text. Verify important values against the original
               source.
             </p>
           </div>
@@ -426,7 +464,7 @@ function ExtractionContent({
                 {extraction.extracted_text}
               </div>
             ) : (
-              <div className="flex min-h-35 items-center justify-center text-center text-[11px] text-text-secondary">
+              <div className="flex h-full min-h-25 items-center justify-center text-center text-[11px] text-text-secondary">
                 No raw OCR text is available.
               </div>
             )}
@@ -434,9 +472,10 @@ function ExtractionContent({
         </section>
       </div>
 
+      {/* Original source */}
       <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-surface">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <div>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="min-w-0">
             <p className="text-[12px] font-bold text-primary-dark">
               Original document
             </p>
@@ -459,49 +498,6 @@ function ExtractionContent({
   );
 }
 
-function getStructuredMetadata(
-  extraction: DocumentExtraction,
-  key: string,
-): string {
-  const data = extraction.structured_data;
-
-  if (!data) {
-    return "Not available";
-  }
-
-  const directValue = data[key];
-
-  if (typeof directValue === "string" || typeof directValue === "number") {
-    return String(directValue);
-  }
-
-  if (
-    isRecord(data.structured) &&
-    (typeof data.structured[key] === "string" ||
-      typeof data.structured[key] === "number")
-  ) {
-    return String(data.structured[key]);
-  }
-
-  return "Not available";
-}
-
-function getOcrConfidence(extraction: DocumentExtraction): string {
-  const data = extraction.structured_data;
-
-  if (!data || !isRecord(data.ocr)) {
-    return "Not available";
-  }
-
-  const confidence = data.ocr.mean_confidence;
-
-  if (typeof confidence !== "number") {
-    return "Not available";
-  }
-
-  return `${Math.round(confidence * 100)}%`;
-}
-
 export default function DocumentExtractionDialog({
   document,
   extraction,
@@ -519,8 +515,8 @@ export default function DocumentExtractionDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-330 overflow-hidden rounded-[20px] border-border bg-surface p-0">
-        <DialogHeader className="border-b border-border px-6 py-4.5">
+      <DialogContent className="grid h-[90vh] w-[calc(100%-1.5rem)] !max-w-[1200px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[20px] border-border bg-surface p-0">
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-4.5 pr-14">
           <div className="flex items-start gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary-dark">
               <FileText className="size-4.5" />
@@ -535,14 +531,14 @@ export default function DocumentExtractionDialog({
                 {document
                   ? `${formatDocumentType(
                       document.document_type,
-                    )} · original source + OCR review`
+                    )} · source, extraction and OCR review`
                   : "Document details"}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto px-5 py-4.5">
+        <div className="min-h-0 overflow-hidden px-5 py-4.5">
           {document ? (
             <ExtractionContent
               document={document}
