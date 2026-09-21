@@ -15,5 +15,6 @@ class LoginResponse(BaseModel):
 class CurrentUserResponse(BaseModel):
     user_id: str
     username: str
+    display_name: str | None = None
     role: ActorRole
     actor_id: str

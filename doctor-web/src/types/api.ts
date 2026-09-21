@@ -62,6 +62,7 @@ export interface LoginResponse {
 export interface CurrentUser {
   user_id: string;
   username: string;
+  display_name: string | null;
   role: ActorRole;
   actor_id: string;
 }

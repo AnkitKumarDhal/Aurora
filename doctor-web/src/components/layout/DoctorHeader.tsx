@@ -15,21 +15,23 @@ interface DoctorHeaderProps {
   showThemeToggle?: boolean;
 }
 
-function getInitials(username: string | undefined): string {
-  if (!username) {
+function getInitials(
+  displayName: string | null | undefined,
+  username: string | undefined,
+): string {
+  const source = displayName?.trim() || username?.trim();
+
+  if (!source) {
     return "DR";
   }
 
-  const parts = username
-    .trim()
-    .split(/[\s._-]+/)
-    .filter(Boolean);
+  const parts = source.split(/\s+/).filter(Boolean);
 
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
 
-  return username.slice(0, 2).toUpperCase();
+  return source.slice(0, 2).toUpperCase();
 }
 
 export default function DoctorHeader({
@@ -53,12 +55,15 @@ export default function DoctorHeader({
     document.documentElement.classList.toggle("dark");
   }
 
+  const displayName = user?.display_name || user?.username || "Doctor";
+
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface/90 backdrop-blur-[10px]">
       <div className="flex items-center justify-between gap-4 px-7 py-3.25">
         <div className="flex items-center gap-3.5">
           <div className="flex items-center gap-2.5">
             <span className="aurora-mark" />
+
             <span className="font-display text-[17px] font-medium text-primary-dark">
               Aurora
             </span>
@@ -84,7 +89,7 @@ export default function DoctorHeader({
           {showThemeToggle && (
             <Button
               aria-label="Toggle theme"
-              className="size-[34px] rounded-full border border-border bg-surface-alt text-text-secondary hover:bg-primary-tint hover:text-primary-dark"
+              className="size-8.5 rounded-full border border-border bg-surface-alt text-text-secondary hover:bg-primary-tint hover:text-primary-dark"
               onClick={toggleTheme}
               size="icon"
               type="button"
@@ -103,13 +108,13 @@ export default function DoctorHeader({
                 />
               }
             >
-              <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-tint to-accent-tint text-xs font-extrabold text-primary-dark">
-                {getInitials(user?.username)}
+              <span className="flex size-7.5 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary-tint to-accent-tint text-xs font-extrabold text-primary-dark">
+                {getInitials(user?.display_name, user?.username)}
               </span>
 
               <span className="hidden text-left sm:block">
                 <span className="block text-[13px] font-bold text-text-primary">
-                  {user?.username ?? "Doctor"}
+                  {displayName}
                 </span>
 
                 <span className="block text-[11px] text-text-secondary">
