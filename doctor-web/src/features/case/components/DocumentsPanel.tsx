@@ -17,12 +17,14 @@ function getStatusStyle(status: DoctorCaseDocument["status"]): {
         color:
           "color-mix(in srgb, var(--aurora-success) 55%, var(--aurora-text-primary))",
       };
+
     case "FAILED":
       return {
         background:
           "color-mix(in srgb, var(--aurora-danger) 16%, var(--aurora-surface))",
         color: "var(--aurora-danger)",
       };
+
     case "PROCESSING":
       return {
         background:
@@ -30,6 +32,7 @@ function getStatusStyle(status: DoctorCaseDocument["status"]): {
         color:
           "color-mix(in srgb, var(--aurora-warning) 60%, var(--aurora-text-primary))",
       };
+
     default:
       return {
         background: "var(--aurora-accent-tint)",
@@ -45,10 +48,13 @@ export default function DocumentsPanel({
 }) {
   const [selectedDocument, setSelectedDocument] =
     useState<DoctorCaseDocument | null>(null);
-  const { extraction, isLoading, load, reset } = useDocumentExtraction();
+
+  const { extraction, fileUrl, isLoading, load, reset } =
+    useDocumentExtraction();
 
   function handleDocumentOpen(document: DoctorCaseDocument): void {
     setSelectedDocument(document);
+
     void load(document.session_id, document.document_id);
   }
 
@@ -124,6 +130,7 @@ export default function DocumentsPanel({
       <DocumentExtractionDialog
         document={selectedDocument}
         extraction={extraction}
+        fileUrl={fileUrl}
         isLoading={isLoading}
         onOpenChange={handleDialogChange}
         open={selectedDocument !== null}

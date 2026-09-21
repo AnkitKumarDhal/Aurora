@@ -6,6 +6,7 @@ import { useAuth } from "@/auth/useAuth";
 import CaseSkeleton from "@/features/case/components/CaseSkeleton";
 import CaseHeader from "@/features/case/components/CaseHeader";
 import ClinicalSummaryPanel from "@/features/case/components/ClinicalSummaryPanel";
+import ConversationPanel from "@/features/case/components/ConversationPanel";
 import DocumentsPanel from "@/features/case/components/DocumentsPanel";
 import IdentityPanel from "@/features/case/components/IdentityPanel";
 import TriagePanel from "@/features/case/components/TriagePanel";
@@ -95,6 +96,8 @@ export default function CasePage() {
                 />
 
                 <DocumentsPanel documents={caseData.documents} />
+
+                {sessionId && <ConversationPanel sessionId={sessionId} />}
               </div>
 
               <div>

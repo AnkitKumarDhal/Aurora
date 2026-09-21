@@ -1,7 +1,22 @@
+from pathlib import Path
 from uuid import uuid4
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
+from fastapi.responses import FileResponse
+
 from backend.api.dependencies import get_document_service, get_storage
-from backend.api.schemas.documents import DocumentExtractionResponse, DocumentListResponse, DocumentResponse
+from backend.api.schemas.documents import (
+    DocumentExtractionResponse,
+    DocumentListResponse,
+    DocumentResponse,
+)
 from backend.auth.authorization import require_assigned_doctor_access
 from backend.domain.document import Document
 from backend.domain.enums import DocumentStatus, DocumentType
@@ -139,6 +154,39 @@ async def get_document(
     return {
         "data": document_response(document),
     }
+
+
+@router.get(
+    "/{document_id}/file",
+)
+async def get_document_file(
+    session_id: str,
+    document_id: str,
+    current_user: User = Depends(require_assigned_doctor_access),
+    service: DocumentService = Depends(get_document_service),
+) -> FileResponse:
+    document = await service.get_document(document_id)
+
+    if document is None or document.session_id != session_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    path = Path(document.storage_reference)
+
+    if not path.exists() or not path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Original document file is unavailable",
+        )
+
+    return FileResponse(
+        path=path,
+        media_type=document.content_type,
+        filename=document.filename,
+        content_disposition_type="inline",
+    )
 
 
 @router.get(

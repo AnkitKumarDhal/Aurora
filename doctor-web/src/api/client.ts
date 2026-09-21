@@ -27,14 +27,64 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function buildApiError(response: Response): Promise<ApiRequestError> {
+  let detail = "";
+
+  try {
+    const error = (await response.json()) as ApiError;
+
+    if (error.detail) {
+      detail = error.detail;
+    }
+  } catch {
+    detail = "";
+  }
+
+  if (!detail) {
+    switch (response.status) {
+      case 400:
+        detail = "The request could not be completed.";
+        break;
+
+      case 401:
+        detail = "Your session has expired. Please sign in again.";
+        break;
+
+      case 403:
+        detail = "You do not have permission to perform this action.";
+        break;
+
+      case 404:
+        detail = "The requested resource could not be found.";
+        break;
+
+      case 409:
+        detail = "The request conflicts with the current case state.";
+        break;
+
+      case 500:
+        detail = "The server encountered an unexpected error.";
+        break;
+
+      case 502:
+      case 503:
+      case 504:
+        detail = "Aurora is temporarily unavailable. Please try again.";
+        break;
+
+      default:
+        detail = `The request could not be completed (HTTP ${response.status}).`;
+    }
+  }
+
+  return new ApiRequestError(response.status, detail);
+}
+
+function createHeaders(options: RequestInit, accept: string): Headers {
   const token = getAccessToken();
   const headers = new Headers(options.headers);
 
-  headers.set("Accept", "application/json");
+  headers.set("Accept", accept);
 
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -44,55 +94,37 @@ export async function apiRequest<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
+  return headers;
+}
+
+export async function apiRequest<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers,
+    headers: createHeaders(options, "application/json"),
   });
 
   if (!response.ok) {
-    let detail = "";
-
-    try {
-      const error = (await response.json()) as ApiError;
-
-      if (error.detail) {
-        detail = error.detail;
-      }
-    } catch {
-      detail = "";
-    }
-
-    if (!detail) {
-      switch (response.status) {
-        case 400:
-          detail = "The request could not be completed.";
-          break;
-        case 401:
-          detail = "Your session has expired. Please sign in again.";
-          break;
-        case 403:
-          detail = "You do not have permission to perform this action.";
-          break;
-        case 404:
-          detail = "The requested resource could not be found.";
-          break;
-        case 409:
-          detail = "The request conflicts with the current case state.";
-          break;
-        case 500:
-          detail = "The server encountered an unexpected error.";
-          break;
-        case 502:
-        case 503:
-        case 504:
-          detail = "Aurora is temporarily unavailable. Please try again.";
-          break;
-        default:
-          detail = `The request could not be completed (HTTP ${response.status}).`;
-      }
-    }
-
-    throw new ApiRequestError(response.status, detail);
+    throw await buildApiError(response);
   }
+
   return response.json() as Promise<T>;
+}
+
+export async function apiBlobRequest(
+  path: string,
+  options: RequestInit = {},
+): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: createHeaders(options, "*/*"),
+  });
+
+  if (!response.ok) {
+    throw await buildApiError(response);
+  }
+
+  return response.blob();
 }

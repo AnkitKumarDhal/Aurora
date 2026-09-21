@@ -1,5 +1,5 @@
 import type { DocumentExtraction } from "@/types/api";
-import { apiRequest } from "./client";
+import { apiBlobRequest, apiRequest } from "./client";
 
 export async function getDocumentExtraction(
   sessionId: string,
@@ -7,7 +7,22 @@ export async function getDocumentExtraction(
 ): Promise<DocumentExtraction | null> {
   const response = await apiRequest<{
     data: DocumentExtraction | null;
-  }>(`/sessions/${sessionId}/documents/${documentId}/extraction`);
+  }>(
+    `/sessions/${encodeURIComponent(sessionId)}/documents/${encodeURIComponent(
+      documentId,
+    )}/extraction`,
+  );
 
   return response.data;
+}
+
+export async function getDocumentFile(
+  sessionId: string,
+  documentId: string,
+): Promise<Blob> {
+  return apiBlobRequest(
+    `/sessions/${encodeURIComponent(sessionId)}/documents/${encodeURIComponent(
+      documentId,
+    )}/file`,
+  );
 }

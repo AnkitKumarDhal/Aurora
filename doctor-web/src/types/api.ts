@@ -185,3 +185,18 @@ export interface QueueActionResponse {
     completed_at: string | null;
   };
 }
+
+export interface ConversationTurn {
+  turn_id: string;
+  session_id: string;
+  speaker: string;
+  input_type: "AUDIO" | "GUIDED_INPUT" | "TEXT";
+  content: string | null;
+  language: string | null;
+  media_reference: string | null;
+  created_at: string;
+}
+
+export interface ConversationHistoryResponse {
+  turns: ConversationTurn[];
+}
