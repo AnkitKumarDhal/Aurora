@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from datetime import timezone
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from backend.config import settings
@@ -11,7 +12,8 @@ async def initialize_database_connection() -> None:
     global client, database
     if client is not None:
         return
-    client = AsyncMongoClient(settings.mongo_uri)
+    client = AsyncMongoClient(
+        settings.mongo_uri, tz_aware=True, tzinfo=timezone.utc)
     database = client[settings.mongo_database]
     await client.admin.command("ping")
 
