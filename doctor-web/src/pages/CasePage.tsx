@@ -99,11 +99,15 @@ export default function CasePage() {
               </div>
 
               <div className="min-w-0">
-                {sessionId && <ConversationPanel sessionId={sessionId} />}
-
                 <TriagePanel triage={caseData.triage} />
 
                 <IdentityPanel patient={caseData.patient} />
+
+                {sessionId && (
+                  <div className="mt-6">
+                    <ConversationPanel sessionId={sessionId} />
+                  </div>
+                )}
               </div>
             </div>
           </>
