@@ -1,15 +1,23 @@
 # Aurora
 
-Aurora is an AI-assisted clinical intake platform designed for deployment in hospital outpatient departments (OPDs).
+Aurora is an AI-assisted clinical intake and OPD workflow platform designed to move structured history-taking, document collection and initial prioritization to the beginning of the patient's hospital journey.
 
-The system moves structured history-taking and medical document collection to the beginning of the patient's OPD journey, allowing the patient to complete much of the information-gathering process before seeing the doctor.
+The goal is not to replace the doctor.
+
+Aurora prepares a structured clinical context before the consultation so that the doctor can spend less time collecting repetitive information and more time reviewing, validating and treating the patient.
+
+The current MVP focuses on a General Medicine OPD workflow.
+
+---
 
 ## Product Flow
 
 ```text
 Patient
    ↓
-OPD Kiosk
+Patient Kiosk
+   ↓
+Language Selection
    ↓
 Identity Verification
    ↓
@@ -19,30 +27,36 @@ AI Clinical History
    ↓
 Document Capture
    ↓
+OCR / Document Extraction
+   ↓
 Structured Clinical Summary
    ↓
-Priority Calculation
+Clinical Signals
    ↓
-Department Queue
+Triage / Priority
+   ↓
+General Medicine Queue
    ↓
 Doctor Assignment
    ↓
 Doctor Review
    ↓
 Consultation
+   ↓
+Completion
 ```
 
-The patient interacts with a dedicated touchscreen kiosk.
+The patient uses a dedicated kiosk-oriented web interface.
 
-The doctor uses a separate authenticated web application.
+Doctors use a separate authenticated clinical workspace.
 
-Reception/admin staff use a lightweight operational web application for queue monitoring and promotion decisions.
+Reception and administrative staff use a separate operational dashboard for queue monitoring and promotion decisions.
 
 ---
 
-## Applications
+# Applications
 
-Aurora consists of three web applications and one backend.
+Aurora is composed of three frontend applications and one backend:
 
 ```text
 Aurora/
@@ -52,77 +66,117 @@ Aurora/
 └── admin-web/
 ```
 
-### Patient Web
+## Patient Web
 
-The patient application is designed for deployment on an OPD kiosk.
+`patient-web/` is the kiosk application.
 
-It provides:
+It is designed for patients rather than technical users and intentionally uses larger controls, simple language and touch-friendly interaction.
+
+Current capabilities include:
 
 - language selection
-- identity verification
+- English and Hindi patient flow support
+- patient identity verification
+- OTP verification in demo mode
 - consent
-- voice interaction
-- text/touch interaction
-- clinical history intake
+- text-based clinical interaction
+- voice-based clinical interaction
+- browser microphone permission handling
+- AI-assisted clinical history
 - document capture
 - intake completion
 
-The patient does not use a conventional Aurora username/password account.
+The patient application does not use a conventional username/password patient account.
 
-### Doctor Web
+Identity is verified through the kiosk flow and associated with the current clinical session.
 
-The doctor application is an authenticated clinical workspace.
+---
+
+## Doctor Web
+
+`doctor-web/` is the authenticated clinical application.
 
 It provides:
 
 - doctor authentication
-- department queue
-- patient cards
+- doctor display-name identity
+- General Medicine queue
 - assigned patient view
-- clinical history
-- medical documents
-- AI-generated summary
-- summary editing
+- patient case review
+- clinical summary
+- AI-generated summary editing
 - summary confirmation
+- triage information
+- patient identity information
+- medical document review
+- structured OCR extraction
+- raw OCR text
+- original source image/PDF viewing
+- patient/AI conversation audit trail
+- patient calling
+- consultation workflow
 
-### Admin Web
+The doctor remains responsible for reviewing and confirming AI-generated clinical information.
 
-The admin/reception application is intentionally minimal.
+---
+
+## Admin Web
+
+`admin-web/` is the operational/reception interface.
 
 It provides:
 
-- read-only department-wide patient-doctor queue
+- department-wide queue visibility
+- patient/doctor assignment visibility
+- queue status
+- doctor workload information
 - promotion requests
 - promotion approval/denial
-- promotion timeout information
+- promotion timeout state
+- operational dashboard statistics
 
-It is an operational interface and does not need to expose the complete clinical case.
+The admin interface intentionally exposes less clinical detail than the doctor interface.
 
 ---
 
-## Backend
+# Backend
 
-The backend is the central application layer.
+The backend is the central application and system-of-record layer.
 
 It is responsible for:
 
-- APIs
+- HTTP APIs
+- authentication
+- authorization
 - patient records
 - clinical sessions
-- database access
-- queue management
+- conversation persistence
+- document persistence
+- document processing
+- clinical signals
+- clinical summaries
 - triage policy
-- priority calculation
+- queue management
 - doctor assignment
-- promotion
-- authorization
-- external integration interfaces
+- reassignment
+- promotion workflows
+- server-sent events
+- healthcare integration boundaries
 
-The backend does not directly expose the database to frontend applications.
+Frontend applications never access MongoDB directly.
+
+```text
+Patient Web ─┐
+Doctor Web  ─┼──→ FastAPI Backend ───→ MongoDB
+Admin Web   ─┘             │
+                           ├── AI
+                           ├── Storage
+                           └── External Integration Boundaries
+```
 
 ---
 
-## AI Layer
+# AI Layer
 
 AI-related functionality is isolated under:
 
@@ -130,31 +184,326 @@ AI-related functionality is isolated under:
 backend/ai/
 ```
 
-This includes areas such as:
+The current architecture separates the AI layer from the core domain and workflow logic.
 
-- LLM
-- NLP
-- OCR
-- STT / ASR
-- TTS
+The AI layer currently includes functionality for areas such as:
+
 - clinical conversation processing
 - information extraction
+- topic detection
+- interview objective extraction
 - clinical signal extraction
 - red-flag detection
+- document extraction
+- OCR processing
 
-The specific AI models and providers are selected separately from the core backend.
+The interview system supports a configurable LLM provider.
 
-The core application should communicate with AI components through defined interfaces rather than depending directly on a particular AI provider.
+The current development configuration uses a Lemonade-compatible chat-completions endpoint with a configurable model.
+
+Example configuration:
+
+```text
+AURORA_INTERVIEW_AI_PROVIDER=lemonade
+AURORA_LEMONADE_URL=http://127.0.0.1:13305/api/v1/chat/completions
+AURORA_LEMONADE_MODEL=qwen3.5-9b-FLM
+```
+
+The AI layer is not allowed to directly determine arbitrary queue positions.
+
+The backend owns the workflow and policy decisions.
 
 ---
 
-## Queue System
+# Clinical Interview
 
-Aurora uses a department-wide patient queue.
+The patient interview combines deterministic interview objectives with AI-assisted extraction.
 
-Patients are the queue entities.
+The broad flow is:
 
-Doctors are resources assigned to queue entries.
+```text
+Patient Answer
+      ↓
+AI / Extraction Layer
+      ↓
+Structured Fields
+      ↓
+Known Clinical Fields
+      ↓
+Remaining Interview Objectives
+      ↓
+Next Relevant Question
+```
+
+The system currently supports:
+
+- English
+- Hindi
+
+The selected patient language is propagated through the conversation and stored with the conversation turn.
+
+The interview system can preserve explicit negative findings such as:
+
+```text
+fever → no
+cough → no
+breathing difficulty → no
+```
+
+Explicit negatives are treated as meaningful information rather than as missing information.
+
+The interview system has a configured maximum follow-up limit that acts as a safety bound rather than as a substitute for clinical completeness.
+
+---
+
+# Voice Interaction
+
+The patient application supports browser speech recognition.
+
+The current voice flow is:
+
+```text
+Patient taps microphone
+        ↓
+Secure-context check
+        ↓
+Microphone permission preflight
+        ↓
+Browser permission prompt if required
+        ↓
+SpeechRecognition
+        ↓
+English / Hindi transcript
+        ↓
+Interview turn
+        ↓
+AI processing
+```
+
+English uses:
+
+```text
+en-US
+```
+
+Hindi uses:
+
+```text
+hi-IN
+```
+
+The application explicitly requests microphone permission using the browser media APIs before starting recognition.
+
+Voice interaction currently persists the resulting transcript as a conversation turn.
+
+The raw microphone audio is not persisted by the current conversation workflow.
+
+For mobile devices, voice input requires a browser context where microphone access is permitted by the browser and deployment environment. HTTPS should be used for externally accessible deployments.
+
+---
+
+# Language Support
+
+The patient flow currently supports:
+
+```text
+English
+Hindi
+```
+
+Hindi support includes:
+
+- patient-facing interface text
+- interview questions
+- consent information
+- interview language propagation
+- Hindi answer interpretation
+- Hindi fallback extraction
+- Hindi symptom/topic phrases
+- Hindi voice recognition configuration
+
+The architecture keeps language-specific behavior at the patient/AI interaction boundaries so that more languages can be added later.
+
+---
+
+# Documents and OCR
+
+Patients can upload medical documents such as:
+
+```text
+Prescription
+Medical Record
+Laboratory Report
+Imaging Report
+Other
+```
+
+Documents are stored by the backend and processed asynchronously/through the document-processing layer.
+
+The document workflow is:
+
+```text
+Patient Upload
+      ↓
+Original File Stored
+      ↓
+Document Record
+      ↓
+OCR / Extraction
+      ↓
+Raw Extracted Text
+      ↓
+Structured Data
+      ↓
+Doctor Review
+```
+
+The original source document is retained.
+
+The doctor interface can view:
+
+```text
+┌───────────────────────────────┬─────────────────────────────┐
+│ Structured extraction         │                             │
+│                               │                             │
+│ key → value                   │     Original source        │
+│                               │     image / PDF             │
+├───────────────────────────────┤                             │
+│ Raw OCR text                  │                             │
+│                               │                             │
+└───────────────────────────────┴─────────────────────────────┘
+```
+
+This is intentional.
+
+OCR is treated as an assistive extraction mechanism rather than as unquestionable ground truth.
+
+Retaining the source document allows the doctor to verify:
+
+- medication names
+- dosage
+- dates
+- handwritten information
+- values incorrectly recognized by OCR
+- information omitted by OCR
+
+---
+
+# Doctor Conversation Audit
+
+The doctor can view the exact persisted patient/AI conversation associated with the intake session.
+
+The audit trail is intended to make it possible to see:
+
+```text
+AI Question
+     ↓
+Patient Answer
+     ↓
+Extracted Clinical Information
+     ↓
+Doctor Verification
+```
+
+This allows a doctor to identify cases where:
+
+- the AI misunderstood the patient's answer
+- the patient answered ambiguously
+- the extracted field does not match the conversation
+- the final summary omitted relevant information
+
+The current implementation stores the conversation transcript and associated metadata such as:
+
+- speaker
+- input type
+- language
+- timestamp
+- content
+
+---
+
+# Clinical Summary
+
+Aurora generates a structured clinical summary from information gathered during intake.
+
+The summary may include:
+
+- chief complaint
+- history of present illness
+- past medical history
+- medications
+- allergies
+- clinical signals
+- relevant documents
+
+The summary is AI-assisted.
+
+It is not final until the doctor reviews and confirms it.
+
+```text
+AI-generated summary
+        ↓
+Doctor review
+        ↓
+Doctor edits if required
+        ↓
+Doctor confirmation
+        ↓
+Confirmed clinical summary
+```
+
+The system preserves the distinction between generated and confirmed information.
+
+---
+
+# Clinical Signals and Triage
+
+Aurora separates information extraction from operational triage.
+
+```text
+Patient Conversation
+        ↓
+AI / NLP
+        ↓
+Structured Clinical Signals
+        ↓
+Triage Policy Engine
+        ↓
+Urgency
+        ↓
+Priority Score
+        ↓
+Queue
+```
+
+The current triage model uses:
+
+```text
+urgency_level: 1–5
+priority_score: 0–100
+```
+
+The priority score is an operational scheduling representation.
+
+It is not a diagnosis.
+
+The triage policy engine applies predefined backend rules to structured clinical signals.
+
+The LLM is not given arbitrary authority over queue ordering.
+
+---
+
+# Queue
+
+Aurora uses a department-wide patient-centric queue.
+
+The current MVP focuses on:
+
+```text
+General Medicine
+```
+
+Conceptually:
 
 ```text
 Patient
@@ -168,162 +517,240 @@ Assignment Scheduler
 Doctor
 ```
 
-The initial clinical scope is General Medicine.
+Queue entries maintain information such as:
 
-The queue maintains:
-
-- clinical urgency
-- priority score
-- waiting time
-- effective queue priority
-- assigned doctor
-- queue status
-
-The doctor application renders the queue as a responsive card-based interface.
-
-The card's top accent indicates the patient's severity.
-
----
-
-## Priority System
-
-Aurora separates clinical urgency from operational scheduling.
-
-```text
-Patient Information
-       ↓
-AI / NLP
-       ↓
-Structured Clinical Signals
-       ↓
-Triage Policy Engine
-       ↓
-Clinical Urgency
-       ↓
-Priority Score
-       ↓
-Queue Scheduler
-```
-
-The initial model uses:
-
-```text
-urgency_level: 1–5
-priority_score: 0–100
-```
-
-Waiting-time aging may influence operational queue order without changing the patient's underlying clinical urgency.
-
-The AI does not directly determine arbitrary queue positions.
-
-The backend triage policy engine applies predefined rules to structured clinical signals.
-
----
-
-## Doctor Assignment
-
-The initial MVP operates within General Medicine.
-
-The assignment scheduler considers:
-
-- department eligibility
-- doctor availability
-- doctor workload
-- patient urgency
+- session
+- department
+- status
 - queue position
-- waiting time
+- urgency level
+- priority score
+- assigned doctor
+- queued timestamp
+- called timestamp
+- completion timestamp
 
-The patient does not need to know which doctor they have been assigned to.
+The doctor queue is a filtered view of the department queue.
 
-Hospital staff call the patient when the patient is ready to enter the consultation.
+The frontend does not become a second source of truth for ordering.
 
 ---
 
-## Promotion
+# Waiting Time
 
-Aurora can identify situations where a patient may receive substantially earlier attention from another eligible doctor.
+Waiting time is calculated from the queue entry's `queued_at` timestamp.
 
-The system can create a promotion request.
+Aurora stores application timestamps as UTC.
+
+The backend/database boundary uses UTC-aware datetime handling so that the same instant is represented consistently across:
 
 ```text
-Queue Scheduler
+MongoDB
+   ↓
+FastAPI
+   ↓
+Frontend
+   ↓
+Browser
+```
+
+The doctor interface can update the elapsed waiting time live.
+
+---
+
+# Doctor Assignment
+
+The current assignment workflow operates within General Medicine.
+
+Assignment considers the current operational state of the department and eligible doctors.
+
+The high-level flow is:
+
+```text
+Queue Entry
       ↓
+Eligible Doctors
+      ↓
+Availability / Workload
+      ↓
+Assignment Scheduler
+      ↓
+Doctor Assignment
+```
+
+The patient does not need to know the internal scheduling calculation.
+
+---
+
+# Promotion and Reassignment
+
+Aurora supports an operational promotion workflow.
+
+A patient may become a promotion candidate when another eligible doctor could potentially provide earlier attention.
+
+The flow is:
+
+```text
+Queue
+  ↓
 Promotion Candidate
-      ↓
+  ↓
+Promotion Request
+  ↓
 Admin / Reception
-      ↓
-Allow / Deny
-      ↓
-Automatic Resolution on Timeout
+  ├── Approve
+  ├── Deny
+  └── No decision
+           ↓
+     Policy-driven timeout
 ```
 
-The administrative decision window is initially one minute.
+The current workflow includes a short administrative decision window.
 
-The system remains capable of automatically resolving the request if no administrative action occurs.
+Promotion is an operational scheduling mechanism and does not replace clinical triage.
 
-Emergency or clinically critical cases must not be indefinitely blocked by administrative inactivity.
+Reassignment is recorded separately from the original assignment.
 
 ---
 
-## Patient Session
+# Real-Time Synchronization
 
-A clinical session represents one OPD intake visit.
+Aurora uses Server-Sent Events (SSE) for live operational updates.
 
-The session connects:
-
-```text
-Patient
-   │
-   └── Clinical Session
-          ├── Conversation
-          ├── Clinical Signals
-          ├── Documents
-          ├── Document Extractions
-          ├── Clinical Summary
-          └── Queue Entry
-```
-
-A session progresses through states such as:
+The backend exposes:
 
 ```text
-CREATED
-IDENTIFYING
-CONSENTED
-HISTORY_IN_PROGRESS
-DOCUMENT_PROCESSING
-SUMMARY_READY
-QUEUED
-ASSIGNED
-CALLED
-IN_CONSULTATION
-COMPLETED
+GET /api/v1/events/stream?department_id=general-medicine
 ```
 
-Temporary kiosk state should be cleared after the intake session is completed.
+Current event types include:
+
+```text
+QUEUE_UPDATED
+ASSIGNMENT_UPDATED
+PROMOTION_UPDATED
+```
+
+The doctor and admin frontends use authenticated fetch-based SSE connections.
+
+The frontend reconnects automatically when the stream is interrupted.
+
+The current event bus is an in-process backend event bus.
+
+This implementation is appropriate for the current single-process/demo architecture but does not provide durable event replay across multiple backend processes.
 
 ---
 
-## External Integrations
+# Authentication and Authorization
 
-Initial development uses mock implementations for:
+There are two authenticated staff roles:
 
-- ABHA
-- FHIR
-- HIS / EMR
+```text
+DOCTOR
+ADMIN
+```
 
-The integration layer is located under:
+The patient kiosk does not use a normal application account.
+
+Patient identity is established through the kiosk verification flow.
+
+Staff authentication uses bearer-token-based application sessions.
+
+Authorization is enforced by the backend.
+
+Examples:
+
+```text
+DOCTOR
+  ↓
+Assigned patient case
+Assigned department
+Doctor queue
+
+ADMIN
+  ↓
+Department operations
+Queue monitoring
+Promotion
+Reassignment
+```
+
+Frontend visibility must never be treated as an authorization boundary.
+
+---
+
+# External Integrations
+
+External healthcare-system integrations are isolated under:
 
 ```text
 backend/integrations/
 ```
 
-The core application communicates with these systems through internal interfaces.
+Current development uses mock implementations for:
 
-The eventual goal is to replace the mock implementations with appropriate real integrations without restructuring the core Aurora workflow.
+```text
+ABHA / Identity
+FHIR
+HIS / EMR
+```
+
+The objective is to keep external provider details outside the core domain.
+
+Conceptually:
+
+```text
+Aurora Core
+    ↓
+Integration Interface
+    ├── Identity / ABHA
+    ├── FHIR
+    └── HIS / EMR
+```
+
+The mock implementations allow the full workflow to be demonstrated without requiring production hospital integrations.
 
 ---
 
-## Repository Structure
+# Data Model
+
+The main persistent entities include:
+
+```text
+Patient
+Doctor
+Department
+ClinicalSession
+ConversationTurn
+ClinicalSignal
+Document
+DocumentExtraction
+ClinicalSummary
+TriageResult
+QueueEntry
+DoctorAssignment
+PromotionRequest
+```
+
+A simplified relationship is:
+
+```text
+Patient
+   │
+   └── Clinical Session
+          ├── Conversation Turns
+          ├── Clinical Signals
+          ├── Documents
+          │      └── Document Extraction
+          ├── Clinical Summary
+          ├── Triage Result
+          ├── Queue Entry
+          └── Doctor Assignment
+```
+
+---
+
+# Repository Structure
 
 ```text
 Aurora/
@@ -331,10 +758,13 @@ Aurora/
 ├── backend/
 │   ├── ai/
 │   ├── api/
+│   ├── auth/
 │   ├── database/
 │   ├── domain/
+│   ├── events/
 │   ├── integrations/
-│   └── models/
+│   ├── models/
+│   └── services/
 │
 ├── patient-web/
 │
@@ -344,82 +774,225 @@ Aurora/
 │
 ├── docs/
 │   ├── architecture.md
-│   ├── api-contract.md
+│   ├── api-contracts.md
 │   └── tech-stack.md
 │
 └── README.md
 ```
 
-The structure is expected to evolve as implementation progresses.
-
-The directories represent responsibility boundaries rather than immutable architectural requirements.
+The directories represent responsibility boundaries and are allowed to evolve as implementation progresses.
 
 ---
 
-## Development Scope
+# Local Development
 
-### Current MVP
+## Backend
 
-- Patient kiosk web application
-- Doctor web application
-- Admin/reception web application
-- Patient identity verification mock
-- Consent
-- Clinical session management
-- Persistent patient records
-- Clinical history
-- Document records
-- Clinical summaries
-- General Medicine queue
-- Priority system
-- Doctor assignment
-- Automatic promotion
-- Administrative promotion override
-- Backend API
-- Database
-- Mock ABHA integration
-- Mock FHIR integration
-- Mock HIS integration
-- AI integration boundaries
+Create or activate a Python virtual environment and install:
 
-### Future
-
-- Real ABHA integration
-- Real FHIR integration
-- Real HIS / EMR integration
-- Specialist routing recommendations
-- Biometric authentication
-- Advanced analytics
-- Mobile application
-
----
-
-## Development Order
-
-The project is being rebuilt from the ground up.
-
-The intended implementation order is:
-
-```text
-1. Backend Foundation
-        ↓
-2. Patient Intake
-        ↓
-3. Doctor Queue and Patient Case
-        ↓
-4. Priority / Triage
-        ↓
-5. Doctor Assignment
-        ↓
-6. Promotion
-        ↓
-7. Admin / Reception
-        ↓
-8. AI Integrations
-        ↓
-9. External Healthcare Integrations
+```bash
+pip install -r backend/requirements.txt
 ```
 
-The architecture may change as implementation reveals better solutions.
+Configure:
 
-The product workflow and responsibility boundaries are the primary constraints; individual directories, files and implementation details may evolve accordingly.
+```text
+backend/.env
+```
+
+At minimum, the JWT secret must satisfy the backend's configured minimum length.
+
+Start the backend:
+
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+Health check:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
+## Frontend Applications
+
+Each frontend is independently runnable.
+
+Patient:
+
+```bash
+cd patient-web
+npm install
+npm run dev
+```
+
+Doctor:
+
+```bash
+cd doctor-web
+npm install
+npm run dev
+```
+
+Admin:
+
+```bash
+cd admin-web
+npm install
+npm run dev
+```
+
+Each application proxies `/api` to the backend during local Vite development.
+
+---
+
+# Frontend Quality Checks
+
+Each frontend currently provides:
+
+```bash
+npm run lint
+npm run build
+```
+
+The production build uses TypeScript project compilation followed by Vite:
+
+```bash
+tsc -b && vite build
+```
+
+---
+
+# Demo Development
+
+The repository contains mock identity and healthcare integrations so the complete workflow can be demonstrated without production hospital infrastructure.
+
+The current demonstration environment is intended to support:
+
+- patient registration
+- identity verification
+- OTP verification
+- consent
+- AI interview
+- document upload
+- OCR/extraction
+- triage
+- queueing
+- assignment
+- promotion
+- doctor review
+- admin operations
+
+---
+
+# Branching Workflow
+
+The repository uses a simple two-branch development model:
+
+```text
+main
+ ↓
+Stable / demo-ready code
+
+dev
+ ↓
+Active development and testing
+```
+
+Development work should normally happen on `dev`.
+
+Changes should be promoted to `main` only after the affected workflow has been tested.
+
+---
+
+# Current MVP Scope
+
+## Included
+
+- Patient kiosk
+- Doctor workspace
+- Admin/reception dashboard
+- General Medicine queue
+- Mock patient identity / ABHA verification
+- OTP flow
+- Consent
+- English patient flow
+- Hindi patient flow
+- Text interview
+- Voice interview
+- Mobile microphone permission preflight
+- Clinical information extraction
+- Clinical signal extraction
+- Red-flag detection
+- OCR / document extraction
+- Original document viewing
+- Structured extraction review
+- Conversation audit
+- AI-generated clinical summary
+- Doctor summary editing
+- Doctor summary confirmation
+- Triage
+- Priority score
+- Waiting-time handling
+- Doctor assignment
+- Promotion
+- Reassignment
+- Real-time SSE synchronization
+- UTC-aware timestamp handling
+- Mock FHIR integration
+- Mock HIS integration
+
+---
+
+# Deferred / Future Scope
+
+Planned future capabilities include:
+
+- production ABHA / ABDM integration
+- production FHIR integration
+- production HIS / EMR integration
+- broader Indian-language support
+- improved multilingual voice workflows
+- richer clinical interview coverage
+- advanced document understanding
+- handwritten-document assistance
+- specialist routing
+- biometric authentication
+- analytics
+- mobile-native applications
+- production-grade distributed event infrastructure
+- production security and compliance hardening
+
+---
+
+# Design Principle
+
+Aurora is an assistant for clinical workflow.
+
+```text
+AI
+ ↓
+Understand
+ ↓
+Structure
+ ↓
+Surface
+ ↓
+Doctor
+ ↓
+Review
+ ↓
+Confirm
+```
+
+The system is designed to reduce repetitive information-gathering while keeping clinical responsibility with authorized healthcare professionals.

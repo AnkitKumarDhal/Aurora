@@ -1,113 +1,99 @@
-# Aurora — Technology Stack
+# Aurora — Tech Stack
 
-## Patient Web
+## Frontend
 
-- React
-- TypeScript
-- Vite
+| Application | Stack |
+|---|---|
+| Patient Web | React, TypeScript, Vite, Tailwind CSS, Framer Motion |
+| Doctor Web | React, TypeScript, Vite, Tailwind CSS, React Router |
+| Admin Web | React, TypeScript, Vite, Tailwind CSS, Zustand, Framer Motion |
 
-## Doctor Web
+### UI / Frontend Libraries
 
-- React
-- TypeScript
-- Vite
+- **Lucide React** — icons
+- **Radix UI / Base UI** — UI primitives
+- **Sonner** — doctor-side notifications
+- **date-fns** — date/time utilities
+- **next-themes** — theme handling
 
-## Admin Web
-
-- React
-- TypeScript
-- Vite
+---
 
 ## Backend
 
-- Python
-- FastAPI
-- Pydantic
-- Pydantic Settings
+- **Python**
+- **FastAPI** — REST API and dependency injection
+- **Pydantic** — request/response validation
+- **Pydantic Settings** — configuration management
+- **Uvicorn** — ASGI server
 
-## Database
+---
 
-- MongoDB
-- PyMongo
+## Database & Storage
 
-## Backend Infrastructure
+- **MongoDB** — persistent application data
+- **PyMongo** — asynchronous MongoDB access
+- **Local file storage** — uploaded patient documents
 
-- HTTPX
-- python-multipart
-- aiofiles
-- PyJWT
-- pwdlib
-- tenacity
-- rapidfuzz
-
-## Testing
-
-- pytest
-- pytest-asyncio
-- pytest-cov
+---
 
 ## AI
 
-AI-related technologies are intentionally not fixed by the core backend.
+- **Lemonade-compatible OpenAI-style API** — local LLM integration
+- **Configurable LLM model** — currently `qwen3.5-9b-FLM`
+- **OCR / document extraction** — backend AI processing
+- **Browser SpeechRecognition** — patient voice input
+- **Browser `getUserMedia()`** — microphone permission/access
 
-All AI-related implementation is contained under:
+AI components are isolated under:
 
 ```text
 backend/ai/
 ```
 
-The AI layer may include:
+---
 
-- LLM
-- NLP
-- OCR
-- STT / ASR
-- TTS
-- clinical conversation processing
-- information extraction
-- clinical signal extraction
-- red-flag detection
+## Real-Time
 
-The AI implementation team is responsible for selecting and maintaining the dependencies required by these components.
+- **Server-Sent Events (SSE)** — live queue, assignment and promotion updates
+- **In-process asynchronous event bus** — backend event distribution
 
-AI-specific dependencies should not be added to the core backend requirements unless the core backend itself directly requires them.
+---
+
+## Authentication
+
+- **PyJWT** — JWT access tokens
+- **pwdlib + Argon2** — password hashing
+
+---
+
+## HTTP / Utilities
+
+- **HTTPX** — asynchronous HTTP client
+- **python-multipart** — file uploads
+- **aiofiles** — asynchronous file handling
+- **tenacity** — retries
+- **rapidfuzz** — fuzzy matching
+
+---
+
+## Testing
+
+- **pytest**
+- **pytest-asyncio**
+- **pytest-cov**
+
+---
 
 ## External Integrations
 
-Initial development uses mock integrations for:
+Current development uses mock implementations for:
 
-- ABHA
+- ABHA / identity verification
 - FHIR
 - HIS / EMR
 
-External integration implementations are contained under:
+Integration code is isolated under:
 
 ```text
 backend/integrations/
 ```
-
-The core application communicates with integrations through internal interfaces.
-
-## Configuration
-
-Environment-specific configuration is managed through environment variables and `.env` files during local development.
-
-Sensitive credentials must not be committed to the repository.
-
-## Development Environment
-
-The backend targets:
-
-- Python 3.11+
-- Node.js
-- npm
-
-The frontend applications are independently runnable development servers.
-
-## Architecture Principle
-
-The technology stack is intentionally modular.
-
-The core backend must not depend on a specific AI provider or external healthcare provider.
-
-AI providers and healthcare integrations should be replaceable without restructuring the core application.
