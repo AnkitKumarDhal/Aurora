@@ -114,35 +114,24 @@ export function VoiceAIConsultation({
       id: "initial",
       sender: "ai",
       text: isHi
-        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
-        : "Hello! I am Aurora AI. Please describe your symptoms.",
+        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण अपने शब्दों में बताएं।"
+        : "Hello! I am Aurora AI. Please describe your symptoms in your own words.",
     },
   ]);
 
   const [isListening, setIsListening] = useState(false);
-
   const [currentTranscript, setCurrentTranscript] = useState("");
-
   const [isSaving, setIsSaving] = useState(false);
-
   const [canContinue, setCanContinue] = useState(false);
-
   const [completed, setCompleted] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
-
   const [isRequestingMicrophone, setIsRequestingMicrophone] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-
   const chatEndRef = useRef<HTMLDivElement>(null);
-
   const hydrated = useRef(false);
-
   const recognitionStartingRef = useRef(false);
-
   const expectedStopRef = useRef(false);
-
   const latestOnActivityRef = useRef(onActivity);
 
   const latestHandleUserMessageRef = useRef<(text: string) => Promise<void>>(
@@ -170,7 +159,7 @@ export function VoiceAIConsultation({
       .then((state) => {
         const nextQuestion = state.next_question;
 
-        if (state.patient_turns > 0 && nextQuestion) {
+        if (state.patient_turns > 0 && nextQuestion && !state.completed) {
           setMessages((previous) => [
             ...previous,
             {
@@ -182,10 +171,7 @@ export function VoiceAIConsultation({
         }
 
         setCompleted(state.completed);
-
-        if (state.patient_turns > 0) {
-          setCanContinue(true);
-        }
+        setCanContinue(state.completed);
       })
       .catch(() => undefined);
   }, [sessionId]);
@@ -202,7 +188,7 @@ export function VoiceAIConsultation({
 
       flushSync(() => {
         setError(null);
-        setCanContinue(true);
+        setCanContinue(false);
 
         setMessages((previous) => [
           ...previous,
@@ -235,7 +221,6 @@ export function VoiceAIConsultation({
         );
 
         setIsSaving(false);
-
         return;
       }
 
@@ -252,6 +237,7 @@ export function VoiceAIConsultation({
 
       if (result.completed) {
         setCompleted(true);
+        setCanContinue(true);
 
         if (!result.assistant_response) {
           setMessages((previous) => [
@@ -286,18 +272,13 @@ export function VoiceAIConsultation({
     const recognitionInstance = new SpeechRecognition();
 
     recognitionInstance.continuous = false;
-
     recognitionInstance.interimResults = true;
-
     recognitionInstance.lang = isHi ? "hi-IN" : "en-US";
 
     recognitionInstance.onstart = () => {
       recognitionStartingRef.current = false;
-
       expectedStopRef.current = false;
-
       setIsListening(true);
-
       latestOnActivityRef.current?.();
     };
 
@@ -305,7 +286,6 @@ export function VoiceAIConsultation({
       latestOnActivityRef.current?.();
 
       let finalTranscript = "";
-
       let interimTranscript = "";
 
       for (
@@ -326,14 +306,11 @@ export function VoiceAIConsultation({
 
       if (finalTranscript.trim()) {
         expectedStopRef.current = true;
-
         setIsListening(false);
 
         try {
           recognitionInstance.stop();
-        } catch {
-          // Recognition may already be ending.
-        }
+        } catch {}
 
         void latestHandleUserMessageRef.current(finalTranscript.trim());
       }
@@ -341,13 +318,11 @@ export function VoiceAIConsultation({
 
     recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
       recognitionStartingRef.current = false;
-
       setIsListening(false);
       setIsRequestingMicrophone(false);
 
       if (event.error === "aborted" && expectedStopRef.current) {
         expectedStopRef.current = false;
-
         return;
       }
 
@@ -364,7 +339,6 @@ export function VoiceAIConsultation({
 
     recognitionInstance.onend = () => {
       recognitionStartingRef.current = false;
-
       setIsListening(false);
       setIsRequestingMicrophone(false);
 
@@ -379,16 +353,12 @@ export function VoiceAIConsultation({
 
     return () => {
       recognitionStartingRef.current = false;
-
       expectedStopRef.current = true;
-
       setIsRequestingMicrophone(false);
 
       try {
         recognitionInstance.stop();
-      } catch {
-        // Ignore cleanup errors.
-      }
+      } catch {}
 
       recognitionRef.current = null;
     };
@@ -414,50 +384,34 @@ export function VoiceAIConsultation({
 
     if (isListening) {
       expectedStopRef.current = true;
-
       setIsListening(false);
       setCurrentTranscript("");
 
       try {
         currentRecognition.stop();
-      } catch {
-        // Ignore if already stopped.
-      }
+      } catch {}
 
       return;
     }
 
     setError(null);
     setCurrentTranscript("");
-
     recognitionStartingRef.current = true;
-
     setIsRequestingMicrophone(true);
 
     try {
-      /*
-       * This is intentionally triggered
-       * from the user's microphone click.
-       *
-       * On "prompt", mobile Chrome can
-       * display its native permission prompt.
-       */
       await requestMicrophoneAccess();
 
       if (recognitionRef.current !== currentRecognition) {
         recognitionStartingRef.current = false;
-
         setIsRequestingMicrophone(false);
-
         return;
       }
 
       expectedStopRef.current = false;
-
       currentRecognition.start();
     } catch (requestError) {
       recognitionStartingRef.current = false;
-
       setIsListening(false);
 
       const errorCode =
@@ -546,14 +500,12 @@ export function VoiceAIConsultation({
 
               <div className="flex gap-1 rounded-xl rounded-tl-none bg-primary-tint p-3">
                 <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
-
                 <span
                   className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{
                     animationDelay: "0.2s",
                   }}
                 />
-
                 <span
                   className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
                   style={{

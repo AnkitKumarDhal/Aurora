@@ -34,8 +34,8 @@ export function TextAIConsultation({
       id: "initial",
       sender: "ai",
       text: isHi
-        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण बताएं।"
-        : "Hello! I am Aurora AI. Please describe your symptoms.",
+        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण अपने शब्दों में बताएं।"
+        : "Hello! I am Aurora AI. Please describe your symptoms in your own words.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -47,7 +47,9 @@ export function TextAIConsultation({
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
   }, [messages, isThinking]);
 
   useEffect(() => {
@@ -59,23 +61,21 @@ export function TextAIConsultation({
 
     void getInterviewState(sessionId)
       .then((state) => {
-        const next_question = state.next_question;
-        if (state.patient_turns > 0 && next_question) {
+        const nextQuestion = state.next_question;
+
+        if (state.patient_turns > 0 && nextQuestion && !state.completed) {
           setMessages((previous) => [
             ...previous,
             {
               id: "restored-question",
               sender: "ai",
-              text: next_question,
+              text: nextQuestion,
             },
           ]);
         }
 
         setCompleted(state.completed);
-
-        if (state.patient_turns > 0) {
-          setCanContinue(true);
-        }
+        setCanContinue(state.completed);
       })
       .catch(() => undefined);
   }, [sessionId]);
@@ -93,7 +93,7 @@ export function TextAIConsultation({
 
     flushSync(() => {
       setInput("");
-      setCanContinue(true);
+      setCanContinue(false);
       setMessages((previous) => [
         ...previous,
         {
@@ -115,7 +115,6 @@ export function TextAIConsultation({
       isHi ? "hi" : "en",
     );
 
-    // keep the rest unchanged...
     if (!result) {
       setError(
         isHi
@@ -139,6 +138,7 @@ export function TextAIConsultation({
 
     if (result.completed) {
       setCompleted(true);
+      setCanContinue(true);
 
       if (!result.assistant_response) {
         setMessages((previous) => [
@@ -166,8 +166,8 @@ export function TextAIConsultation({
 
         <p className="text-sm text-text-secondary">
           {isHi
-            ? "अपने लक्षण टाइप करें और एंटर दबाएं"
-            : "Type your symptoms and press Enter"}
+            ? "अपने लक्षण अपने शब्दों में लिखें"
+            : "Describe your symptoms naturally"}
         </p>
       </div>
 
@@ -214,11 +214,15 @@ export function TextAIConsultation({
                 <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
                 <span
                   className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
-                  style={{ animationDelay: "0.2s" }}
+                  style={{
+                    animationDelay: "0.2s",
+                  }}
                 />
                 <span
                   className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
-                  style={{ animationDelay: "0.4s" }}
+                  style={{
+                    animationDelay: "0.4s",
+                  }}
                 />
               </div>
             </div>
@@ -244,7 +248,9 @@ export function TextAIConsultation({
               }
             }}
             placeholder={
-              isHi ? "अपने लक्षण यहां टाइप करें..." : "Type your symptoms here..."
+              isHi
+                ? "अपने लक्षण यहां लिखें..."
+                : "Describe what you are experiencing..."
             }
             value={input}
           />
@@ -263,7 +269,7 @@ export function TextAIConsultation({
 
       <Button
         className="mt-4 rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
-        disabled={isThinking || !canContinue}
+        disabled={!canContinue || isThinking}
         onClick={onNext}
       >
         {isHi ? "अगला: रिपोर्ट अपलोड" : "Next: Upload Reports"}

@@ -1,6 +1,6 @@
-from __future__ import annotations
 from typing import Any
-from pydantic import BaseModel, Field, model_validator
+
+from pydantic import BaseModel, Field
 
 
 class InterviewExtraction(BaseModel):
@@ -8,84 +8,40 @@ class InterviewExtraction(BaseModel):
     fields: dict[str, Any] = Field(default_factory=dict)
     negatives: list[str] = Field(default_factory=list)
 
-    @model_validator(mode="after")
-    def infer_missing_topic(self) -> "InterviewExtraction":
-        if self.topic not in {None, "", "general"}:
-            return self
 
-        values = " ".join(
-            str(value)
-            for value in self.fields.values()
-            if value is not None
-        ).lower()
-
-        topic_keywords = {
-            "headache": (
-                "headache",
-                "head pain",
-                "migraine",
-            ),
-            "chest_pain": (
-                "chest pain",
-                "chest pressure",
-                "chest discomfort",
-            ),
-            "respiratory": (
-                "shortness of breath",
-                "breathlessness",
-                "breathing problem",
-                "difficulty breathing",
-                "cough",
-                "wheezing",
-                "wheeze",
-            ),
-            "gastrointestinal": (
-                "stomach pain",
-                "abdominal pain",
-                "abdomen",
-                "diarrhea",
-                "vomiting",
-                "nausea",
-            ),
-            "skin": (
-                "rash",
-                "itching",
-                "skin",
-            ),
-            "urinary": (
-                "urine",
-                "urination",
-                "burning while urinating",
-            ),
-        }
-
-        for topic, keywords in topic_keywords.items():
-            if any(keyword in values for keyword in keywords):
-                self.topic = topic
-                return self
-
-        return self
+class InterviewPlan(BaseModel):
+    topic: str | None = None
+    fields: dict[str, Any] = Field(default_factory=dict)
+    negatives: list[str] = Field(default_factory=list)
+    assistant_response: str | None = None
+    next_question: str | None = None
+    completed: bool = False
+    ai_used: bool = False
 
 
 INTERVIEW_FIELD_ALIASES: dict[str, str] = {
     "complaint": "chief_complaint",
     "main_complaint": "chief_complaint",
+    "main_problem": "chief_complaint",
     "problem": "chief_complaint",
     "symptom": "chief_complaint",
     "duration": "onset",
     "started": "onset",
     "start": "onset",
     "when_started": "onset",
-    "location": "site",
-    "place": "site",
-    "where": "site",
+    "how_long": "onset",
+    "progression": "course",
+    "pattern": "timing",
+    "frequency": "frequency",
     "pain_score": "severity",
     "pain_level": "severity",
     "intensity": "severity",
     "pain_type": "character",
     "quality": "character",
-    "frequency": "timing",
-    "pattern": "timing",
+    "location": "site",
+    "where": "site",
+    "place": "site",
+    "side": "laterality",
     "worse_with": "aggravating_factors",
     "aggravated_by": "aggravating_factors",
     "better_with": "relieving_factors",
@@ -93,8 +49,52 @@ INTERVIEW_FIELD_ALIASES: dict[str, str] = {
     "radiates_to": "radiation",
     "associated": "associated_symptoms",
     "other_symptoms": "associated_symptoms",
+    "previous_episodes": "previous_episodes",
+    "past_history": "past_medical_history",
+    "medical_history": "past_medical_history",
+    "surgical_history": "past_surgical_history",
+    "surgery_history": "past_surgical_history",
+    "operations": "past_surgical_history",
+    "hospital_history": "hospitalizations",
+    "current_medications": "medications",
+    "drugs": "medications",
+    "drug_history": "medications",
+    "drug_allergies": "allergies",
+    "medicine_allergies": "allergies",
+    "adverse_reactions": "adverse_drug_reactions",
+    "family": "family_history",
+    "social_history": "personal_history",
+    "lifestyle": "personal_history",
+    "occupation_history": "occupation",
+    "smoking_history": "smoking",
+    "tobacco_use": "tobacco",
+    "alcohol_use": "alcohol",
+    "exercise": "physical_activity",
+    "diet_history": "diet",
+    "sleep_history": "sleep",
+    "ros": "review_of_systems",
+    "review_of_system": "review_of_systems",
+    "constitutional_symptoms": "constitutional",
+    "cardiac": "cardiovascular",
+    "heart": "cardiovascular",
+    "lungs": "respiratory",
+    "breathing": "respiratory",
+    "gi": "gastrointestinal",
+    "gut": "gastrointestinal",
+    "gu": "genitourinary",
+    "urinary": "genitourinary",
+    "neuro": "neurological",
+    "musculoskeletal_symptoms": "musculoskeletal",
+    "skin_symptoms": "skin",
+    "mental_health": "psychiatric",
+    "investigations": "prior_investigations",
+    "previous_tests": "prior_investigations",
+    "prior_tests": "prior_investigations",
+    "treatment_history": "prior_treatment",
+    "treatment_response": "response_to_treatment",
     "breathlessness": "breathing_difficulty",
     "shortness_of_breath": "breathing_difficulty",
+    "difficulty_breathing": "breathing_difficulty",
     "nausea": "nausea_vomiting",
     "vomiting": "nausea_vomiting",
     "nausea_or_vomiting": "nausea_vomiting",
@@ -102,53 +102,165 @@ INTERVIEW_FIELD_ALIASES: dict[str, str] = {
     "neurological_symptoms": "vision_or_neuro",
     "coughing": "cough",
     "wheezing": "wheeze",
-    "burning_urination": "urinary_burning",
-    "painful_urination": "urinary_burning",
-    "blood_in_urine": "urinary_blood",
-    "rash_location": "site",
-    "rash_appearance": "appearance",
     "itching": "itch_or_pain",
     "fever": "fever",
     "fatigue": "fatigue",
+    "weight_loss": "weight_change",
     "weight_change": "weight_change",
-    "past_history": "past_medical_history",
-    "medical_history": "past_medical_history",
-    "current_medications": "medications",
-    "drugs": "medications",
-    "drug_allergies": "allergies",
+    "bowel_frequency": "bowel_frequency",
+    "stool_frequency": "bowel_frequency",
+    "stool_consistency": "stool_consistency",
+    "stool_type": "stool_consistency",
+    "straining": "straining",
+    "blood_in_stool": "blood_in_stool",
+    "rectal_bleeding": "blood_in_stool",
+    "abdominal_bloating": "abdominal_distension",
+    "bloating": "abdominal_distension",
+    "bowel_problem": "bowel_changes",
+    "constipation": "bowel_changes",
+    "diarrhea": "bowel_changes",
+    "urination_frequency": "urinary_frequency",
+    "burning_urination": "urinary_burning",
+    "painful_urination": "urinary_burning",
+    "blood_in_urine": "urinary_blood",
+    "menstrual": "menstrual_history",
+    "periods": "menstrual_history",
+    "pregnancy": "pregnancy_status",
+    "sexual_history": "sexual_history",
+    "prakriti": "ayush_prakriti",
+    "vikriti": "ayush_vikriti",
+    "sara": "ayush_sara",
+    "samhanana": "ayush_samhanana",
+    "pramana": "ayush_pramana",
+    "satmya": "ayush_satmya",
+    "satva": "ayush_satva",
+    "ahara_shakti": "ayush_ahara_shakti",
+    "vyayama_shakti": "ayush_vyayama_shakti",
+    "vaya": "ayush_vaya",
+    "agni": "ayush_agni",
+    "koshta": "ayush_koshta",
+    "ahara_vihara": "ayush_ahara_vihara",
+    "nidana": "ayush_nidana",
+    "samprapti": "ayush_samprapti",
 }
 
 
 KNOWN_INTERVIEW_FIELDS = {
     "chief_complaint",
     "onset",
+    "course",
+    "duration",
     "site",
+    "laterality",
     "severity",
     "character",
     "timing",
+    "frequency",
     "aggravating_factors",
     "relieving_factors",
     "radiation",
     "associated_symptoms",
+    "previous_episodes",
+    "impact_on_daily_life",
+    "prior_treatment",
+    "response_to_treatment",
+    "prior_investigations",
+    "past_medical_history",
+    "past_surgical_history",
+    "hospitalizations",
+    "immunizations",
+    "medications",
+    "allergies",
+    "adverse_drug_reactions",
+    "family_history",
+    "personal_history",
+    "occupation",
+    "diet",
+    "sleep",
+    "physical_activity",
+    "smoking",
+    "alcohol",
+    "tobacco",
+    "menstrual_history",
+    "pregnancy_status",
+    "sexual_history",
+    "review_of_systems",
+    "constitutional",
+    "cardiovascular",
+    "respiratory",
+    "gastrointestinal",
+    "genitourinary",
+    "neurological",
+    "musculoskeletal",
+    "skin",
+    "endocrine",
+    "hematologic",
+    "psychiatric",
     "breathing_difficulty",
     "nausea_vomiting",
     "vision_or_neuro",
     "cough",
     "wheeze",
-    "location",
-    "bowel_changes",
-    "appearance",
-    "itch_or_pain",
-    "spread",
-    "urinary_frequency",
-    "urinary_burning",
-    "urinary_blood",
     "fever",
     "fatigue",
     "weight_change",
-    "past_medical_history",
-    "medications",
-    "allergies",
+    "bowel_changes",
+    "bowel_frequency",
+    "stool_consistency",
+    "straining",
+    "blood_in_stool",
+    "abdominal_distension",
+    "urinary_frequency",
+    "urinary_burning",
+    "urinary_blood",
+    "ayush_prakriti",
+    "ayush_vikriti",
+    "ayush_sara",
+    "ayush_samhanana",
+    "ayush_pramana",
+    "ayush_satmya",
+    "ayush_satva",
+    "ayush_ahara_shakti",
+    "ayush_vyayama_shakti",
+    "ayush_vaya",
+    "ayush_agni",
+    "ayush_koshta",
+    "ayush_ahara_vihara",
+    "ayush_nidana",
+    "ayush_samprapti",
+}
+
+
+TOPIC_ALIASES: dict[str, str] = {
+    "migraine": "headache",
+    "head pain": "headache",
+    "cephalgia": "headache",
+    "chest discomfort": "chest_pain",
+    "chest pressure": "chest_pain",
+    "breathlessness": "respiratory",
+    "shortness of breath": "respiratory",
+    "breathing problem": "respiratory",
+    "cough": "respiratory",
+    "vomiting": "gastrointestinal",
+    "nausea": "gastrointestinal",
+    "stomach pain": "gastrointestinal",
+    "abdominal pain": "gastrointestinal",
+    "diarrhea": "gastrointestinal",
+    "constipation": "gastrointestinal",
+    "constipated": "gastrointestinal",
+    "hard stools": "gastrointestinal",
+    "bowel problem": "gastrointestinal",
+    "rash": "skin",
+    "skin problem": "skin",
+    "urine problem": "urinary",
+    "urinary problem": "urinary",
+    "painful urination": "urinary",
+    "back pain": "musculoskeletal",
+    "joint pain": "musculoskeletal",
+    "muscle pain": "musculoskeletal",
+    "weakness": "neurological",
+    "numbness": "neurological",
+    "fever": "general",
 }
 
 
@@ -159,3 +271,26 @@ def normalize_field_name(name: str) -> str | None:
         return key
 
     return INTERVIEW_FIELD_ALIASES.get(key)
+
+
+def normalize_topic(topic: str | None) -> str:
+    if not topic:
+        return "general"
+
+    value = str(topic).strip().lower().replace("-", "_")
+
+    if value in {
+        "headache",
+        "chest_pain",
+        "respiratory",
+        "gastrointestinal",
+        "skin",
+        "urinary",
+        "musculoskeletal",
+        "neurological",
+        "general",
+        "reproductive",
+    }:
+        return value
+
+    return TOPIC_ALIASES.get(value, "general")

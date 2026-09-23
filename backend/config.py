@@ -35,11 +35,9 @@ class Settings(BaseSettings):
         validation_alias="AURORA_INTERVIEW_AI_PROVIDER",
     )
 
-    interview_max_followups: int = Field(
-        default=7,
-        ge=1,
-        le=20,
-        validation_alias="AURORA_INTERVIEW_MAX_FOLLOWUPS",
+    interview_debug: bool = Field(
+        default=False,
+        validation_alias="AURORA_INTERVIEW_DEBUG",
     )
 
     lemonade_url: str = Field(
@@ -82,10 +80,6 @@ class Settings(BaseSettings):
             for origin in self.cors_origins.split(",")
             if origin.strip()
         ]
-
-    @property
-    def interview_max_turns(self) -> int:
-        return 1 + self.interview_max_followups
 
 
 @lru_cache
