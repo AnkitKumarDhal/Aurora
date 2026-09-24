@@ -236,6 +236,11 @@ def detect_red_flags(
         "saans nahin aa rahi",
         "dam ghutna",
         "saans lene mein mushkil",
+        "saans lene mein bahut dikkat",
+        "saans nahi le pa raha",
+        "saans nahi le paa raha",
+        "साँस नहीं ले पा रहा",
+        "सांस नहीं ले पा रहा",
     )
 
     breathing = _contains(
@@ -341,7 +346,9 @@ def detect_red_flags(
             "खून की खांसी",
             "खून की खाँसी",
             "bahut zyada khoon",
+            "bahut khoon beh raha",
             "tez khoon behna",
+            "bahut tez khoon behna",
             "khoon ki ulti",
             "khoon ki khansi",
         ),
@@ -397,7 +404,9 @@ def detect_red_flags(
             "अचानक तेज सिरदर्द",
             "zindagi ka sabse tez sir dard",
             "achanak bahut tez sir dard",
+            "achanak bahut tez sar dard",
             "bahut tez sir dard",
+            "bahut tez sar dard",
             "achanak tez sir dard",
             "sabse tez sir dard",
         ),
