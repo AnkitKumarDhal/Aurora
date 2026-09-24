@@ -661,17 +661,38 @@ ROS_TERMS = {
         "weight loss",
         "weight gain",
         "appetite",
+        "बुखार",
+        "ठंड लगना",
+        "थकान",
+        "वजन कम",
+        "वजन बढ़",
+        "भूख",
+        "bukhar",
+        "thakan",
+        "bhukh",
     ),
     "cardiovascular": (
         "chest pain",
         "palpitation",
         "palpitations",
+        "सीने में दर्द",
+        "धड़कन",
+        "दिल की धड़कन",
+        "seene mein dard",
+        "dhadkan",
     ),
     "respiratory": (
         "cough",
         "breath",
         "breathing",
         "wheeze",
+        "खांसी",
+        "खाँसी",
+        "सांस",
+        "साँस",
+        "घरघराहट",
+        "khansi",
+        "saans",
     ),
     "gastrointestinal": (
         "nausea",
@@ -681,12 +702,28 @@ ROS_TERMS = {
         "diarrhea",
         "constipation",
         "bloating",
+        "मतली",
+        "उल्टी",
+        "पेट",
+        "दस्त",
+        "कब्ज",
+        "पेट फूलना",
+        "matli",
+        "ulti",
+        "pet dard",
+        "dast",
+        "kabz",
     ),
     "genitourinary": (
         "urine",
         "urination",
         "urinary",
         "painful urination",
+        "पेशाब",
+        "मूत्र",
+        "पेशाब में जलन",
+        "peshab",
+        "peshab mein jalan",
     ),
     "neurological": (
         "dizziness",
@@ -694,33 +731,75 @@ ROS_TERMS = {
         "numbness",
         "weakness",
         "tingling",
+        "चक्कर",
+        "बेहोशी",
+        "सुन्नपन",
+        "कमजोरी",
+        "कमज़ोरी",
+        "झनझनाहट",
+        "chakkar",
+        "behoshi",
+        "sunnpan",
+        "kamzori",
+        "jhunjhunahat",
     ),
     "musculoskeletal": (
         "joint",
         "muscle",
         "back pain",
         "neck pain",
+        "जोड़",
+        "जोड़ों",
+        "मांसपेशी",
+        "कमर दर्द",
+        "गर्दन दर्द",
+        "jodon",
+        "jodon ka dard",
+        "kamar dard",
     ),
     "skin": (
         "rash",
         "itch",
         "skin",
+        "दाने",
+        "चकत्ते",
+        "खुजली",
+        "त्वचा",
+        "dane",
+        "khujli",
+        "chakatte",
     ),
     "endocrine": (
         "thyroid",
         "heat intolerance",
         "cold intolerance",
+        "थायरॉइड",
+        "गर्मी सहन",
+        "ठंड सहन",
     ),
     "hematologic": (
         "easy bruising",
         "bleeding",
         "anemia",
+        "आसानी से नीला",
+        "खून बहना",
+        "खून की कमी",
+        "khoon behna",
+        "khoon ki kami",
     ),
     "psychiatric": (
         "anxiety",
         "depression",
         "stress",
         "panic",
+        "चिंता",
+        "उदासी",
+        "तनाव",
+        "घबराहट",
+        "chinta",
+        "udaasi",
+        "tanav",
+        "ghabrahat",
     ),
 }
 
@@ -1462,19 +1541,11 @@ class InterviewExtractor:
                 if position < 0:
                     continue
 
-                prefix = normalized[
-                    max(
-                        0,
-                        position - 45,
-                    ):position
-                ]
-
-                negative = bool(
-                    re.search(
-                        r"\b(?:no|not|never|without|don't|do not|denies|none)\b",
-                        prefix,
-                    )
-                ) or "नहीं" in prefix
+                negative = self._is_negated(
+                    normalized,
+                    position,
+                    len(term),
+                )
 
                 return (
                     False if negative else True,
@@ -2015,24 +2086,11 @@ class InterviewExtractor:
 
                 matched = True
 
-                prefix = normalized[
-                    max(
-                        0,
-                        position - 40,
-                    ):position
-                ]
-
-                if (
-                    re.search(
-                        r"\b(?:no|not|never|without|don't|do not|denies)\b",
-                        prefix,
-                    )
-                    or "नहीं" in prefix
-                ):
-                    negative = True
-
-                else:
-                    negative = False
+                negative = self._is_negated(
+                    normalized,
+                    position,
+                    len(term),
+                )
 
                 break
 
@@ -2636,6 +2694,47 @@ class InterviewExtractor:
             r"[,.!?;।]+",
             "",
             text.strip().lower(),
+        )
+
+    @staticmethod
+    def _is_negated(
+        text: str,
+        position: int,
+        term_length: int,
+    ) -> bool:
+        before = text[
+            max(
+                0,
+                position - 50,
+            ):position
+        ]
+        after = text[
+            position + term_length:
+            position + term_length + 50
+        ]
+
+        if re.search(
+            r"\b(?:no|not|never|without|don't|do not|denies|none|nahi|nahin)\b",
+            before,
+            flags=re.IGNORECASE,
+        ):
+            return True
+
+        if re.search(
+            r"\b(?:no|not|never|without|don't|do not|denies|none|nahi|nahin)\b",
+            after,
+            flags=re.IGNORECASE,
+        ):
+            return True
+
+        return any(
+            marker in before
+            or marker in after
+            for marker in (
+                "नहीं",
+                "नही",
+                "बिना",
+            )
         )
 
     @staticmethod
