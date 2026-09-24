@@ -195,7 +195,7 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
           type="button"
           variant="outline"
           onClick={() => setSelectedMode("voice")}
-          className="h-64 w-full rounded-2xl border-2 border-border bg-surface hover:border-primary hover:bg-primary-tint hover:text-text-primary transition-all duration-200 flex flex-col items-center justify-center gap-6 text-text-primary active:scale-[0.98]"
+          className="h-64 w-full rounded-2xl border-2 border-border bg-surface hover:scale-[1.02] hover:border-primary hover:bg-primary-tint hover:text-text-primary transition-all duration-200 flex flex-col items-center justify-center gap-6 text-text-primary active:scale-[0.98]"
         >
           <Mic className="h-16 w-16 text-text-secondary" />
 
@@ -212,7 +212,7 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
           type="button"
           variant="outline"
           onClick={() => setSelectedMode("text")}
-          className="h-64 w-full rounded-2xl border-2 border-border bg-surface hover:border-primary hover:bg-primary-tint hover:text-text-primary transition-all duration-200 flex flex-col items-center justify-center gap-6 text-text-primary active:scale-[0.98]"
+          className="h-64 w-full rounded-2xl border-2 border-border bg-surface hover:scale-[1.02] hover:border-primary hover:bg-primary-tint hover:text-text-primary transition-all duration-200 flex flex-col items-center justify-center gap-6 text-text-primary active:scale-[0.98]"
         >
           <Keyboard className="h-16 w-16 text-text-secondary" />
 
