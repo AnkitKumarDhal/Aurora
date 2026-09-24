@@ -109,11 +109,20 @@ class InterviewController:
             state.known_fields(),
         )
 
+        limit_reached = state.question_limit_reached()
+        if limit_reached and not state.is_complete():
+            state.complete_remaining_sections()
+            await self._persist_state_bundle(
+                session_id,
+                state,
+            )
+
         completed = bool(
             red_flag_result[
                 "triage_required"
             ]
             or state.is_complete()
+            or limit_reached
         )
 
         if (
