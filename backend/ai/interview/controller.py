@@ -1113,6 +1113,9 @@ class InterviewController:
     def _signal_type_for(
         field: str,
     ) -> ClinicalSignalType:
+        if field.startswith("ayush_"):
+            return ClinicalSignalType.HISTORY
+
         if field == "medications":
             return ClinicalSignalType.MEDICATION
 

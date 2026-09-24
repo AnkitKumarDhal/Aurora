@@ -150,6 +150,19 @@ NEGATIVE_ANSWERS = {
     "और कुछ नहीं",
     "कोई नहीं",
     "लागू नहीं",
+    "nope",
+    "nah",
+    "nahi hai",
+    "nahin hai",
+    "नहीं है",
+    "नहीं हुआ",
+    "नहीं हुई",
+    "नहीं करता",
+    "नहीं करती",
+    "nahi hua",
+    "nahi hui",
+    "nahi karta",
+    "nahi karti",
     "पता नहीं",
 }
 
@@ -1507,7 +1520,8 @@ class InterviewExtractor:
             "urinary_frequency",
         }:
             match = re.search(
-                r"\b\d+(?:\.\d+)?\s*"
+                r"\b(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|"
+                r"a couple|a few)\s*"
                 r"(?:times?|bowel movements?|motions?)"
                 r"(?:\s*(?:a|per)\s*)?"
                 r"(?:day|week|month)?\b",
@@ -1522,7 +1536,8 @@ class InterviewExtractor:
 
             if not match:
                 match = re.search(
-                    r"\b(?:din mein|har din|roz|roj)\s*\d+\s*baar\b",
+                    r"\b(?:din mein|har din|roz|roj)\s*"
+                    r"(?:\d+|ek|do|teen|char|paanch|panch|chhe|saat|aath|nau|das)\s*baar\b",
                     normalized,
                     flags=re.IGNORECASE,
                 )
@@ -2767,21 +2782,19 @@ class InterviewExtractor:
             return True
 
         if re.search(
-            r"\b(?:no|not|never|without|don't|do not|denies|none|nahi|nahin)\b",
+            r"^\s*(?:no|not|never|without|don't|do not|denies|none|nahi|nahin)\b",
             after,
             flags=re.IGNORECASE,
         ):
             return True
 
-        return any(
-            marker in before
-            or marker in after
-            for marker in (
-                "नहीं",
-                "नही",
-                "बिना",
-            )
-        )
+        if re.match(
+            r"^\s*(?:नहीं|नही|बिना)\b",
+            after,
+        ):
+            return True
+
+        return False
 
     @staticmethod
     def _complaint_from_topic(
