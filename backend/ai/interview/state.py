@@ -28,6 +28,13 @@ SECTION_QUESTION_BUDGETS = {
     "ayush": 1,
 }
 
+# A clinical intake must be complete enough to hand to the physician, but it
+# must also have a deterministic escape hatch. The local model is allowed to
+# be adaptive inside these limits; it can never make the patient answer
+# indefinitely.
+MAX_INTERVIEW_QUESTIONS = 22
+MAX_AYUSH_INTERVIEW_QUESTIONS = 28
+
 HPI_FIELDS = {
     "chief_complaint",
     "onset",
@@ -1688,6 +1695,26 @@ class InterviewState:
             )
             if item.strip()
         ]
+
+    def total_question_count(self) -> int:
+        return len(self.question_history)
+
+    def max_question_count(self) -> int:
+        return (
+            MAX_AYUSH_INTERVIEW_QUESTIONS
+            if self.ayush_enabled
+            else MAX_INTERVIEW_QUESTIONS
+        )
+
+    def question_limit_reached(self) -> bool:
+        return self.total_question_count() >= self.max_question_count()
+
+    def complete_remaining_sections(self) -> None:
+        self.completed_sections.update(
+            ALL_SECTIONS if self.ayush_enabled else SECTION_ORDER
+        )
+        self.pending_target = None
+        self.skipped_targets.clear()
 
     def section_question_count(
         self,
