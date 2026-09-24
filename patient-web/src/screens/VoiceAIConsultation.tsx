@@ -116,6 +116,7 @@ export function VoiceAIConsultation({
   useEffect(() => {
     latestOnActivity.current = onActivity;
   }, [onActivity]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, currentTranscript, isSaving]);
@@ -123,12 +124,19 @@ export function VoiceAIConsultation({
   useEffect(() => {
     if (hydrated.current) return;
     hydrated.current = true;
+
     void getInterviewState(sessionId, isHi ? "hi" : "en")
       .then((state) => {
-        if (state.next_question)
+        if (state.next_question) {
           setMessages([
-            { id: "initial-question", sender: "ai", text: state.next_question },
+            {
+              id: "initial-question",
+              sender: "ai",
+              text: state.next_question,
+            },
           ]);
+        }
+
         setCompleted(state.completed);
         setCanContinue(state.completed);
       })
@@ -144,21 +152,31 @@ export function VoiceAIConsultation({
   const handleUserMessage = useCallback(
     async (text: string) => {
       const content = text.trim();
+
       if (!content || isSaving || completed) return;
+
       setError(null);
       setCanContinue(false);
       setCurrentTranscript("");
+
       setMessages((previous) => [
         ...previous,
-        { id: `user-${Date.now()}`, sender: "user", text: content },
+        {
+          id: `user-${Date.now()}`,
+          sender: "user",
+          text: content,
+        },
       ]);
+
       setIsSaving(true);
       latestOnActivity.current?.();
+
       const result = await onConversationTurn(
         "AUDIO",
         content,
         isHi ? "hi" : "en",
       );
+
       if (!result) {
         setError(
           isHi
@@ -168,7 +186,8 @@ export function VoiceAIConsultation({
         setIsSaving(false);
         return;
       }
-      if (result.assistant_response)
+
+      if (result.assistant_response) {
         setMessages((previous) => [
           ...previous,
           {
@@ -177,10 +196,13 @@ export function VoiceAIConsultation({
             text: result.assistant_response!,
           },
         ]);
+      }
+
       if (result.completed) {
         setCompleted(true);
         setCanContinue(true);
       }
+
       setIsSaving(false);
     },
     [completed, isHi, isSaving, onConversationTurn],
@@ -192,11 +214,15 @@ export function VoiceAIConsultation({
 
   useEffect(() => {
     const SpeechRecognition = getSpeechRecognitionConstructor();
+
     if (!SpeechRecognition) return;
+
     const recognition = new SpeechRecognition();
+
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = isHi ? "hi-IN" : "en-US";
+
     recognition.onstart = () => {
       starting.current = false;
       expectedStop.current = false;
@@ -204,95 +230,137 @@ export function VoiceAIConsultation({
       setIsRequestingMicrophone(false);
       latestOnActivity.current?.();
     };
+
     recognition.onresult = (event: SpeechRecognitionResultEvent) => {
       latestOnActivity.current?.();
+
       let finalText = "";
       let interimText = "";
+
       for (
         let index = event.resultIndex;
         index < event.results.length;
         index += 1
       ) {
         const value = event.results[index][0].transcript;
-        if (event.results[index].isFinal) finalText += value;
-        else interimText += value;
+
+        if (event.results[index].isFinal) {
+          finalText += value;
+        } else {
+          interimText += value;
+        }
       }
+
       setCurrentTranscript(interimText);
+
       if (finalText.trim()) {
         expectedStop.current = true;
         setIsListening(false);
+
         try {
           recognition.stop();
         } catch {}
+
         void latestHandler.current(finalText);
       }
     };
+
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       starting.current = false;
       setIsListening(false);
       setIsRequestingMicrophone(false);
+
       if (event.error === "aborted" && expectedStop.current) {
         expectedStop.current = false;
         return;
       }
+
       expectedStop.current = false;
+
       const message = getVoiceErrorMessage(event.error, isHi);
-      if (message) setError(message);
+
+      if (message) {
+        setError(message);
+      }
     };
+
     recognition.onend = () => {
       starting.current = false;
       setIsListening(false);
       setIsRequestingMicrophone(false);
-      if (!expectedStop.current) setCurrentTranscript("");
+
+      if (!expectedStop.current) {
+        setCurrentTranscript("");
+      }
+
       expectedStop.current = false;
     };
+
     recognitionRef.current = recognition;
+
     return () => {
       expectedStop.current = true;
+
       try {
         recognition.stop();
       } catch {}
+
       recognitionRef.current = null;
     };
   }, [isHi]);
 
   const toggleListening = async () => {
     const recognition = recognitionRef.current;
+
     if (
       !recognition ||
       isSaving ||
       completed ||
       isRequestingMicrophone ||
       starting.current
-    )
+    ) {
       return;
+    }
+
     latestOnActivity.current?.();
+
     if (isListening) {
       expectedStop.current = true;
       setIsListening(false);
       setCurrentTranscript("");
+
       try {
         recognition.stop();
       } catch {}
+
       return;
     }
+
     setError(null);
     setCurrentTranscript("");
     starting.current = true;
     setIsRequestingMicrophone(true);
+
     try {
       await requestMicrophoneAccess();
-      if (recognitionRef.current !== recognition) return;
+
+      if (recognitionRef.current !== recognition) {
+        return;
+      }
+
       expectedStop.current = false;
       recognition.start();
     } catch (requestError) {
       starting.current = false;
       setIsRequestingMicrophone(false);
+
       const code =
         requestError instanceof Error
           ? requestError.message
           : "MICROPHONE_UNKNOWN_ERROR";
+
       const message = getVoiceErrorMessage(code, isHi);
+
       setError(
         message ??
           (isHi
@@ -302,7 +370,8 @@ export function VoiceAIConsultation({
     }
   };
 
-  const speechRecognitionAvailable = getSpeechRecognitionConstructor() !== null;
+  const speechRecognitionAvailable =
+    getSpeechRecognitionConstructor() !== null;
 
   return (
     <div className="flex h-[80vh] w-full flex-col items-center">
@@ -310,29 +379,39 @@ export function VoiceAIConsultation({
         <h2 className="text-2xl font-bold text-text-primary">
           {isHi ? "AI वॉयस परामर्श" : "AI Voice Consultation"}
         </h2>
+
         <p className="text-sm text-text-secondary">
           {isHi
             ? "बोलना शुरू करने के लिए माइक बटन दबाएं"
             : "Tap the mic button to start speaking"}
         </p>
       </div>
+
       <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex-1 space-y-3 overflow-y-auto pr-2">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex items-start gap-3 ${message.sender === "user" ? "justify-end" : ""}`}
+              className={`flex items-start gap-3 ${
+                message.sender === "user" ? "justify-end" : ""
+              }`}
             >
               {message.sender === "ai" && (
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
                   <Bot className="h-4 w-4 text-primary-dark" />
                 </div>
               )}
+
               <div
-                className={`max-w-[80%] rounded-xl p-3 text-base ${message.sender === "ai" ? "rounded-tl-none bg-primary-tint text-text-primary" : "rounded-tr-none bg-accent-tint text-text-primary"}`}
+                className={`max-w-[80%] rounded-xl p-3 text-base ${
+                  message.sender === "ai"
+                    ? "rounded-tl-none bg-primary-tint text-text-primary"
+                    : "rounded-tr-none bg-accent-tint text-text-primary"
+                }`}
               >
                 {message.text}
               </div>
+
               {message.sender === "user" && (
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-tint">
                   <User className="h-4 w-4 text-accent-dark" />
@@ -340,6 +419,7 @@ export function VoiceAIConsultation({
               )}
             </div>
           ))}
+
           {currentTranscript && (
             <div className="flex items-start justify-end gap-3">
               <div className="max-w-[80%] rounded-xl rounded-tr-none bg-accent-tint p-3 text-base italic text-text-secondary">
@@ -347,11 +427,13 @@ export function VoiceAIConsultation({
               </div>
             </div>
           )}
+
           {isSaving && (
             <div className="flex items-start gap-3">
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
                 <Bot className="h-4 w-4 text-primary-dark" />
               </div>
+
               <div className="flex gap-1 rounded-xl rounded-tl-none bg-primary-tint p-3">
                 <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
                 <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary [animation-delay:0.2s]" />
@@ -359,16 +441,25 @@ export function VoiceAIConsultation({
               </div>
             </div>
           )}
+
           <div ref={chatEndRef} />
         </div>
+
         {error && (
           <div className="mb-3 rounded-xl border-2 border-danger bg-surface px-4 py-3 text-sm font-semibold text-danger">
             {error}
           </div>
         )}
+
         <div className="flex flex-col items-center gap-3">
-          <button
-            className={`flex h-16 w-16 items-center justify-center rounded-full transition-all ${isListening ? "animate-pulse bg-danger" : "bg-primary hover:bg-primary-dark"}`}
+          <Button
+            type="button"
+            variant="outline"
+            className={`flex h-16 w-16 items-center justify-center rounded-full p-0 transition-all active:scale-[0.95] ${
+              isListening
+                ? "bg-danger hover:bg-danger/90 hover:text-white"
+                : "bg-primary hover:bg-primary-dark"
+            }`}
             disabled={
               !speechRecognitionAvailable ||
               isSaving ||
@@ -376,16 +467,18 @@ export function VoiceAIConsultation({
               isRequestingMicrophone
             }
             onClick={() => void toggleListening()}
-            type="button"
           >
             {isListening ? (
               <MicOff className="h-8 w-8 text-white" />
             ) : (
               <Mic className="h-8 w-8 text-white" />
             )}
-          </button>
+          </Button>
+
           <span
-            className={`text-sm ${isListening ? "text-danger" : "text-text-secondary"}`}
+            className={`text-sm ${
+              isListening ? "text-danger" : "text-text-secondary"
+            }`}
           >
             {!speechRecognitionAvailable
               ? isHi
@@ -405,8 +498,10 @@ export function VoiceAIConsultation({
           </span>
         </div>
       </div>
+
       <Button
-        className="mt-4 rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
+        type="button"
+        className="mt-4 rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary active:scale-[0.98]"
         disabled={isListening || isSaving || !canContinue}
         onClick={onNext}
       >
