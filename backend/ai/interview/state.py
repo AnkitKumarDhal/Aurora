@@ -628,7 +628,7 @@ def _value_key(
 
 
 class InterviewState:
-    VERSION = 3
+    VERSION = 4
 
     def __init__(
         self,
@@ -642,6 +642,8 @@ class InterviewState:
         pending_target: str | None = None,
         closure_asked_sections: set[str] | None = None,
         turn_count: int = 0,
+        unproductive_turns: int = 0,
+        skipped_targets: set[str] | None = None,
     ) -> None:
         self.topic = (
             topic.strip()
@@ -694,6 +696,15 @@ class InterviewState:
         self.turn_count = int(
             turn_count or 0
         )
+        self.unproductive_turns = max(
+            0,
+            int(unproductive_turns or 0),
+        )
+        self.skipped_targets = {
+            normalize_field_name(item)
+            for item in (skipped_targets or set())
+            if normalize_field_name(item) in TARGET_FIELDS
+        }
 
     @classmethod
     def empty(
@@ -723,7 +734,8 @@ class InterviewState:
 
         if (
             isinstance(parsed, dict)
-            and parsed.get("version") == cls.VERSION
+            and isinstance(parsed.get("version"), int)
+            and 1 <= parsed.get("version", 0) <= cls.VERSION
         ):
             return cls(
                 topic=str(
@@ -774,6 +786,19 @@ class InterviewState:
                         0,
                     )
                     or 0
+                ),
+                unproductive_turns=int(
+                    parsed.get(
+                        "unproductive_turns",
+                        0,
+                    )
+                    or 0
+                ),
+                skipped_targets=set(
+                    parsed.get(
+                        "skipped_targets",
+                        [],
+                    )
                 ),
             )
 
@@ -899,11 +924,45 @@ class InterviewState:
                         False,
                     )
 
-        state.question_history = []
-        state.target_history = []
-        state.pending_target = None
-        state.closure_asked_sections = set()
-        state.turn_count = 0
+        if isinstance(parsed, dict):
+            state.question_history = [
+                str(item).strip()
+                for item in parsed.get("question_history", [])
+                if str(item).strip()
+            ]
+            state.target_history = [
+                str(item).strip()
+                for item in parsed.get("target_history", [])
+                if str(item).strip()
+            ]
+            state.pending_target = (
+                parsed.get("pending_target")
+                if parsed.get("pending_target")
+                else None
+            )
+            state.closure_asked_sections = {
+                normalize_section(item)
+                for item in parsed.get("closure_asked_sections", [])
+                if normalize_section(item) in ALL_SECTIONS
+            }
+            state.turn_count = int(parsed.get("turn_count", 0) or 0)
+            state.unproductive_turns = max(
+                0,
+                int(parsed.get("unproductive_turns", 0) or 0),
+            )
+            state.skipped_targets = {
+                normalize_field_name(item)
+                for item in parsed.get("skipped_targets", [])
+                if normalize_field_name(item) in TARGET_FIELDS
+            }
+        else:
+            state.question_history = []
+            state.target_history = []
+            state.pending_target = None
+            state.closure_asked_sections = set()
+            state.turn_count = 0
+            state.unproductive_turns = 0
+            state.skipped_targets = set()
 
         return state
 
@@ -925,6 +984,8 @@ class InterviewState:
                     self.closure_asked_sections
                 ),
                 "turn_count": self.turn_count,
+                "unproductive_turns": self.unproductive_turns,
+                "skipped_targets": sorted(self.skipped_targets),
             },
             ensure_ascii=False,
             separators=(",", ":"),
@@ -1274,8 +1335,13 @@ class InterviewState:
         self,
         target: str,
     ) -> bool:
+        normalized_target = normalize_field_name(target)
+
+        if normalized_target in self.skipped_targets:
+            return True
+
         value = self.target_value(
-            target
+            normalized_target
         )
 
         if value is None:
@@ -1577,13 +1643,13 @@ class InterviewState:
             )
 
         if self.current_section == "review_of_systems":
-            targets = [
-                target
-                for target in ROS_TARGETS
-                if not self.target_answered(
-                    target
-                )
-            ]
+            # Use one broad ROS screen as the section objective. Specific
+            # symptoms mentioned in that answer are still captured separately.
+            targets = (
+                []
+                if self.target_answered("review_of_systems")
+                else ["review_of_systems"]
+            )
             return self._prioritize_pending(
                 targets,
                 pending,
@@ -1733,15 +1799,25 @@ class InterviewState:
         )
 
     def ros_ready_for_closure(self) -> bool:
-        return (
+        return self.target_answered(
+            "review_of_systems"
+        ) or (
             sum(
-                self.target_answered(
-                    field
-                )
+                self.target_answered(field)
                 for field in ROS_TARGETS
             )
             >= 6
         )
+
+    def skip_pending_targets(self) -> None:
+        for target in self._split_targets(
+            self.pending_target
+        ):
+            normalized = normalize_field_name(target)
+            if normalized and not self.target_answered(normalized):
+                self.skipped_targets.add(normalized)
+
+        self.pending_target = None
 
     def ayush_ready_for_closure(self) -> bool:
         return (
