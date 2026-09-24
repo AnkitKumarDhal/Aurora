@@ -37,6 +37,17 @@ def _contains_negated(text: str, phrase: str) -> bool:
     )
 
 
+def _contains_non_negated(
+    text: str,
+    phrases: tuple[str, ...],
+) -> bool:
+    return any(
+        phrase in text
+        and not _contains_negated(text, phrase)
+        for phrase in phrases
+    )
+
+
 def detect_red_flags(
     clinical_text: str,
     structured_fields: dict[str, Any] | None = None,
@@ -247,7 +258,7 @@ def detect_red_flags(
     # Loss of consciousness
     # ------------------------------------------------------------------
 
-    if _contains(
+    if _contains_non_negated(
         text,
         (
             "passed out",
@@ -273,7 +284,7 @@ def detect_red_flags(
     # Stroke-like symptoms
     # ------------------------------------------------------------------
 
-    stroke = _contains(
+    stroke = _contains_non_negated(
         text,
         (
             "face drooping",
@@ -315,7 +326,7 @@ def detect_red_flags(
     # Severe bleeding
     # ------------------------------------------------------------------
 
-    bleeding = _contains(
+    bleeding = _contains_non_negated(
         text,
         (
             "severe bleeding",
@@ -345,7 +356,7 @@ def detect_red_flags(
     # Severe allergic reaction
     # ------------------------------------------------------------------
 
-    airway_swelling = _contains(
+    airway_swelling = _contains_non_negated(
         text,
         (
             "swollen tongue",
@@ -372,7 +383,7 @@ def detect_red_flags(
     # Severe/sudden headache
     # ------------------------------------------------------------------
 
-    severe_headache = _contains(
+    severe_headache = _contains_non_negated(
         text,
         (
             "worst headache of my life",
