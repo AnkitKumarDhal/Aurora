@@ -20,11 +20,12 @@ def _contains(text: str, phrases: tuple[str, ...]) -> bool:
 def _contains_negated(text: str, phrase: str) -> bool:
     escaped = re.escape(phrase)
 
+    # Look immediately before the signal. This avoids falsely negating a
+    # positive symptom when a later, unrelated symptom is denied, e.g.
+    # "I have chest pain but no fever".
     patterns = (
         rf"\b(?:no|not|without|denies)\b[^.?!]{{0,30}}\b{escaped}\b",
-        rf"\b{escaped}\b[^.?!]{{0,30}}\b(?:no|not|without|denies)\b",
         rf"(?:नहीं|नही|बिना|nahi|nahin|bina)\s*.{{0,30}}{escaped}",
-        rf"{escaped}.{{0,30}}(?:नहीं|नही|nahi|nahin)\b",
     )
 
     return any(

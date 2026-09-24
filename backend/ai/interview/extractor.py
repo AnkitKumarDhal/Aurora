@@ -173,6 +173,18 @@ UNKNOWN_ANSWERS = {
     "मुझे नहीं पता",
     "मालूम नहीं",
     "नहीं पता",
+    "i don't remember",
+    "i do not remember",
+    "don't remember",
+    "do not remember",
+    "i cannot remember",
+    "याद नहीं",
+    "याद नहीं है",
+    "मुझे याद नहीं",
+    "mujhe yaad nahi",
+    "mujhe yaad nahin",
+    "yaad nahi",
+    "yaad nahin",
     "i haven't been assessed",
     "i have not been assessed",
     "never had an ayush assessment",
@@ -418,6 +430,8 @@ BOOLEAN_TERMS = {
         "gutkha",
         "paan masala",
         "तंबाकू",
+        "tambaku",
+        "gutka",
     ),
 }
 
@@ -1045,6 +1059,24 @@ class InterviewExtractor:
                         )
                     )
 
+        elif self.is_affirmative_answer(
+            normalized
+        ):
+            for target in pending_targets:
+                if target in BOOLEAN_TARGETS:
+                    facts.append(
+                        self._fact(
+                            FIELD_PRIMARY_SECTION.get(
+                                target,
+                                state.current_section,
+                            ),
+                            target,
+                            True,
+                            normalized,
+                            turn_id,
+                        )
+                    )
+
         for target in TARGET_FIELDS:
             if target == "chief_complaint":
                 continue
@@ -1132,6 +1164,30 @@ class InterviewExtractor:
         )
 
         return normalized in UNKNOWN_ANSWERS
+
+    @staticmethod
+    def is_affirmative_answer(
+        text: str,
+    ) -> bool:
+        normalized = InterviewExtractor._normalize_text(
+            text
+        )
+
+        return normalized in {
+            "yes",
+            "y",
+            "yeah",
+            "yep",
+            "sure",
+            "haan",
+            "ha",
+            "haa",
+            "ji",
+            "हाँ",
+            "हां",
+            "हॉं",
+            "जी",
+        }
 
     @staticmethod
     def is_negative_answer(
@@ -1289,7 +1345,9 @@ class InterviewExtractor:
 
         if target == "course":
             if re.search(
-                r"\b(?:same|unchanged|no change|stable)\b",
+                r"\b(?:same|unchanged|no change|stable)\b"
+                r"|जैसा था|कोई बदलाव नहीं|स्थिर|उसी तरह|वैसा ही"
+                r"|waisa hi|usi tarah|koi badlav nahi",
                 normalized,
             ):
                 return (
@@ -1298,7 +1356,9 @@ class InterviewExtractor:
                 )
 
             if re.search(
-                r"\b(?:worse|worsening|getting worse)\b",
+                r"\b(?:worse|worsening|getting worse)\b"
+                r"|बढ़ रहा|बढ़ रही|बढ़ गया|बढ़ गई|और खराब"
+                r"|badh raha|badh rahi|badh gaya|badh gayi|aur kharab",
                 normalized,
             ):
                 return (
@@ -1307,7 +1367,9 @@ class InterviewExtractor:
                 )
 
             if re.search(
-                r"\b(?:better|improving|getting better)\b",
+                r"\b(?:better|improving|getting better)\b"
+                r"|बेहतर|सुधार|ठीक हो रहा|ठीक हो रही"
+                r"|behtar|sudhar|theek ho raha|theek ho rahi",
                 normalized,
             ):
                 return (
@@ -1506,6 +1568,13 @@ class InterviewExtractor:
                     normalized,
                 )
 
+            if not match:
+                match = re.search(
+                    r"\b(?:din mein|har din|roz|roj)\s*\d+\s*baar\b",
+                    normalized,
+                    flags=re.IGNORECASE,
+                )
+
             if match:
                 return (
                     match.group(0).strip(),
@@ -1528,6 +1597,14 @@ class InterviewExtractor:
                 "सख्त",
                 "ढीला",
                 "पानी जैसा",
+                "पानी जैसी",
+                "पानी",
+                "सामान्य",
+                "बहुत सख्त",
+                "bahut sakht",
+                "sakht",
+                "dheela",
+                "pani jaisa",
             ):
                 if value in normalized:
                     return (
@@ -1640,6 +1717,8 @@ class InterviewExtractor:
                 r"\bworse with\b([^,.!?;]+)",
                 r"\bgets worse when\b([^,.!?;]+)",
                 r"\bgets worse with\b([^,.!?;]+)",
+                r"(?:बढ़ता है|बढ़ जाती है|बढ़ जाता है)\s*([^,.!?;]*)",
+                r"(?:badhta hai|badh jata hai|badh jaati hai)\s*([^,.!?;]*)",
             )
 
             for pattern in patterns:
@@ -1673,6 +1752,8 @@ class InterviewExtractor:
                 r"\bgets better when\b([^,.!?;]+)",
                 r"\bgets better with\b([^,.!?;]+)",
                 r"\bhelps\b([^,.!?;]*)",
+                r"(?:कम होता है|कम हो जाता है|आराम मिलता है)\s*([^,.!?;]*)",
+                r"(?:kam hota hai|kam ho jata hai|aaram milta hai)\s*([^,.!?;]*)",
             )
 
             for pattern in patterns:

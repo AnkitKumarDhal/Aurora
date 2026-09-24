@@ -625,6 +625,9 @@ class InterviewController:
         if value.startswith("hi") or value.startswith("hin"):
             return "hi"
 
+        if value.startswith("en") or value.startswith("eng"):
+            return "en"
+
         return "en"
 
     @staticmethod
