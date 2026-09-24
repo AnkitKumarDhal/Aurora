@@ -1453,13 +1453,10 @@ class InterviewState:
         pending: list[str],
     ) -> list[str]:
         if not pending:
-            return self._prioritize_pending(
-                list(
-                    dict.fromkeys(
-                        targets
-                    )
-                ),
-                pending,
+            return list(
+                dict.fromkeys(
+                    targets
+                )
             )
 
         ordered = [
