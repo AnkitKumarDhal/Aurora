@@ -314,7 +314,7 @@ class InterviewController:
 
         if pending_before and pending_answered:
             state.unproductive_turns = 0
-        elif pending_before:
+        else:
             state.unproductive_turns += 1
             if state.unproductive_turns >= 1:
                 state.skip_pending_targets()
