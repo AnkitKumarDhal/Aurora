@@ -261,13 +261,11 @@ def section_complete(state: InterviewState, section: str) -> bool:
     normalized = section
     if normalized in state.completed_sections:
         return True
-    if normalized in state.stopped_sections:
-        if normalized != "hpi":
-            return bool(state.section_fields(normalized))
-        known = state.known_fields()
-        answered_hpi = len([field for field in state.section_fields(
-            "hpi") if field != "chief_complaint"])
-        return bool(known.get("chief_complaint")) and answered_hpi >= 3
+    if normalized in state.completed_sections:
+        return True
+    if normalized != state.current_section:
+        return normalized in state.completed_sections
+    return state.section_naturally_ready()
     if normalized == "hpi":
         known = state.known_fields()
         required = TOPIC_REQUIRED.get(state.topic, TOPIC_REQUIRED["general"])
@@ -308,18 +306,18 @@ def choose_question(state: InterviewState, language: str, suggested_field: str |
     specs = section_questions(state.current_section, state.topic)
     if suggested_field:
         for item in specs:
-            if item.field == suggested_field and not state.answered(item.field):
+            if item.field == suggested_field and not state.target_answered(item.field):
                 return item
     for item in specs:
-        if item.field in {"onset", "duration"} and (state.answered("onset") or state.answered("duration")):
+        if item.field in {"onset", "duration"} and (state.target_answered("onset") or state.target_answered("duration")):
             continue
-        if not state.answered(item.field):
+        if not state.target_answered(item.field):
             return item
     return None
 
 
 def next_section(state: InterviewState) -> str | None:
-    order = (*SECTION_ORDER, "ayush") if state.ayush_required else SECTION_ORDER
+    order = (*SECTION_ORDER, "ayush") if state.ayush_enabled else SECTION_ORDER
     for section in order:
         if section not in state.completed_sections:
             return section

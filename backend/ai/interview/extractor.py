@@ -994,17 +994,6 @@ class InterviewExtractor:
                 )
             )
 
-        if topic:
-            facts.append(
-                self._fact(
-                    "hpi",
-                    "chief_complaint",
-                    normalized,
-                    normalized,
-                    turn_id,
-                )
-            )
-
         if (
             topic
             and (
@@ -1147,7 +1136,6 @@ class InterviewExtractor:
     @staticmethod
     def is_negative_answer(
         text: str,
-        text: str,
     ) -> bool:
         normalized = InterviewExtractor._normalize_text(
             text
@@ -1170,15 +1158,40 @@ class InterviewExtractor:
         text: str,
     ) -> str | None:
         normalized = text.lower()
+        matches: list[tuple[int, str]] = []
 
         for topic, keywords in TOPIC_KEYWORDS.items():
-            if any(
-                keyword in normalized
-                for keyword in keywords
-            ):
-                return topic
+            for keyword in keywords:
+                start = normalized.find(
+                    keyword
+                )
 
-        return None
+                if start < 0:
+                    continue
+
+                if InterviewExtractor._is_negated(
+                    normalized,
+                    start,
+                    len(keyword),
+                ):
+                    continue
+
+                matches.append(
+                    (
+                        len(keyword),
+                        topic,
+                    )
+                )
+
+        if not matches:
+            return None
+
+        matches.sort(
+            key=lambda item: item[0],
+            reverse=True,
+        )
+
+        return matches[0][1]
 
     def _extract_target(
         self,

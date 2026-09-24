@@ -23,8 +23,8 @@ def _contains_negated(text: str, phrase: str) -> bool:
     patterns = (
         rf"\b(?:no|not|without|denies)\b[^.?!]{{0,30}}\b{escaped}\b",
         rf"\b{escaped}\b[^.?!]{{0,30}}\b(?:no|not|without|denies)\b",
-        rf"(?:नहीं|नही|बिना)\s*.{{0,30}}{escaped}",
-        rf"{escaped}.{{0,30}}(?:नहीं|नही)\b",
+        rf"(?:नहीं|नही|बिना|nahi|nahin|bina)\s*.{{0,30}}{escaped}",
+        rf"{escaped}.{{0,30}}(?:नहीं|नही|nahi|nahin)\b",
     )
 
     return any(
@@ -117,7 +117,7 @@ def detect_red_flags(
         str(structured_fields.get("relieving_factors", ""))
     )
 
-    chest_pressure = _contains(
+    chest_pressure = _contains_non_negated(
         character,
         (
             "pressure",
@@ -133,7 +133,7 @@ def detect_red_flags(
         ),
     )
 
-    chest_radiation = _contains(
+    chest_radiation = _contains_non_negated(
         radiation,
         (
             "arm",
@@ -149,7 +149,7 @@ def detect_red_flags(
         ),
     )
 
-    sweating = _contains(
+    sweating = _contains_non_negated(
         f"{associated} {text}",
         (
             "sweating",
@@ -160,7 +160,7 @@ def detect_red_flags(
         ),
     )
 
-    exertional = _contains(
+    exertional = _contains_non_negated(
         aggravating,
         (
             "exercise",
@@ -177,7 +177,7 @@ def detect_red_flags(
         ),
     )
 
-    rest_relief = _contains(
+    rest_relief = _contains_non_negated(
         relieving,
         (
             "rest",

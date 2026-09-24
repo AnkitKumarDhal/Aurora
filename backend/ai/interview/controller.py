@@ -90,7 +90,7 @@ class InterviewController:
             if turn.speaker == Speaker.PATIENT
         ]
 
-        response_language = (
+        response_language = self._normalise_language(
             language
             or next(
                 (
@@ -278,7 +278,7 @@ class InterviewController:
             )
         )
 
-        response_language = (
+        response_language = self._normalise_language(
             language
             or next(
                 (
@@ -613,6 +613,19 @@ class InterviewController:
             "summary": summary,
             "triage": assessed,
         }
+
+    @staticmethod
+    def _normalise_language(
+        language: str | None,
+    ) -> str:
+        value = str(
+            language or "en"
+        ).strip().lower()
+
+        if value.startswith("hi") or value.startswith("hin"):
+            return "hi"
+
+        return "en"
 
     @staticmethod
     def _is_ayush_department(
