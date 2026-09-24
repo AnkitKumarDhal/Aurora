@@ -373,41 +373,56 @@ class InterviewController:
             state.pending_target = None
 
         else:
-            # Never close a section solely because its question budget
-            # was reached. Budgets help keep the interview efficient, while
-            # readiness is determined by the information actually collected.
-            should_advance = state.section_naturally_ready()
-
-            if should_advance:
-                state.complete_current_section()
-
-            if not state.is_complete():
-                decision = (
-                    await self.extractor.generate_question(
-                        state,
-                        self._conversation_for_ai(
-                            turns
-                        ),
-                        response_language,
-                        session_id,
-                    )
+            # Hard upper bound: adaptive questioning must never turn into an
+            # open-ended checklist.
+            if state.question_limit_reached():
+                state.complete_remaining_sections()
+                completed = True
+                assistant_response = self._completion_message(
+                    response_language
                 )
+            else:
+                # Never close a section solely because its question budget
+                # was reached. Budgets help keep the interview efficient, while
+                # readiness is determined by the information actually collected.
+                should_advance = state.section_naturally_ready()
 
-                if decision.question:
-                    next_question = (
-                        decision.question
-                    )
-                    assistant_response = (
-                        decision.question
-                    )
-                    ai_used = (
-                        decision.ai_used
+                if should_advance:
+                    state.complete_current_section()
+
+                if (
+                    not should_advance
+                    and not state.candidate_targets()
+                ):
+                    state.complete_current_section()
+
+                if not state.is_complete():
+                    decision = (
+                        await self.extractor.generate_question(
+                            state,
+                            self._conversation_for_ai(
+                                turns
+                            ),
+                            response_language,
+                            session_id,
+                        )
                     )
 
-                    state.add_question(
-                        decision.question,
-                        decision.target,
-                    )
+                    if decision.question:
+                        next_question = (
+                            decision.question
+                        )
+                        assistant_response = (
+                            decision.question
+                        )
+                        ai_used = (
+                            decision.ai_used
+                        )
+
+                        state.add_question(
+                            decision.question,
+                            decision.target,
+                        )
 
             if state.is_complete():
                 completed = True
