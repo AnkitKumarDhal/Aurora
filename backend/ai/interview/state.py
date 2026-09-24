@@ -1264,9 +1264,11 @@ class InterviewState:
         if value is None:
             return False
 
-        # False is a valid collected negative answer. Treating it as
-        # unanswered makes the interviewer repeat yes/no history questions.
+        # False is a valid collected negative answer. Positive True on a
+        # detail-required history field still needs the requested details.
         if isinstance(value, bool):
+            if target in DETAIL_REQUIRED:
+                return not value
             return True
 
         normalized = str(
@@ -1294,8 +1296,10 @@ class InterviewState:
                 "y",
                 "true",
                 "haan",
-                "हां",
+                "ha",
                 "हाँ",
+                "हां",
+                "haa",
             }:
                 return False
 
