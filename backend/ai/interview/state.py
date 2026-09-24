@@ -1052,10 +1052,27 @@ class InterviewState:
         if not value:
             return
 
+        def question_key(item: str) -> str:
+            normalized = re.sub(
+                r"[^a-z0-9\u0900-\u097f]+",
+                " ",
+                item.lower(),
+                flags=re.IGNORECASE,
+            )
+            return " ".join(
+                normalized.split()
+            )
+
+        current_key = question_key(
+            value
+        )
+
         if (
-            not self.question_history
-            or self.question_history[-1].lower()
-            != value.lower()
+            not any(
+                question_key(item)
+                == current_key
+                for item in self.question_history
+            )
         ):
             self.question_history.append(
                 value
@@ -1433,6 +1450,17 @@ class InterviewState:
     def candidate_targets(self) -> list[str]:
         # Budgets guide question breadth; they never close a section while
         # required information is still missing.
+        if self.pending_target:
+            pending = [
+                target
+                for target in self._split_targets(
+                    self.pending_target
+                )
+                if not self.target_answered(target)
+            ]
+        else:
+            pending = []
+
         if self.current_section == "hpi":
             return self._hpi_candidates()
 

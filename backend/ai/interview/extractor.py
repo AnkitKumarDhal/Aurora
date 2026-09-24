@@ -350,6 +350,16 @@ NEGATABLE_TARGETS = BOOLEAN_TARGETS | {
     "allergies",
     "adverse_drug_reactions",
     "family_history",
+    "previous_episodes",
+    "prior_investigations",
+    "past_medical_history",
+    "past_surgical_history",
+    "hospitalizations",
+    "immunizations",
+    "medications",
+    "allergies",
+    "adverse_drug_reactions",
+    "family_history",
 }
 
 BOOLEAN_TERMS = {
@@ -860,13 +870,10 @@ class InterviewExtractor:
             not self.enabled
             or self.provider != "lemonade"
         ):
-            return QuestionDecision(
-                self._emergency_question_for_target(
-                    candidates[0],
-                    language,
-                ),
-                candidates[0],
-                False,
+            return self._fallback_decision(
+                state,
+                candidates,
+                language,
             )
 
         prompt = self._build_question_prompt(
@@ -915,65 +922,10 @@ class InterviewExtractor:
                 error=str(exc),
             )
 
-        seen_questions = {
-            self._question_key(item)
-            for item in state.question_history
-        }
-
-        for bundle in QUESTION_BUNDLES:
-            available = [
-                target
-                for target in bundle
-                if target in candidates
-            ]
-
-            if len(available) < 2:
-                continue
-
-            # Keep fallback questions clinically narrow and voice-friendly.
-            fallback_question = (
-                self._emergency_question_for_bundle(
-                    available[:4],
-                    language,
-                )
-            )
-
-            if (
-                fallback_question
-                and self._question_key(
-                    fallback_question
-                ) not in seen_questions
-            ):
-                return QuestionDecision(
-                    fallback_question,
-                    "bundle:" + ",".join(available[:4]),
-                    False,
-                )
-
-        for target in candidates:
-            fallback_question = (
-                self._emergency_question_for_target(
-                    target,
-                    language,
-                )
-            )
-
-            if self._question_key(
-                fallback_question
-            ) not in seen_questions:
-                return QuestionDecision(
-                    fallback_question,
-                    target,
-                    False,
-                )
-
-        return QuestionDecision(
-            self._emergency_question_for_target(
-                candidates[0],
-                language,
-            ),
-            candidates[0],
-            False,
+        return self._fallback_decision(
+            state,
+            candidates,
+            language,
         )
 
     def extract_facts(
@@ -2849,6 +2801,82 @@ class InterviewExtractor:
             return "कृपया अपनी स्वास्थ्य समस्या के बारे में थोड़ा और बताइए?"
 
         return "Could you tell me a little more about your health problem?"
+
+    def _fallback_decision(
+        self,
+        state: InterviewState,
+        candidates: list[str],
+        language: str,
+    ) -> QuestionDecision:
+        seen_questions = {
+            self._question_key(item)
+            for item in state.question_history
+        }
+
+        for bundle in QUESTION_BUNDLES:
+            available = [
+                target
+                for target in bundle
+                if target in candidates
+                and not state.target_answered(
+                    target
+                )
+            ]
+
+            if len(available) < 2:
+                continue
+
+            targets = available[:4]
+            fallback_question = (
+                self._emergency_question_for_bundle(
+                    targets,
+                    language,
+                )
+            )
+
+            if (
+                fallback_question
+                and self._question_key(
+                    fallback_question
+                ) not in seen_questions
+            ):
+                return QuestionDecision(
+                    fallback_question,
+                    "bundle:" + ",".join(targets),
+                    False,
+                )
+
+        for target in candidates:
+            if state.target_answered(target):
+                continue
+
+            fallback_question = (
+                self._emergency_question_for_target(
+                    target,
+                    language,
+                )
+            )
+
+            if (
+                fallback_question
+                and self._question_key(
+                    fallback_question
+                ) not in seen_questions
+            ):
+                return QuestionDecision(
+                    fallback_question,
+                    target,
+                    False,
+                )
+
+        return QuestionDecision(
+            self._emergency_question(
+                state.current_section,
+                language,
+            ),
+            None,
+            False,
+        )
 
     @staticmethod
     def _emergency_question_for_bundle(
