@@ -98,7 +98,7 @@ export function TextAIConsultation({
       const questionKey = result.assistant_response
         .trim()
         .toLowerCase()
-        .replace(/[^a-z0-9\\u0900-\\u097f]+/gi, " ")
+        .replace(/[^a-z0-9\u0900-\u097f]+/gi, " ")
         .replace(/\\s+/g, " ")
         .trim();
 
@@ -109,7 +109,7 @@ export function TextAIConsultation({
             message.text
               .trim()
               .toLowerCase()
-              .replace(/[^a-z0-9\\u0900-\\u097f]+/gi, " ")
+              .replace(/[^a-z0-9\u0900-\u097f]+/gi, " ")
               .replace(/\\s+/g, " ")
               .trim() === questionKey,
         );
