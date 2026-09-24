@@ -215,13 +215,14 @@ export function PatientPage() {
             </div>
 
             <div className="grid w-full max-w-4xl grid-cols-1 gap-8 px-4 md:grid-cols-2">
-              <button
-                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface transition-all hover:border-primary"
+              <Button
+                type="button"
+                variant="outline"
+                className="flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface text-text-primary transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.98]"
                 onClick={() => {
                   registerActivity();
                   setCurrentScreen("ai-voice");
                 }}
-                type="button"
               >
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-tint">
                   <svg
@@ -246,15 +247,16 @@ export function PatientPage() {
                 <div className="text-lg text-text-secondary">
                   {language === "hi" ? "बोलकर बताएं" : "Speak naturally"}
                 </div>
-              </button>
+              </Button>
 
-              <button
-                className="flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface transition-all hover:border-primary"
+              <Button
+                type="button"
+                variant="outline"
+                className="flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface text-text-primary transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.98]"
                 onClick={() => {
                   registerActivity();
                   setCurrentScreen("ai-text");
                 }}
-                type="button"
               >
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-tint">
                   <svg
@@ -279,7 +281,7 @@ export function PatientPage() {
                 <div className="text-lg text-text-secondary">
                   {language === "hi" ? "टाइप करके बताएं" : "Type your symptoms"}
                 </div>
-              </button>
+              </Button>
             </div>
           </div>
         )}
