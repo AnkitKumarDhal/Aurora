@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Delete, Fingerprint, ShieldCheck, User } from "lucide-react";
 import { PatientBackButton } from "@/components/PatientBackButton";
