@@ -358,10 +358,10 @@ class InterviewController:
             state.pending_target = None
 
         else:
-            should_advance = (
-                state.section_budget_reached()
-                or state.section_naturally_ready()
-            )
+            # Never close a section solely because its question budget
+            # was reached. Budgets help keep the interview efficient, while
+            # readiness is determined by the information actually collected.
+            should_advance = state.section_naturally_ready()
 
             if should_advance:
                 state.complete_current_section()

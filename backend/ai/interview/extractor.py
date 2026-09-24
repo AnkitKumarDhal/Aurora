@@ -140,6 +140,14 @@ UNKNOWN_ANSWERS = {
     "मुझे नहीं पता",
     "मालूम नहीं",
     "नहीं पता",
+    "i haven't been assessed",
+    "i have not been assessed",
+    "never had an ayush assessment",
+    "never had an ayurvedic assessment",
+    "कोई आयुष जांच नहीं हुई",
+    "कोई आयुष मूल्यांकन नहीं हुआ",
+    "आयुर्वेदिक जांच नहीं हुई",
+    "आयुर्वेदिक मूल्यांकन नहीं हुआ",
 }
 
 
@@ -381,8 +389,25 @@ BOOLEAN_TERMS = {
 }
 
 AYUSH_TARGET_TERMS = {
-    "ayush_prakriti": ("prakriti", "constitution", "प्रकृति"),
-    "ayush_vikriti": ("vikriti", "imbalance", "विकृति", "असंतुलन"),
+    "ayush_prakriti": (
+        "prakriti",
+        "constitution",
+        "vata",
+        "pitta",
+        "kapha",
+        "वात",
+        "पित्त",
+        "कफ",
+        "प्रकृति",
+    ),
+    "ayush_vikriti": (
+        "vikriti",
+        "imbalance",
+        "dosha imbalance",
+        "विकृति",
+        "असंतुलन",
+        "दोष असंतुलन",
+    ),
     "ayush_sara": ("sara", "सार"),
     "ayush_samhanana": ("samhanana", "संहनन"),
     "ayush_pramana": ("pramana", "प्रमाण"),
@@ -763,6 +788,36 @@ class InterviewExtractor:
             self._question_key(item)
             for item in state.question_history
         }
+
+        for bundle in QUESTION_BUNDLES:
+            available = [
+                target
+                for target in bundle
+                if target in candidates
+            ]
+
+            if len(available) < 2:
+                continue
+
+            # Keep fallback questions clinically narrow and voice-friendly.
+            fallback_question = (
+                self._emergency_question_for_bundle(
+                    available[:4],
+                    language,
+                )
+            )
+
+            if (
+                fallback_question
+                and self._question_key(
+                    fallback_question
+                ) not in seen_questions
+            ):
+                return QuestionDecision(
+                    fallback_question,
+                    "bundle:" + ",".join(available[:4]),
+                    False,
+                )
 
         for target in candidates:
             fallback_question = (
@@ -2461,6 +2516,59 @@ class InterviewExtractor:
             return "कृपया अपनी स्वास्थ्य समस्या के बारे में थोड़ा और बताइए?"
 
         return "Could you tell me a little more about your health problem?"
+
+    @staticmethod
+    def _emergency_question_for_bundle(
+        targets: list[str],
+        language: str,
+    ) -> str:
+        labels = [
+            TARGET_DESCRIPTIONS.get(
+                target,
+                {},
+            ).get(language)
+            or TARGET_DESCRIPTIONS.get(
+                target,
+                {},
+            ).get("en")
+            or target.replace(
+                "_",
+                " ",
+            )
+            for target in targets
+        ]
+
+        if not labels:
+            return ""
+
+        if language == "hi":
+            if len(labels) == 2:
+                return (
+                    f"कृपया {labels[0]} और {labels[1]} के बारे में बताइए?"
+                )
+
+            if len(labels) == 3:
+                return (
+                    f"कृपया {labels[0]}, {labels[1]} और {labels[2]} के बारे में बताइए?"
+                )
+
+            return (
+                f"कृपया {', '.join(labels[:-1])} और {labels[-1]} के बारे में बताइए?"
+            )
+
+        if len(labels) == 2:
+            return (
+                f"Could you tell me about {labels[0]} and {labels[1]}?"
+            )
+
+        if len(labels) == 3:
+            return (
+                f"Could you tell me about {labels[0]}, {labels[1]}, and {labels[2]}?"
+            )
+
+        return (
+            f"Could you tell me about {', '.join(labels[:-1])}, and {labels[-1]}?"
+        )
 
     @staticmethod
     def _emergency_question_for_target(

@@ -245,6 +245,7 @@ def detect_red_flags(
             "lost consciousness",
             "loss of consciousness",
             "unconscious",
+            "passed unconscious",
             "बेहोश",
             "बेहोशी",
             "होश खो दिया",
