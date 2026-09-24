@@ -257,50 +257,21 @@ def section_questions(section: str, topic: str) -> tuple[QuestionSpec, ...]:
     return tuple(result)
 
 
-def section_complete(state: InterviewState, section: str) -> bool:
-    normalized = section
-    if normalized in state.completed_sections:
-        return True
-    if normalized in state.completed_sections:
-        return True
-    if normalized != state.current_section:
-        return normalized in state.completed_sections
-    return state.section_naturally_ready()
-    if normalized == "hpi":
-        known = state.known_fields()
-        required = TOPIC_REQUIRED.get(state.topic, TOPIC_REQUIRED["general"])
-        missing = required - set(known)
-        if "onset" in missing and ("onset" in known or "duration" in known):
-            missing.remove("onset")
-        return bool(known.get("chief_complaint")) and not missing
-    required_by_section = {
-        "past_history": {"past_medical_history", "past_surgical_history", "hospitalizations"},
-        "drug_allergy": {"medications", "allergies", "adverse_drug_reactions"},
-        "family_history": {"family_history"},
-        "personal_history": {"occupation", "smoking", "alcohol", "diet", "sleep", "physical_activity"},
-        "review_of_systems": {"review_of_systems"},
-        "ayush": {
-            "ayush_prakriti",
-            "ayush_vikriti",
-            "ayush_sara",
-            "ayush_samhanana",
-            "ayush_pramana",
-            "ayush_satmya",
-            "ayush_satva",
-            "ayush_ahara_shakti",
-            "ayush_vyayama_shakti",
-            "ayush_vaya",
-            "ayush_ahara_vihara",
-            "ayush_agni",
-            "ayush_koshta",
-            "ayush_nidana",
-            "ayush_samprapti",
-        },
-    }
-    required = required_by_section.get(normalized, set())
-    known = state.known_fields()
-    return required.issubset(known)
+def section_complete(
+    state: InterviewState,
+    section: str,
+) -> bool:
+    normalized = normalize_section(
+        section
+    )
 
+    if normalized in state.completed_sections:
+        return True
+
+    if normalized != state.current_section:
+        return False
+
+    return state.section_naturally_ready()
 
 def choose_question(state: InterviewState, language: str, suggested_field: str | None = None) -> QuestionSpec | None:
     specs = section_questions(state.current_section, state.topic)

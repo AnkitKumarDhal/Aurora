@@ -1447,22 +1447,56 @@ class InterviewState:
             )
         ]
 
+    @staticmethod
+    def _prioritize_pending(
+        targets: list[str],
+        pending: list[str],
+    ) -> list[str]:
+        if not pending:
+            return self._prioritize_pending(
+                list(
+                    dict.fromkeys(
+                        targets
+                    )
+                ),
+                pending,
+            )
+
+        ordered = [
+            *pending,
+            *targets,
+        ]
+
+        return list(
+            dict.fromkeys(
+                item
+                for item in ordered
+                if item in targets
+            )
+        )
+
     def candidate_targets(self) -> list[str]:
         # Budgets guide question breadth; they never close a section while
         # required information is still missing.
-        if self.pending_target:
-            pending = [
-                target
-                for target in self._split_targets(
-                    self.pending_target
+        pending = [
+            target
+            for target in self._split_targets(
+                self.pending_target
+            )
+            if not self.target_answered(target)
+            and (
+                FIELD_PRIMARY_SECTION.get(
+                    target
                 )
-                if not self.target_answered(target)
-            ]
-        else:
-            pending = []
+                == self.current_section
+            )
+        ]
 
         if self.current_section == "hpi":
-            return self._hpi_candidates()
+            return self._prioritize_pending(
+                self._hpi_candidates(),
+                pending,
+            )
 
         if self.current_section == "past_history":
             targets = [
@@ -1475,10 +1509,13 @@ class InterviewState:
                     target
                 )
             ]
-            return list(
-                dict.fromkeys(
-                    targets
-                )
+            return self._prioritize_pending(
+                list(
+                    dict.fromkeys(
+                        targets
+                    )
+                ),
+                pending,
             )
 
         if self.current_section == "drug_allergy":
@@ -1540,13 +1577,16 @@ class InterviewState:
                 )
             ]
 
-        return [
-            target
-            for target in AYUSH_REQUIRED
-            if not self.target_answered(
+        return self._prioritize_pending(
+            [
                 target
-            )
-        ]
+                for target in AYUSH_REQUIRED
+                if not self.target_answered(
+                    target
+                )
+            ],
+            pending,
+        )
 
     @staticmethod
     def _split_targets(
