@@ -45,29 +45,30 @@ export async function prepareInterviewSession(
   identityMethod: "ABHA" | "AADHAAR",
   identityIdentifier: string,
 ): Promise<PreparedInterviewSession> {
-  const response = await apiRequest<{
-    data: PreparedInterviewSession;
-  }>("/patient-intake/interview/session", {
-    method: "POST",
-    body: JSON.stringify({
-      draft_id: draftId,
-      verification_token: verificationToken,
-      identity_method: identityMethod,
-      identity_identifier: identityIdentifier,
-      department_id: "general-medicine",
-    }),
-  });
-
+  const response = await apiRequest<{ data: PreparedInterviewSession }>(
+    "/patient-intake/interview/session",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        draft_id: draftId,
+        verification_token: verificationToken,
+        identity_method: identityMethod,
+        identity_identifier: identityIdentifier,
+        department_id: "general-medicine",
+      }),
+    },
+  );
   return response.data;
 }
 
 export async function getInterviewState(
   sessionId: string,
+  language?: string,
 ): Promise<InterviewState> {
+  const query = language ? `?language=${encodeURIComponent(language)}` : "";
   const response = await apiRequest<{ data: InterviewState }>(
-    `/sessions/${encodeURIComponent(sessionId)}/interview`,
+    `/sessions/${encodeURIComponent(sessionId)}/interview${query}`,
   );
-
   return response.data;
 }
 
@@ -79,23 +80,25 @@ export async function submitInterviewTurn(
   content: string,
   language: string,
 ): Promise<InterviewTurnResult> {
-  const response = await apiRequest<{
-    data: InterviewTurnResult;
-  }>(`/sessions/${encodeURIComponent(sessionId)}/interview/turns`, {
-    method: "POST",
-    body: JSON.stringify({
-      draft_id: draftId,
-      client_turn_id: clientTurnId,
-      input_type: inputType,
-      content,
-      language,
-    }),
-  });
-
+  const response = await apiRequest<{ data: InterviewTurnResult }>(
+    `/sessions/${encodeURIComponent(sessionId)}/interview/turns`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        draft_id: draftId,
+        client_turn_id: clientTurnId,
+        input_type: inputType,
+        content,
+        language,
+      }),
+    },
+  );
   return response.data;
 }
 
-export async function finalizeInterview(sessionId: string): Promise<{
+export async function finalizeInterview(
+  sessionId: string,
+): Promise<{
   session_id: string;
   status: string;
   summary: Record<string, unknown>;
@@ -111,6 +114,5 @@ export async function finalizeInterview(sessionId: string): Promise<{
   }>(`/sessions/${encodeURIComponent(sessionId)}/interview/finalize`, {
     method: "POST",
   });
-
   return response.data;
 }
