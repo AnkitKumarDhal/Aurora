@@ -231,21 +231,22 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
         </div>
 
         <div className="flex gap-3">
-          <button
-            className={`rounded-lg border-2 p-4 transition-all ${
+          <Button
+            type="button"
+            variant="outline"
+            className={`rounded-lg border-2 p-4 transition-all active:scale-[0.95] ${
               isListening
-                ? "border-danger bg-danger text-white"
-                : "border-border bg-surface text-text-secondary hover:border-primary"
+                ? "border-danger bg-danger text-white hover:bg-danger/90 hover:text-white"
+                : "border-border bg-surface text-text-secondary hover:border-primary hover:bg-primary-tint"
             }`}
             onClick={toggleListening}
-            type="button"
           >
             {isListening ? (
               <MicOff className="h-5 w-5" />
             ) : (
               <Mic className="h-5 w-5" />
             )}
-          </button>
+          </Button>
 
           <input
             className="flex-1 rounded-lg border-2 border-border bg-bg p-4 text-lg text-text-primary focus:border-primary focus:outline-none"
@@ -264,7 +265,8 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
           />
 
           <Button
-            className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg hover:bg-text-primary"
+            type="button"
+            className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg transition-all hover:bg-text-primary active:scale-[0.98]"
             onClick={handleSend}
           >
             <Send className="h-5 w-5" />
@@ -290,7 +292,8 @@ export function AIConsultation({ onNext, language }: AIConsultationProps) {
       </div>
 
       <Button
-        className="mt-4 min-w-[250px] rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
+        type="button"
+        className="mt-4 min-w-[250px] rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary active:scale-[0.98]"
         onClick={onNext}
       >
         {isHi ? "अगला: रिपोर्ट अपलोड करें" : "Next: Upload Reports"}
