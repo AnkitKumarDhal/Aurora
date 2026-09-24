@@ -911,6 +911,23 @@ class InterviewExtractor:
                 False,
             )
 
+        # These sections are better handled deterministically as compact
+        # grouped questions. It prevents the local model from turning one
+        # history section into a long checklist while still allowing the HPI
+        # to branch adaptively.
+        if state.current_section in {
+            "past_history",
+            "drug_allergy",
+            "personal_history",
+            "review_of_systems",
+            "ayush",
+        }:
+            return self._fallback_decision(
+                state,
+                candidates,
+                language,
+            )
+
         if (
             not self.enabled
             or self.provider != "lemonade"
