@@ -218,7 +218,7 @@ export function PatientPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface text-text-primary transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.98]"
+                className="flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface text-text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-primary-tint active:scale-[0.98]"
                 onClick={() => {
                   registerActivity();
                   setCurrentScreen("ai-voice");
@@ -252,7 +252,7 @@ export function PatientPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface text-text-primary transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.98]"
+                className="flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 border-border bg-surface text-text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-primary-tint active:scale-[0.98]"
                 onClick={() => {
                   registerActivity();
                   setCurrentScreen("ai-text");
