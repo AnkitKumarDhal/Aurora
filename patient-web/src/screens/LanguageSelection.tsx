@@ -31,14 +31,14 @@ export function LanguageSelection({ onNext }: LanguageSelectionProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4 mb-12">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <Button
+          type="button"
+          variant="outline"
           onClick={() => setSelectedLang("en")}
-          className={`h-64 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
+          className={`h-64 w-full rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center gap-4 text-text-primary active:scale-[0.98] ${
             selectedLang === "en"
               ? "border-primary bg-primary-tint shadow-lg"
-              : "border-border bg-surface hover:border-primary"
+              : "border-border bg-surface hover:border-primary hover:bg-primary-tint"
           }`}
         >
           <div className="text-4xl font-semibold text-text-primary">
@@ -47,16 +47,16 @@ export function LanguageSelection({ onNext }: LanguageSelectionProps) {
           <div className="text-xl text-text-secondary">
             Continue in English
           </div>
-        </motion.button>
+        </Button>
 
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <Button
+          type="button"
+          variant="outline"
           onClick={() => setSelectedLang("hi")}
-          className={`h-64 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
+          className={`h-64 w-full rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center gap-4 text-text-primary active:scale-[0.98] ${
             selectedLang === "hi"
               ? "border-primary bg-primary-tint shadow-lg"
-              : "border-border bg-surface hover:border-primary"
+              : "border-border bg-surface hover:border-primary hover:bg-primary-tint"
           }`}
         >
           <div className="text-4xl font-semibold text-text-primary">
@@ -65,13 +65,14 @@ export function LanguageSelection({ onNext }: LanguageSelectionProps) {
           <div className="text-xl text-text-secondary">
             हिंदी में जारी रखें
           </div>
-        </motion.button>
+        </Button>
       </div>
 
       <Button
+        type="button"
         onClick={handleContinue}
         disabled={!selectedLang}
-        className="px-12 py-6 text-xl rounded-xl bg-primary-dark hover:bg-text-primary text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg min-w-[280px]"
+        className="px-12 py-6 text-xl rounded-xl bg-primary-dark hover:bg-text-primary text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg min-w-[280px] active:scale-[0.98]"
       >
         Continue
       </Button>
