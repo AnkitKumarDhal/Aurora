@@ -6,7 +6,9 @@ from typing import Any
 
 def _normalise(text: str) -> str:
     text = text.lower()
-    text = re.sub(r"[^a-z0-9\s\-]", " ", text)
+    # Preserve Devanagari so Hindi and mixed-language safety signals reach
+    # the rule engine instead of being stripped out.
+    text = re.sub(r"[^a-z0-9\u0900-\u097f\s\-]", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
@@ -16,13 +18,23 @@ def _contains(text: str, phrases: tuple[str, ...]) -> bool:
 
 
 def _contains_negated(text: str, phrase: str) -> bool:
+    escaped = re.escape(phrase)
+
     patterns = (
-        rf"\bno\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
-        rf"\bnot\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
-        rf"\bwithout\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
-        rf"\bdenies\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
+        rf"\b(?:no|not|without|denies)\b[^.?!]{{0,30}}\b{escaped}\b",
+        rf"\b{escaped}\b[^.?!]{{0,30}}\b(?:no|not|without|denies)\b",
+        rf"(?:नहीं|नही|बिना)\s*.{{0,30}}{escaped}",
+        rf"{escaped}.{{0,30}}(?:नहीं|नही)\b",
     )
-    return any(re.search(pattern, text) for pattern in patterns)
+
+    return any(
+        re.search(
+            pattern,
+            text,
+            flags=re.IGNORECASE,
+        )
+        for pattern in patterns
+    )
 
 
 def detect_red_flags(
@@ -53,17 +65,30 @@ def detect_red_flags(
     # Chest pain
     # ------------------------------------------------------------------
 
+    chest_pain_phrases = (
+        "chest pain",
+        "pain in my chest",
+        "chest discomfort",
+        "chest pressure",
+        "pressure in my chest",
+        "tightness in my chest",
+        "सीने में दर्द",
+        "सीने में दबाव",
+        "सीने में जकड़न",
+        "छाती में दर्द",
+        "छाती में दबाव",
+    )
+
     chest_pain = _contains(
         text,
-        (
-            "chest pain",
-            "pain in my chest",
-            "chest discomfort",
-            "chest pressure",
-            "pressure in my chest",
-            "tightness in my chest",
-        ),
-    ) and not _contains_negated(text, "chest pain")
+        chest_pain_phrases,
+    ) and not any(
+        _contains_negated(
+            text,
+            phrase,
+        )
+        for phrase in chest_pain_phrases
+    )
 
     character = _normalise(str(structured_fields.get("character", "")))
     radiation = _normalise(str(structured_fields.get("radiation", "")))
@@ -86,6 +111,10 @@ def detect_red_flags(
             "tight",
             "tightness",
             "heavy",
+            "दबाव",
+            "जकड़न",
+            "भारी",
+            "कसाव",
         ),
     )
 
@@ -97,6 +126,11 @@ def detect_red_flags(
             "jaw",
             "neck",
             "back",
+            "हाथ",
+            "कंधे",
+            "जबड़े",
+            "गर्दन",
+            "पीठ",
         ),
     )
 
@@ -106,6 +140,8 @@ def detect_red_flags(
             "sweating",
             "sweaty",
             "cold sweat",
+            "पसीना",
+            "पसीना आना",
         ),
     )
 
@@ -118,6 +154,11 @@ def detect_red_flags(
             "running",
             "stairs",
             "physical activity",
+            "व्यायाम",
+            "चलने",
+            "दौड़ने",
+            "सीढ़ी",
+            "मेहनत",
         ),
     )
 
@@ -127,6 +168,9 @@ def detect_red_flags(
             "rest",
             "sitting",
             "sitting down",
+            "आराम",
+            "बैठने",
+            "बैठने से",
         ),
     )
 
@@ -156,19 +200,34 @@ def detect_red_flags(
     # Severe breathing difficulty
     # ------------------------------------------------------------------
 
-    breathing = _contains(
-        text,
-        (
-            "difficulty breathing",
-            "shortness of breath",
-            "cannot breathe",
-            "can't breathe",
-            "struggling to breathe",
-            "gasping",
-        ),
+    breathing_phrases = (
+        "difficulty breathing",
+        "shortness of breath",
+        "cannot breathe",
+        "can't breathe",
+        "struggling to breathe",
+        "gasping",
+        "सांस लेने में दिक्कत",
+        "साँस लेने में दिक्कत",
+        "सांस फूलना",
+        "साँस फूलना",
+        "दम घुटना",
+        "साँस नहीं आ रही",
+        "सांस नहीं आ रही",
     )
 
-    if breathing and not _contains_negated(text, "shortness of breath"):
+    breathing = _contains(
+        text,
+        breathing_phrases,
+    )
+
+    if breathing and not any(
+        _contains_negated(
+            text,
+            phrase,
+        )
+        for phrase in breathing_phrases
+    ):
         add_flag(
             "Severe breathing difficulty requires prompt triage assessment.",
             "severe_breathing_difficulty",
@@ -186,6 +245,9 @@ def detect_red_flags(
             "lost consciousness",
             "loss of consciousness",
             "unconscious",
+            "बेहोश",
+            "बेहोशी",
+            "होश खो दिया",
         ),
     ):
         add_flag(
@@ -212,6 +274,14 @@ def detect_red_flags(
             "difficulty speaking",
             "slurred speech",
             "speech difficulty",
+            "चेहरा टेढ़ा",
+            "अचानक कमजोरी",
+            "एक तरफ कमजोरी",
+            "एक तरफ सुन्नपन",
+            "अचानक सुन्नपन",
+            "बोलने में दिक्कत",
+            "बोलने में परेशानी",
+            "लड़खड़ाती बोली",
         ),
     )
 
@@ -233,6 +303,11 @@ def detect_red_flags(
             "bleeding heavily",
             "vomiting blood",
             "coughing blood",
+            "बहुत ज्यादा खून",
+            "तेज खून बहना",
+            "खून की उल्टी",
+            "खून की खांसी",
+            "खून की खाँसी",
         ),
     )
 
@@ -254,6 +329,9 @@ def detect_red_flags(
             "swollen throat",
             "swelling of my throat",
             "throat closing",
+            "जीभ में सूजन",
+            "गले में सूजन",
+            "गला बंद",
         ),
     )
 
@@ -274,6 +352,10 @@ def detect_red_flags(
             "thunderclap headache",
             "sudden severe headache",
             "very severe headache",
+            "जिंदगी का सबसे तेज सिरदर्द",
+            "अचानक बहुत तेज सिरदर्द",
+            "बहुत तेज सिरदर्द",
+            "अचानक तेज सिरदर्द",
         ),
     )
 

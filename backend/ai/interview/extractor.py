@@ -124,6 +124,25 @@ NEGATIVE_ANSWERS = {
     "पता नहीं",
 }
 
+UNKNOWN_ANSWERS = {
+    "i don't know",
+    "i do not know",
+    "don't know",
+    "do not know",
+    "not sure",
+    "not certain",
+    "unknown",
+    "not known",
+    "not available",
+    "pata nahi",
+    "pata nahin",
+    "पता नहीं",
+    "मुझे नहीं पता",
+    "मालूम नहीं",
+    "नहीं पता",
+}
+
+
 QUESTION_BUNDLES = (
     (
         "onset",
@@ -214,6 +233,31 @@ QUESTION_BUNDLES = (
         "hematologic",
         "psychiatric",
     ),
+    (
+        "ayush_prakriti",
+        "ayush_vikriti",
+        "ayush_sara",
+        "ayush_samhanana",
+    ),
+    (
+        "ayush_pramana",
+        "ayush_satmya",
+        "ayush_satva",
+    ),
+    (
+        "ayush_ahara_shakti",
+        "ayush_vyayama_shakti",
+        "ayush_vaya",
+    ),
+    (
+        "ayush_ahara_vihara",
+        "ayush_agni",
+        "ayush_koshta",
+    ),
+    (
+        "ayush_nidana",
+        "ayush_samprapti",
+    ),
 )
 
 BOOLEAN_TARGETS = {
@@ -231,6 +275,17 @@ BOOLEAN_TARGETS = {
 }
 
 NEGATABLE_TARGETS = BOOLEAN_TARGETS | {
+    "constitutional",
+    "cardiovascular",
+    "respiratory",
+    "gastrointestinal",
+    "genitourinary",
+    "neurological",
+    "musculoskeletal",
+    "skin",
+    "endocrine",
+    "hematologic",
+    "psychiatric",
     "nausea_vomiting",
     "previous_episodes",
     "prior_investigations",
@@ -322,6 +377,36 @@ BOOLEAN_TERMS = {
         "gutkha",
         "paan masala",
         "तंबाकू",
+    ),
+}
+
+AYUSH_TARGET_TERMS = {
+    "ayush_prakriti": ("prakriti", "constitution", "प्रकृति"),
+    "ayush_vikriti": ("vikriti", "imbalance", "विकृति", "असंतुलन"),
+    "ayush_sara": ("sara", "सार"),
+    "ayush_samhanana": ("samhanana", "संहनन"),
+    "ayush_pramana": ("pramana", "प्रमाण"),
+    "ayush_satmya": ("satmya", "सात्म्य"),
+    "ayush_satva": ("satva", "sattva", "सत्त्व"),
+    "ayush_ahara_shakti": ("ahara shakti", "आहार शक्ति"),
+    "ayush_vyayama_shakti": ("vyayama shakti", "व्यायाम शक्ति"),
+    "ayush_vaya": ("vaya", "age", "वय", "उम्र"),
+    "ayush_ahara_vihara": (
+        "ahara-vihara",
+        "ahara vihara",
+        "daily routine",
+        "आहार",
+        "विहार",
+        "दैनिक दिनचर्या",
+    ),
+    "ayush_agni": ("agni", "digestion", "अग्नि", "पाचन"),
+    "ayush_koshta": ("koshta", "koshtha", "bowel pattern", "कोष्ठ"),
+    "ayush_nidana": ("nidana", "cause", "causes", "निदान", "कारण"),
+    "ayush_samprapti": (
+        "samprapti",
+        "how the problem developed",
+        "सम्प्राप्ति",
+        "समप्राप्ति",
     ),
 }
 
@@ -649,11 +734,20 @@ class InterviewExtractor:
             if (
                 decision.question
                 and decision.target
-                and decision.question.lower()
+                and self._question_key(
+                    decision.question
+                )
                 not in {
-                    item.lower()
+                    self._question_key(item)
                     for item in state.question_history
                 }
+                and all(
+                    not state.target_answered(item)
+                    for item in state._split_targets(
+                        decision.target
+                    )
+                    if item
+                )
             ):
                 return decision
 
@@ -664,6 +758,28 @@ class InterviewExtractor:
                 error_type=type(exc).__name__,
                 error=str(exc),
             )
+
+        seen_questions = {
+            self._question_key(item)
+            for item in state.question_history
+        }
+
+        for target in candidates:
+            fallback_question = (
+                self._emergency_question_for_target(
+                    target,
+                    language,
+                )
+            )
+
+            if self._question_key(
+                fallback_question
+            ) not in seen_questions:
+                return QuestionDecision(
+                    fallback_question,
+                    target,
+                    False,
+                )
 
         return QuestionDecision(
             self._emergency_question_for_target(
@@ -732,7 +848,24 @@ class InterviewExtractor:
             )
         )
 
-        if self.is_negative_answer(
+        if self.is_unknown_answer(
+            normalized
+        ):
+            for target in pending_targets:
+                facts.append(
+                    self._fact(
+                        FIELD_PRIMARY_SECTION.get(
+                            target,
+                            state.current_section,
+                        ),
+                        target,
+                        "unknown",
+                        normalized,
+                        turn_id,
+                    )
+                )
+
+        elif self.is_negative_answer(
             normalized
         ):
             for target in pending_targets:
@@ -777,6 +910,36 @@ class InterviewExtractor:
                 )
             )
 
+        extracted_targets = {
+            str(fact.get("field") or "")
+            for fact in facts
+        }
+
+        # Preserve natural, context-rich answers when one target is pending.
+        # This catches answers such as "teacher", "six hours", "Vata", or
+        # "since last night" even when no keyword extractor has a rule for it.
+        if (
+            len(pending_targets) == 1
+            and pending_targets[0] not in extracted_targets
+            and self._can_context_capture(
+                pending_targets[0],
+                normalized,
+            )
+        ):
+            target = pending_targets[0]
+            facts.append(
+                self._fact(
+                    FIELD_PRIMARY_SECTION.get(
+                        target,
+                        state.current_section,
+                    ),
+                    target,
+                    normalized,
+                    normalized,
+                    turn_id,
+                )
+            )
+
         facts.extend(
             self._cross_section_facts(
                 normalized,
@@ -790,7 +953,18 @@ class InterviewExtractor:
         )
 
     @staticmethod
+    def is_unknown_answer(
+        text: str,
+    ) -> bool:
+        normalized = InterviewExtractor._normalize_text(
+            text
+        )
+
+        return normalized in UNKNOWN_ANSWERS
+
+    @staticmethod
     def is_negative_answer(
+        text: str,
         text: str,
     ) -> bool:
         normalized = InterviewExtractor._normalize_text(
@@ -833,11 +1007,29 @@ class InterviewExtractor:
     ) -> tuple[Any, bool]:
         normalized = text.lower()
 
+        if target in AYUSH_TARGET_TERMS:
+            terms = AYUSH_TARGET_TERMS[target]
+
+            if any(
+                term in normalized
+                for term in terms
+            ):
+                return (
+                    text.strip(),
+                    False,
+                )
+
+            return (
+                None,
+                False,
+            )
+
         if target == "severity":
             patterns = (
                 r"\b(10|[0-9])\s*(?:/|out of|में से)?\s*10\b",
                 r"^\s*(10|[0-9])\s*$",
                 r"\b(?:pain|severity|discomfort)\s*(?:is|of|at)?\s*(10|[0-9])\b",
+                r"\b(?:तीव्रता|दर्द|तकलीफ|तकलीफ़)\s*(?:\S+\s*){0,3}(10|[0-9])\b",
             )
 
             for pattern in patterns:
@@ -960,14 +1152,18 @@ class InterviewExtractor:
             )
 
         if target == "laterality":
-            if "both sides" in normalized:
+            if (
+                "both sides" in normalized
+                or "दोनों तरफ" in normalized
+                or "दोनों तरफ़" in normalized
+            ):
                 return (
                     "both",
                     False,
                 )
 
             if re.search(
-                r"\bleft\b",
+                r"\bleft\b|\bबायां\b|\bबायाँ\b",
                 normalized,
             ):
                 return (
@@ -976,7 +1172,7 @@ class InterviewExtractor:
                 )
 
             if re.search(
-                r"\bright\b",
+                r"\bright\b|\bदायां\b|\bदायाँ\b",
                 normalized,
             ):
                 return (
@@ -1003,6 +1199,17 @@ class InterviewExtractor:
                 "turning",
                 "churning",
                 "cramping",
+                "जलन",
+                "दबाव",
+                "जकड़न",
+                "चुभने",
+                "चुभता",
+                "धड़कता",
+                "तेज",
+                "तेज़",
+                "भारी",
+                "ऐंठन",
+                "मरोड़",
             ):
                 if value in normalized:
                     return (
@@ -1037,6 +1244,9 @@ class InterviewExtractor:
                     "continuous",
                     "throughout the day",
                     "throughout",
+                    "लगातार",
+                    "हर समय",
+                    "पूरे दिन",
                 )
             ):
                 return (
@@ -1050,6 +1260,10 @@ class InterviewExtractor:
                     "comes and goes",
                     "on and off",
                     "intermittent",
+                    "आता जाता",
+                    "आता-जाता",
+                    "बीच-बीच में",
+                    "कभी-कभी",
                 )
             ):
                 return (
@@ -1064,6 +1278,10 @@ class InterviewExtractor:
                     "afternoon",
                     "evening",
                     "night",
+                    "सुबह",
+                    "दोपहर",
+                    "शाम",
+                    "रात",
                 )
             ):
                 return (
@@ -1088,6 +1306,12 @@ class InterviewExtractor:
                 r"(?:day|week|month)?\b",
                 normalized,
             )
+
+            if not match:
+                match = re.search(
+                    r"\b(?:दिन में|हर दिन|रोज़|रोज)\s*\d+\s*(?:बार|बारी)\b",
+                    normalized,
+                )
 
             if match:
                 return (
@@ -1531,6 +1755,48 @@ class InterviewExtractor:
 
         return None
 
+    @staticmethod
+    def _can_context_capture(
+        target: str,
+        text: str,
+    ) -> bool:
+        if (
+            not target
+            or target == "chief_complaint"
+            or target in BOOLEAN_TARGETS
+        ):
+            return False
+
+        normalized = InterviewExtractor._normalize_text(
+            text
+        )
+
+        if normalized in {
+            "yes",
+            "y",
+            "yeah",
+            "yep",
+            "haan",
+            "हाँ",
+            "हां",
+            "no",
+            "n",
+            "nope",
+            "none",
+            "नहीं",
+            "कोई नहीं",
+        }:
+            return False
+
+        if (
+            not normalized
+            or "?" in normalized
+            or len(normalized) < 2
+        ):
+            return False
+
+        return True
+
     def _cross_section_facts(
         self,
         text: str,
@@ -1835,6 +2101,9 @@ class InterviewExtractor:
             "For drug history, combine medicines, allergies, and adverse reactions. "
             "For personal history, combine occupation, diet, sleep, activity, smoking, alcohol, and tobacco where appropriate. "
             "For review of systems, use a broad symptom screen rather than one symptom at a time. "
+            "For AYUSH, ask only for patient-reported or previously documented information. "
+            "Never infer Prakriti, Vikriti, or any other AYUSH assessment. "
+            "If the patient does not know an AYUSH term or has never had such an assessment, accept that answer and continue. "
             "Do not ask a section-closure question. "
             "Do not diagnose. "
             "Do not recommend treatment. "
@@ -2011,6 +2280,21 @@ class InterviewExtractor:
             lines[-1]
             if lines
             else ""
+        )
+
+    @staticmethod
+    def _question_key(
+        question: str,
+    ) -> str:
+        value = question.strip().lower()
+        value = re.sub(
+            r"[^a-z0-9\u0900-\u097f]+",
+            " ",
+            value,
+            flags=re.IGNORECASE,
+        )
+        return " ".join(
+            value.split()
         )
 
     @staticmethod

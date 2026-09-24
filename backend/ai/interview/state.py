@@ -1263,17 +1263,31 @@ class InterviewState:
         if value is None:
             return False
 
+        # False is a valid collected negative answer. Treating it as
+        # unanswered makes the interviewer repeat yes/no history questions.
+        if isinstance(value, bool):
+            return True
+
+        normalized = str(
+            value
+        ).strip().lower()
+
+        # A patient may genuinely not know an AYUSH or medical-history
+        # detail. Record that outcome once rather than looping on the question.
+        if normalized in {
+            "unknown",
+            "not known",
+            "not sure",
+            "not available",
+            "not reported",
+            "पता नहीं",
+            "मालूम नहीं",
+            "मुझे नहीं पता",
+            "नहीं पता",
+        }:
+            return True
+
         if target in DETAIL_REQUIRED:
-            if isinstance(
-                value,
-                bool,
-            ):
-                return not value
-
-            normalized = str(
-                value
-            ).strip().lower()
-
             if normalized in {
                 "yes",
                 "y",
@@ -1412,9 +1426,8 @@ class InterviewState:
         ]
 
     def candidate_targets(self) -> list[str]:
-        if self.section_budget_reached():
-            return []
-
+        # Budgets guide question breadth; they never close a section while
+        # required information is still missing.
         if self.current_section == "hpi":
             return self._hpi_candidates()
 
