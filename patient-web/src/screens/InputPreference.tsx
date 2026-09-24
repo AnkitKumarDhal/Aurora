@@ -60,17 +60,25 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
               : "Click the microphone and describe your symptoms"}
           </p>
         </div>
+
         <div className="bg-surface border-2 border-border rounded-2xl p-12 mb-12 flex flex-col items-center gap-8">
-          <button
+          <Button
+            type="button"
+            variant="ghost"
             onClick={isRecording ? stopRecording : startRecording}
-            className={`h-32 w-32 rounded-full flex items-center justify-center transition-all ${isRecording ? "bg-danger animate-pulse" : "bg-primary hover:bg-primary-dark"}`}
+            className={`h-32 w-32 rounded-full flex items-center justify-center text-white transition-all active:scale-[0.95] ${
+              isRecording
+                ? "bg-danger hover:bg-danger/90 animate-pulse"
+                : "bg-primary hover:bg-primary-dark"
+            }`}
           >
             {isRecording ? (
               <Square className="h-16 w-16 text-white" />
             ) : (
               <Mic className="h-16 w-16 text-white" />
             )}
-          </button>
+          </Button>
+
           <div className="text-3xl font-mono font-bold text-text-primary">
             {isRecording
               ? formatTime(recordingTime)
@@ -78,6 +86,7 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
                 ? "रिकॉर्ड करने के लिए टैप करें"
                 : "Tap to Record"}
           </div>
+
           {isRecording && (
             <div className="flex gap-2">
               {[...Array(5)].map((_, i) => (
@@ -95,10 +104,12 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
             </div>
           )}
         </div>
+
         <Button
+          type="button"
           onClick={() => setSelectedMode(null)}
           variant="outline"
-          className="px-8 py-6 text-xl rounded-xl border-2 border-border text-text-secondary bg-transparent"
+          className="px-8 py-6 text-xl rounded-xl border-2 border-border text-text-secondary bg-transparent hover:bg-surface-alt hover:text-text-primary active:scale-[0.98]"
         >
           {isHi ? "वापस" : "Back"}
         </Button>
@@ -121,6 +132,7 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
             {isHi ? "नीचे अपने लक्षण टाइप करें" : "Type your symptoms below"}
           </p>
         </div>
+
         <div className="bg-surface border-2 border-border rounded-2xl p-8 mb-12 w-full max-w-3xl">
           <textarea
             value={textInput}
@@ -133,20 +145,25 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
             className="w-full h-48 p-6 text-xl bg-transparent border-2 border-border rounded-xl resize-none focus:border-primary focus:outline-none text-text-primary placeholder:text-text-secondary"
           />
         </div>
+
         <div className="flex gap-6">
           <Button
+            type="button"
             onClick={() => setSelectedMode(null)}
             variant="outline"
-            className="px-8 py-6 text-xl rounded-xl border-2 border-border text-text-secondary bg-transparent"
+            className="px-8 py-6 text-xl rounded-xl border-2 border-border text-text-secondary bg-transparent hover:bg-surface-alt hover:text-text-primary active:scale-[0.98]"
           >
             {isHi ? "वापस" : "Back"}
           </Button>
+
           <Button
+            type="button"
             onClick={handleTextSubmit}
             disabled={!textInput.trim()}
-            className="px-12 py-6 text-xl rounded-xl bg-primary-dark hover:bg-text-primary text-white disabled:opacity-40 transition-all shadow-lg flex items-center gap-3"
+            className="px-12 py-6 text-xl rounded-xl bg-primary-dark hover:bg-text-primary text-white disabled:opacity-40 transition-all shadow-lg flex items-center gap-3 active:scale-[0.98]"
           >
-            <Send className="h-6 w-6" /> {isHi ? "जमा करें" : "Submit"}
+            <Send className="h-6 w-6" />
+            {isHi ? "जमा करें" : "Submit"}
           </Button>
         </div>
       </motion.div>
@@ -161,43 +178,52 @@ export function InputPreference({ onNext, language }: InputPreferenceProps) {
     >
       <div className="text-center space-y-4 mb-12">
         <h2 className="text-4xl font-bold text-text-primary">
-          {isHi ? "आप कैसे परामर्श करना चाहेंगे?" : "How would you like to consult?"}
+          {isHi
+            ? "आप कैसे परामर्श करना चाहेंगे?"
+            : "How would you like to consult?"}
         </h2>
+
         <p className="text-xl text-text-secondary">
           {isHi
             ? "AI सहायक के साथ बातचीत करने का अपना पसंदीदा तरीका चुनें।"
             : "Choose your preferred way to interact with the AI assistant."}
         </p>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4 mb-12">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <Button
+          type="button"
+          variant="outline"
           onClick={() => setSelectedMode("voice")}
-          className="h-64 rounded-2xl border-2 border-border bg-surface hover:border-primary transition-all duration-200 flex flex-col items-center justify-center gap-6"
+          className="h-64 w-full rounded-2xl border-2 border-border bg-surface hover:border-primary hover:bg-primary-tint hover:text-text-primary transition-all duration-200 flex flex-col items-center justify-center gap-6 text-text-primary active:scale-[0.98]"
         >
           <Mic className="h-16 w-16 text-text-secondary" />
+
           <div className="text-4xl font-semibold text-text-primary">
             {isHi ? "वॉयस" : "Voice"}
           </div>
+
           <div className="text-xl text-text-secondary">
             {isHi ? "स्वाभाविक रूप से बोलें" : "Speak naturally"}
           </div>
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
           onClick={() => setSelectedMode("text")}
-          className="h-64 rounded-2xl border-2 border-border bg-surface hover:border-primary transition-all duration-200 flex flex-col items-center justify-center gap-6"
+          className="h-64 w-full rounded-2xl border-2 border-border bg-surface hover:border-primary hover:bg-primary-tint hover:text-text-primary transition-all duration-200 flex flex-col items-center justify-center gap-6 text-text-primary active:scale-[0.98]"
         >
           <Keyboard className="h-16 w-16 text-text-secondary" />
+
           <div className="text-4xl font-semibold text-text-primary">
             {isHi ? "टेक्स्ट" : "Text"}
           </div>
+
           <div className="text-xl text-text-secondary">
             {isHi ? "अपने उत्तर टाइप करें" : "Type your answers"}
           </div>
-        </motion.button>
+        </Button>
       </div>
     </motion.div>
   );
