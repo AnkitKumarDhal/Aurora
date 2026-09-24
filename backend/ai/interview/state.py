@@ -1539,14 +1539,17 @@ class InterviewState:
                     "adverse_drug_reactions"
                 )
 
-            return list(
-                dict.fromkeys(
-                    targets
-                )
+            return self._prioritize_pending(
+                list(
+                    dict.fromkeys(
+                        targets
+                    )
+                ),
+                pending,
             )
 
         if self.current_section == "family_history":
-            return (
+            targets = (
                 []
                 if self.target_answered(
                     "family_history"
@@ -1555,24 +1558,36 @@ class InterviewState:
                     "family_history"
                 ]
             )
+            return self._prioritize_pending(
+                targets,
+                pending,
+            )
 
         if self.current_section == "personal_history":
-            return [
+            targets = [
                 target
                 for target in PERSONAL_GROUPS
                 if not self.target_answered(
                     target
                 )
             ]
+            return self._prioritize_pending(
+                targets,
+                pending,
+            )
 
         if self.current_section == "review_of_systems":
-            return [
+            targets = [
                 target
                 for target in ROS_TARGETS
                 if not self.target_answered(
                     target
                 )
             ]
+            return self._prioritize_pending(
+                targets,
+                pending,
+            )
 
         return self._prioritize_pending(
             [
@@ -1601,7 +1616,7 @@ class InterviewState:
         return [
             item.strip()
             for item in re.split(
-                r"[,|;/]+|\band\b",
+                r"[,|;/]+|\band\b|और|तथा|aur",
                 raw,
                 flags=re.IGNORECASE,
             )

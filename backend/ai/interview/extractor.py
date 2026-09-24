@@ -1351,7 +1351,9 @@ class InterviewExtractor:
             patterns = (
                 r"\b(?:in|at|around|below|above|near)\s+"
                 r"([^,.!?;]+)",
-                r"\b(lower abdomen|upper abdomen|abdomen|stomach|chest|head|back|neck|throat|arm|leg)\b",
+                r"\b(lower abdomen|upper abdomen|abdomen|stomach|chest|head|back|neck|throat|arm|leg|"
+                r"पेट|पेट के ऊपर|पेट के नीचे|सीना|छाती|सिर|कमर|गर्दन|गला|बांह|बाँह|हाथ|पैर|"
+                r"pet|seena|chhati|sir|kamar|gardan|gala|haath|pair)\b",
             )
 
             for pattern in patterns:
@@ -1751,6 +1753,8 @@ class InterviewExtractor:
                 r"\b(?:desk job|office job|works? as|work as|job is|occupation is)\s*([^,.!?;]*)",
                 r"(?:मैं|मेरी)\s+(?:एक\s+)?(छात्र|विद्यार्थी|शिक्षक|इंजीनियर|डॉक्टर|किसान|व्यवसायी|नौकरी|व्यापारी)",
                 r"\b(i am|i'm)\s+(?:a\s+)?(student|teacher|engineer|doctor|farmer|businessman|businesswoman)\b",
+                r"\b(i study|i am studying|i'm studying)\s+([^,.!?;]+)",
+                r"\b(?:main|mai)\s+(?:student|teacher|engineer|doctor|farmer|vyapari|naukri)\b",
             )
 
             for pattern in patterns:
@@ -2064,8 +2068,11 @@ class InterviewExtractor:
             r"\b(?:since|from|starting\s+from)\s+(?:the\s+)?(?:day\s+before\s+yesterday|yesterday|today|tonight|last\s+night|this\s+morning|last\s+week|last\s+month|last\s+year)\b",
             r"\b(?:since|from|starting\s+from)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a\s+couple(?:\s+of)?|a\s+few)\s+(?:second|seconds|minute|minutes|hour|hours|day|days|night|nights|week|weeks|month|months|year|years)\s+(?:ago|back)\b",
             r"(?:आज\s+(?:सुबह|दोपहर|शाम)|आज|कल\s+(?:सुबह|दोपहर|शाम|रात)|कल|परसों|पिछले\s+(?:हफ्ते|सप्ताह|महीने|साल)|इस\s+(?:हफ्ते|सप्ताह|महीने|साल))",
+            r"\b(?:aaj|kal|parson)(?:\s+(?:subah|dopahar|shaam|raat))?\b",
+            r"\b(?:pichhle|pichle)\s+(?:hafte|saptah|mahine|saal)\b",
             r"(?:\d+|एक|दो|तीन|चार|पाँच|पांच|छह|छः|सात|आठ|नौ|दस|कुछ)\s+(?:से\s+)?(?:दिन|दिनों|हफ्ते|सप्ताह|महीने|साल)\s+(?:पहले|पूर्व)",
             r"(?:एक|दो|तीन|चार|पाँच|पांच|छह|छः|सात|आठ|नौ|दस|कुछ)\s+(?:दिन|दिनों|हफ्ते|सप्ताह|महीने|साल)\s+से",
+            r"\b(?:ek|do|teen|char|paanch|panch|chhe|che|saat|aath|nau|das|kuch)\s+(?:din|dino|hafte|saptah|saptaah|mahine|saal)\s+se\b",
         )
 
         for pattern in patterns:
@@ -2471,7 +2478,7 @@ class InterviewExtractor:
             dict.fromkeys(
                 item.strip().lower()
                 for item in re.split(
-                    r"[,|;/]+|\band\b",
+                    r"[,|;/]+|\band\b|और|तथा|aur",
                     raw_targets,
                     flags=re.IGNORECASE,
                 )

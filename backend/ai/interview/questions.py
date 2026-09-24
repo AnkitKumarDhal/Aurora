@@ -280,8 +280,6 @@ def choose_question(state: InterviewState, language: str, suggested_field: str |
             if item.field == suggested_field and not state.target_answered(item.field):
                 return item
     for item in specs:
-        if item.field in {"onset", "duration"} and (state.target_answered("onset") or state.target_answered("duration")):
-            continue
         if not state.target_answered(item.field):
             return item
     return None
