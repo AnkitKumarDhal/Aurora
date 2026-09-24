@@ -152,7 +152,9 @@ export function DocumentUpload({
     const video = videoRef.current;
 
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-      setError(isHi ? "कैमरा अभी तैयार नहीं है।" : "The camera is not ready yet.");
+      setError(
+        isHi ? "कैमरा अभी तैयार नहीं है।" : "The camera is not ready yet.",
+      );
       return;
     }
 
@@ -176,7 +178,9 @@ export function DocumentUpload({
       (blob) => {
         if (!blob) {
           setError(
-            isHi ? "रिपोर्ट कैप्चर नहीं हो सकी।" : "Unable to capture the report.",
+            isHi
+              ? "रिपोर्ट कैप्चर नहीं हो सकी।"
+              : "Unable to capture the report.",
           );
           return;
         }
@@ -324,16 +328,17 @@ export function DocumentUpload({
             </div>
           </div>
 
-          <button
-            className="absolute right-6 top-6 rounded-full bg-black bg-opacity-50 p-3 text-white hover:bg-opacity-70"
+          <Button
+            type="button"
+            variant="ghost"
+            className="absolute right-6 top-6 rounded-full bg-black bg-opacity-50 p-3 text-white hover:bg-black hover:bg-opacity-70 hover:text-white active:scale-[0.95]"
             onClick={() => {
               onActivity();
               stopCamera();
             }}
-            type="button"
           >
             <X className="h-6 w-6" />
-          </button>
+          </Button>
 
           <div className="absolute left-1/2 top-6 -translate-x-1/2 rounded-full bg-black bg-opacity-50 px-6 py-3 text-white">
             <p className="text-lg font-semibold">
@@ -343,13 +348,14 @@ export function DocumentUpload({
         </div>
 
         <div className="flex justify-center bg-black bg-opacity-80 p-8">
-          <button
-            className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-gray-300 bg-white transition-transform hover:scale-105"
-            onClick={captureImage}
+          <Button
             type="button"
+            variant="ghost"
+            className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-gray-300 bg-white p-0 transition-transform hover:bg-white active:scale-[0.95]"
+            onClick={captureImage}
           >
             <div className="h-16 w-16 rounded-full bg-white" />
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -398,7 +404,8 @@ export function DocumentUpload({
 
         <div className="flex gap-6">
           <Button
-            className="flex items-center gap-3 rounded-xl border-2 border-border px-8 py-6 text-xl text-text-secondary hover:bg-surface-alt"
+            type="button"
+            className="flex items-center gap-3 rounded-xl border-2 border-border px-8 py-6 text-xl text-text-secondary hover:bg-surface-alt active:scale-[0.98]"
             disabled={isSaving}
             onClick={retakeImage}
             variant="outline"
@@ -408,7 +415,8 @@ export function DocumentUpload({
           </Button>
 
           <Button
-            className="flex items-center gap-3 rounded-xl bg-primary-dark px-10 py-6 text-xl text-white shadow-lg transition-all hover:bg-text-primary"
+            type="button"
+            className="flex items-center gap-3 rounded-xl bg-primary-dark px-10 py-6 text-xl text-white shadow-lg transition-all hover:bg-text-primary active:scale-[0.98]"
             disabled={isSaving}
             onClick={() => {
               void confirmSave();
@@ -489,7 +497,8 @@ export function DocumentUpload({
 
       <div className="flex w-full max-w-2xl flex-col gap-5 sm:flex-row">
         <Button
-          className="flex flex-1 items-center justify-center gap-4 rounded-2xl bg-primary-dark px-8 py-7 text-xl text-white shadow-xl transition-all hover:bg-text-primary"
+          type="button"
+          className="flex flex-1 items-center justify-center gap-4 rounded-2xl bg-primary-dark px-8 py-7 text-xl text-white shadow-xl transition-all hover:bg-text-primary active:scale-[0.98]"
           onClick={() => {
             void openCamera();
           }}
@@ -499,7 +508,8 @@ export function DocumentUpload({
         </Button>
 
         <Button
-          className="flex flex-1 items-center justify-center gap-4 rounded-2xl border-2 border-border px-8 py-7 text-xl text-text-secondary hover:bg-surface-alt"
+          type="button"
+          className="flex flex-1 items-center justify-center gap-4 rounded-2xl border-2 border-border px-8 py-7 text-xl text-text-secondary hover:bg-surface-alt active:scale-[0.98]"
           onClick={() => {
             onActivity();
             setError(null);
@@ -513,7 +523,8 @@ export function DocumentUpload({
       </div>
 
       <Button
-        className="mt-6 rounded-xl border-2 border-border px-8 py-4 text-lg text-text-secondary hover:bg-surface-alt"
+        type="button"
+        className="mt-6 rounded-xl border-2 border-border px-8 py-4 text-lg text-text-secondary hover:bg-surface-alt active:scale-[0.98]"
         onClick={handleNext}
         variant="outline"
       >
