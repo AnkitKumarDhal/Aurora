@@ -29,15 +29,7 @@ export function TextAIConsultation({
   language,
 }: TextAIConsultationProps) {
   const isHi = language === "hi";
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "initial",
-      sender: "ai",
-      text: isHi
-        ? "नमस्ते! मैं औरोरा AI हूं। कृपया अपने लक्षण अपने शब्दों में बताएं।"
-        : "Hello! I am Aurora AI. Please describe your symptoms in your own words.",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [canContinue, setCanContinue] = useState(false);
@@ -47,74 +39,52 @@ export function TextAIConsultation({
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isThinking]);
 
   useEffect(() => {
-    if (hydratedFromDraft.current) {
-      return;
-    }
-
+    if (hydratedFromDraft.current) return;
     hydratedFromDraft.current = true;
-
-    void getInterviewState(sessionId)
+    void getInterviewState(sessionId, isHi ? "hi" : "en")
       .then((state) => {
-        const nextQuestion = state.next_question;
-
-        if (state.patient_turns > 0 && nextQuestion && !state.completed) {
-          setMessages((previous) => [
-            ...previous,
-            {
-              id: "restored-question",
-              sender: "ai",
-              text: nextQuestion,
-            },
+        if (state.next_question)
+          setMessages([
+            { id: "initial-question", sender: "ai", text: state.next_question },
           ]);
-        }
-
         setCompleted(state.completed);
         setCanContinue(state.completed);
       })
-      .catch(() => undefined);
-  }, [sessionId]);
+      .catch(() =>
+        setError(
+          isHi
+            ? "इंटरव्यू शुरू नहीं हो सका। कृपया फिर से प्रयास करें।"
+            : "The interview could not be started. Please try again.",
+        ),
+      );
+  }, [isHi, sessionId]);
 
   const handleSend = async () => {
     const content = input.trim();
-
-    if (!content || isThinking || completed) {
-      return;
-    }
-
+    if (!content || isThinking || completed) return;
     const localMessageId = `user-${Date.now()}`;
-
     setError(null);
-
     flushSync(() => {
       setInput("");
       setCanContinue(false);
       setMessages((previous) => [
         ...previous,
-        {
-          id: localMessageId,
-          sender: "user",
-          text: content,
-        },
+        { id: localMessageId, sender: "user", text: content },
       ]);
       setIsThinking(true);
     });
-
-    await new Promise<void>((resolve) => {
-      window.requestAnimationFrame(() => resolve());
-    });
-
+    await new Promise<void>((resolve) =>
+      window.requestAnimationFrame(() => resolve()),
+    );
     const result = await onConversationTurn(
       "TEXT",
       content,
       isHi ? "hi" : "en",
     );
-
     if (!result) {
       setError(
         isHi
@@ -124,8 +94,7 @@ export function TextAIConsultation({
       setIsThinking(false);
       return;
     }
-
-    if (result.assistant_response) {
+    if (result.assistant_response)
       setMessages((previous) => [
         ...previous,
         {
@@ -134,13 +103,10 @@ export function TextAIConsultation({
           text: result.assistant_response!,
         },
       ]);
-    }
-
     if (result.completed) {
       setCompleted(true);
       setCanContinue(true);
-
-      if (!result.assistant_response) {
+      if (!result.assistant_response)
         setMessages((previous) => [
           ...previous,
           {
@@ -151,9 +117,7 @@ export function TextAIConsultation({
               : "Thank you. You can now proceed to upload your reports.",
           },
         ]);
-      }
     }
-
     setIsThinking(false);
   };
 
@@ -163,39 +127,29 @@ export function TextAIConsultation({
         <h2 className="text-2xl font-bold text-text-primary">
           {isHi ? "AI टेक्स्ट परामर्श" : "AI Text Consultation"}
         </h2>
-
         <p className="text-sm text-text-secondary">
           {isHi
             ? "अपने लक्षण अपने शब्दों में लिखें"
             : "Describe your symptoms naturally"}
         </p>
       </div>
-
       <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl border-2 border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex-1 space-y-3 overflow-y-auto pr-2">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex items-start gap-3 ${
-                message.sender === "user" ? "justify-end" : ""
-              }`}
+              className={`flex items-start gap-3 ${message.sender === "user" ? "justify-end" : ""}`}
             >
               {message.sender === "ai" && (
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
                   <Bot className="h-4 w-4 text-primary-dark" />
                 </div>
               )}
-
               <div
-                className={`max-w-[80%] rounded-xl p-3 text-base ${
-                  message.sender === "ai"
-                    ? "rounded-tl-none bg-primary-tint text-text-primary"
-                    : "rounded-tr-none bg-accent-tint text-text-primary"
-                }`}
+                className={`max-w-[80%] rounded-xl p-3 text-base ${message.sender === "ai" ? "rounded-tl-none bg-primary-tint text-text-primary" : "rounded-tr-none bg-accent-tint text-text-primary"}`}
               >
                 {message.text}
               </div>
-
               {message.sender === "user" && (
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-tint">
                   <User className="h-4 w-4 text-accent-dark" />
@@ -203,49 +157,32 @@ export function TextAIConsultation({
               )}
             </div>
           ))}
-
           {isThinking && (
             <div className="flex items-start gap-3">
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint">
                 <Bot className="h-4 w-4 text-primary-dark" />
               </div>
-
               <div className="flex gap-1 rounded-xl rounded-tl-none bg-primary-tint p-3">
                 <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary" />
-                <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
-                  style={{
-                    animationDelay: "0.2s",
-                  }}
-                />
-                <span
-                  className="h-2 w-2 animate-bounce rounded-full bg-text-secondary"
-                  style={{
-                    animationDelay: "0.4s",
-                  }}
-                />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary [animation-delay:0.2s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-text-secondary [animation-delay:0.4s]" />
               </div>
             </div>
           )}
-
           <div ref={chatEndRef} />
         </div>
-
         {error && (
           <div className="mb-3 rounded-xl border-2 border-danger bg-surface px-4 py-3 text-sm font-semibold text-danger">
             {error}
           </div>
         )}
-
         <div className="flex gap-3">
           <input
             className="flex-1 rounded-lg border-2 border-border bg-bg p-4 text-lg text-text-primary focus:border-primary focus:outline-none"
             disabled={isThinking || completed}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                void handleSend();
-              }
+              if (event.key === "Enter") void handleSend();
             }}
             placeholder={
               isHi
@@ -254,19 +191,15 @@ export function TextAIConsultation({
             }
             value={input}
           />
-
           <Button
             className="rounded-lg bg-primary-dark px-6 py-4 text-lg text-white shadow-lg hover:bg-text-primary"
             disabled={isThinking || completed || !input.trim()}
-            onClick={() => {
-              void handleSend();
-            }}
+            onClick={() => void handleSend()}
           >
             <Send className="h-5 w-5" />
           </Button>
         </div>
       </div>
-
       <Button
         className="mt-4 rounded-lg bg-primary-dark px-10 py-5 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
         disabled={!canContinue || isThinking}
