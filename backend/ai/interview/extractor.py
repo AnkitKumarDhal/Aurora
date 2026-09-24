@@ -24,6 +24,9 @@ TOPIC_KEYWORDS = {
         "chest discomfort",
         "सीने में दर्द",
         "सीने में दबाव",
+        "seene mein dard",
+        "seene mein dabav",
+        "seene mein jakdan",
     ),
     "headache": (
         "headache",
@@ -32,6 +35,8 @@ TOPIC_KEYWORDS = {
         "सिरदर्द",
         "सिर में दर्द",
         "माइग्रेन",
+        "sir dard",
+        "sar dard",
     ),
     "respiratory": (
         "cough",
@@ -44,6 +49,9 @@ TOPIC_KEYWORDS = {
         "खाँसी",
         "सांस फूलना",
         "साँस फूलना",
+        "saans phoolna",
+        "saans lene mein dikkat",
+        "khansi",
     ),
     "gastrointestinal": (
         "constipation",
@@ -64,6 +72,11 @@ TOPIC_KEYWORDS = {
         "पेट में दर्द",
         "उल्टी",
         "मतली",
+        "pet mein dard",
+        "pet dard",
+        "ulti",
+        "kabz",
+        "dast",
     ),
     "urinary": (
         "urine",
@@ -73,6 +86,8 @@ TOPIC_KEYWORDS = {
         "पेशाब",
         "मूत्र",
         "पेशाब में जलन",
+        "peshab",
+        "peshab mein jalan",
     ),
     "skin": (
         "rash",
@@ -82,6 +97,9 @@ TOPIC_KEYWORDS = {
         "चकत्ते",
         "खुजली",
         "त्वचा",
+        "khujli",
+        "dane",
+        "chakatte",
     ),
     "musculoskeletal": (
         "back pain",
@@ -90,6 +108,9 @@ TOPIC_KEYWORDS = {
         "neck pain",
         "कमर दर्द",
         "जोड़ों का दर्द",
+        "kamar dard",
+        "jodon ka dard",
+        "jodon mein dard",
     ),
     "neurological": (
         "numbness",
@@ -101,6 +122,10 @@ TOPIC_KEYWORDS = {
         "झनझनाहट",
         "कमजोरी",
         "कमज़ोरी",
+        "chakkar",
+        "sunnpan",
+        "jhunjhunahat",
+        "kamzori",
     ),
 }
 
@@ -117,6 +142,10 @@ NEGATIVE_ANSWERS = {
     "na",
     "n/a",
     "नहीं",
+    "nahi",
+    "nahin",
+    "kuch nahi",
+    "kuch nahin",
     "कुछ नहीं",
     "और कुछ नहीं",
     "कोई नहीं",
@@ -137,6 +166,10 @@ UNKNOWN_ANSWERS = {
     "pata nahi",
     "pata nahin",
     "पता नहीं",
+    "pata nahi",
+    "pata nahin",
+    "mujhe nahi pata",
+    "mujhe nahin pata",
     "मुझे नहीं पता",
     "मालूम नहीं",
     "नहीं पता",
@@ -1026,17 +1059,15 @@ class InterviewExtractor:
             text
         )
 
-        if (
-            normalized in NEGATIVE_ANSWERS
-            or "nothing else" in normalized
-            or "और कुछ नहीं" in normalized
-        ):
+        if normalized in NEGATIVE_ANSWERS:
             return True
 
         return bool(
             re.fullmatch(
-                r"(?:no|none|n/?a|नहीं)(?:\s+(?:more|else|nothing))?",
+                r"(?:no|none|n/?a|nahi|nahin|नहीं)"
+                r"(?:\s+(?:more|else|nothing))?",
                 normalized,
+                flags=re.IGNORECASE,
             )
         )
 
@@ -2156,6 +2187,7 @@ class InterviewExtractor:
             "For drug history, combine medicines, allergies, and adverse reactions. "
             "For personal history, combine occupation, diet, sleep, activity, smoking, alcohol, and tobacco where appropriate. "
             "For review of systems, use a broad symptom screen rather than one symptom at a time. "
+            "For mixed Hindi-English answers, keep the meaning as stated and do not invent medical terminology. "
             "For AYUSH, ask only for patient-reported or previously documented information. "
             "Never infer Prakriti, Vikriti, or any other AYUSH assessment. "
             "If the patient does not know an AYUSH term or has never had such an assessment, accept that answer and continue. "
@@ -2422,6 +2454,7 @@ class InterviewExtractor:
             "Never ask again for facts that are already explicitly present. "
             "Prefer one broad high-yield question over several narrow questions. "
             "Questions must be natural, short, respectful, and answerable by voice or text. "
+            "Patients may answer in English, Hindi, or mixed Hindi-English, including romanized Hindi. "
             "Do not diagnose, reassure, prescribe, or recommend treatment."
         )
 

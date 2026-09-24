@@ -77,6 +77,10 @@ def detect_red_flags(
         "सीने में जकड़न",
         "छाती में दर्द",
         "छाती में दबाव",
+        "seene mein dard",
+        "seene mein dabav",
+        "seene mein jakdan",
+        "seene mein bhari pan",
     )
 
     chest_pain = _contains(
@@ -214,6 +218,12 @@ def detect_red_flags(
         "दम घुटना",
         "साँस नहीं आ रही",
         "सांस नहीं आ रही",
+        "saans phoolna",
+        "saans lene mein dikkat",
+        "saans nahi aa rahi",
+        "saans nahin aa rahi",
+        "dam ghutna",
+        "saans lene mein mushkil",
     )
 
     breathing = _contains(
@@ -249,6 +259,9 @@ def detect_red_flags(
             "बेहोश",
             "बेहोशी",
             "होश खो दिया",
+            "behosh",
+            "behoshi",
+            "hosh kho diya",
         ),
     ):
         add_flag(
@@ -283,6 +296,12 @@ def detect_red_flags(
             "बोलने में दिक्कत",
             "बोलने में परेशानी",
             "लड़खड़ाती बोली",
+            "chehra tedha",
+            "achanak kamzori",
+            "ek taraf kamzori",
+            "ek taraf sunnpan",
+            "bolne mein dikkat",
+            "bolne mein pareshani",
         ),
     )
 
@@ -309,6 +328,10 @@ def detect_red_flags(
             "खून की उल्टी",
             "खून की खांसी",
             "खून की खाँसी",
+            "bahut zyada khoon",
+            "tez khoon behna",
+            "khoon ki ulti",
+            "khoon ki khansi",
         ),
     )
 
@@ -333,6 +356,9 @@ def detect_red_flags(
             "जीभ में सूजन",
             "गले में सूजन",
             "गला बंद",
+            "jeebh mein sujan",
+            "gale mein sujan",
+            "gala band",
         ),
     )
 
@@ -357,6 +383,11 @@ def detect_red_flags(
             "अचानक बहुत तेज सिरदर्द",
             "बहुत तेज सिरदर्द",
             "अचानक तेज सिरदर्द",
+            "zindagi ka sabse tez sir dard",
+            "achanak bahut tez sir dard",
+            "bahut tez sir dard",
+            "achanak tez sir dard",
+            "sabse tez sir dard",
         ),
     )
 

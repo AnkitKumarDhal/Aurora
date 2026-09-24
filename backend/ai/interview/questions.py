@@ -328,9 +328,31 @@ def next_section(state: InterviewState) -> str | None:
 
 def is_explicit_negative(text: str) -> bool:
     value = " ".join(text.strip().lower().split())
-    return value in {"no", "none", "not applicable", "not relevant", "नहीं", "कोई नहीं"}
+    return value in {
+        "no",
+        "none",
+        "not applicable",
+        "not relevant",
+        "नहीं",
+        "कोई नहीं",
+        "nahi",
+        "nahin",
+    }
 
 
 def is_stop_answer(text: str) -> bool:
     value = " ".join(text.strip().lower().split())
-    return value in {"nothing else", "nothing more", "no more", "that's all", "thats all", "that is all", "कुछ नहीं", "और कुछ नहीं", "बस इतना ही"}
+    return value in {
+        "nothing else",
+        "nothing more",
+        "no more",
+        "that's all",
+        "thats all",
+        "that is all",
+        "कुछ नहीं",
+        "और कुछ नहीं",
+        "बस इतना ही",
+        "kuch nahi",
+        "kuch nahin",
+        "bas itna hi",
+    }

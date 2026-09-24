@@ -465,6 +465,7 @@ PAST_REQUIRED = (
 DRUG_REQUIRED = (
     "medications",
     "allergies",
+    "adverse_drug_reactions",
 )
 
 PERSONAL_GROUPS = (
