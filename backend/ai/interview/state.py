@@ -5,12 +5,21 @@ import re
 from typing import Any
 
 STATE_SIGNAL_NAME = "_interview_state"
-SECTION_ORDER = ("hpi", "past_history", "drug_allergy",
-                 "family_history", "personal_history", "review_of_systems")
+
+SECTION_ORDER = (
+    "hpi",
+    "past_history",
+    "drug_allergy",
+    "family_history",
+    "personal_history",
+    "review_of_systems",
+)
+
 AYUSH_SECTION = "ayush"
 ALL_SECTIONS = (*SECTION_ORDER, AYUSH_SECTION)
+
 SECTION_QUESTION_BUDGETS = {
-    "hpi": 5,
+    "hpi": 3,
     "past_history": 1,
     "drug_allergy": 1,
     "family_history": 1,
@@ -20,43 +29,338 @@ SECTION_QUESTION_BUDGETS = {
 }
 
 HPI_FIELDS = {
-    "chief_complaint", "onset", "course", "duration", "site", "laterality", "severity", "character", "timing", "frequency", "aggravating_factors", "relieving_factors", "radiation", "associated_symptoms", "previous_episodes", "impact_on_daily_life", "prior_treatment", "response_to_treatment", "prior_investigations", "constitutional", "cardiovascular", "respiratory", "gastrointestinal", "genitourinary", "neurological", "musculoskeletal", "skin", "endocrine", "hematologic", "psychiatric", "breathing_difficulty", "nausea_vomiting", "vision_or_neuro", "cough", "wheeze", "fever", "fatigue", "weight_change", "bowel_changes", "bowel_frequency", "stool_consistency", "straining", "blood_in_stool", "abdominal_distension", "urinary_frequency", "urinary_burning", "urinary_blood"
+    "chief_complaint",
+    "onset",
+    "course",
+    "duration",
+    "site",
+    "laterality",
+    "severity",
+    "character",
+    "timing",
+    "frequency",
+    "aggravating_factors",
+    "relieving_factors",
+    "radiation",
+    "associated_symptoms",
+    "previous_episodes",
+    "impact_on_daily_life",
+    "prior_treatment",
+    "response_to_treatment",
+    "prior_investigations",
+    "constitutional",
+    "cardiovascular",
+    "respiratory",
+    "gastrointestinal",
+    "genitourinary",
+    "neurological",
+    "musculoskeletal",
+    "skin",
+    "endocrine",
+    "hematologic",
+    "psychiatric",
+    "breathing_difficulty",
+    "nausea_vomiting",
+    "vision_or_neuro",
+    "cough",
+    "wheeze",
+    "fever",
+    "fatigue",
+    "weight_change",
+    "bowel_changes",
+    "bowel_frequency",
+    "stool_consistency",
+    "straining",
+    "blood_in_stool",
+    "abdominal_distension",
+    "urinary_frequency",
+    "urinary_burning",
+    "urinary_blood",
 }
 
 HISTORY_FIELDS = {
-    "past_medical_history", "past_surgical_history", "hospitalizations", "immunizations", "medications", "allergies", "adverse_drug_reactions", "family_history", "personal_history", "occupation", "diet", "sleep", "physical_activity", "smoking", "alcohol", "tobacco", "menstrual_history", "pregnancy_status", "sexual_history", "review_of_systems"
+    "past_medical_history",
+    "past_surgical_history",
+    "hospitalizations",
+    "immunizations",
+    "medications",
+    "allergies",
+    "adverse_drug_reactions",
+    "family_history",
+    "personal_history",
+    "occupation",
+    "diet",
+    "sleep",
+    "physical_activity",
+    "smoking",
+    "alcohol",
+    "tobacco",
+    "menstrual_history",
+    "pregnancy_status",
+    "sexual_history",
+    "review_of_systems",
 }
 
 AYUSH_FIELDS = {
-    "ayush_prakriti", "ayush_vikriti", "ayush_sara", "ayush_samhanana", "ayush_pramana", "ayush_satmya", "ayush_satva", "ayush_ahara_shakti", "ayush_vyayama_shakti", "ayush_vaya", "ayush_ahara_vihara", "ayush_agni", "ayush_koshta", "ayush_nidana", "ayush_samprapti"
+    "ayush_prakriti",
+    "ayush_vikriti",
+    "ayush_sara",
+    "ayush_samhanana",
+    "ayush_pramana",
+    "ayush_satmya",
+    "ayush_satva",
+    "ayush_ahara_shakti",
+    "ayush_vyayama_shakti",
+    "ayush_vaya",
+    "ayush_ahara_vihara",
+    "ayush_agni",
+    "ayush_koshta",
+    "ayush_nidana",
+    "ayush_samprapti",
 }
 
 KNOWN_FIELDS = HPI_FIELDS | HISTORY_FIELDS | AYUSH_FIELDS
 
 FIELD_ALIASES = {
-    "complaint": "chief_complaint", "main_complaint": "chief_complaint", "main_problem": "chief_complaint", "problem": "chief_complaint", "symptom": "chief_complaint", "started": "onset", "start": "onset", "when_started": "onset", "how_long": "duration", "progression": "course", "pattern": "timing", "pain_score": "severity", "pain_level": "severity", "intensity": "severity", "pain_type": "character", "quality": "character", "location": "site", "where": "site", "place": "site", "side": "laterality", "worse_with": "aggravating_factors", "aggravated_by": "aggravating_factors", "better_with": "relieving_factors", "relieved_by": "relieving_factors", "radiates_to": "radiation", "associated": "associated_symptoms", "other_symptoms": "associated_symptoms", "family": "family_history", "social_history": "personal_history", "lifestyle": "personal_history", "occupation_history": "occupation", "smoking_history": "smoking", "tobacco_use": "tobacco", "alcohol_use": "alcohol", "exercise": "physical_activity", "diet_history": "diet", "sleep_history": "sleep", "ros": "review_of_systems", "review_of_system": "review_of_systems", "medical_history": "past_medical_history", "past_history": "past_medical_history", "surgical_history": "past_surgical_history", "surgery_history": "past_surgical_history", "operations": "past_surgical_history", "hospital_history": "hospitalizations", "current_medications": "medications", "drugs": "medications", "drug_history": "medications", "drug_allergies": "allergies", "medicine_allergies": "allergies", "adverse_reactions": "adverse_drug_reactions", "investigations": "prior_investigations", "previous_tests": "prior_investigations", "prior_tests": "prior_investigations", "treatment_history": "prior_treatment", "treatment_response": "response_to_treatment", "breathlessness": "breathing_difficulty", "shortness_of_breath": "breathing_difficulty", "difficulty_breathing": "breathing_difficulty", "nausea": "nausea_vomiting", "vomiting": "nausea_vomiting", "nausea_or_vomiting": "nausea_vomiting", "vision": "vision_or_neuro", "neurological_symptoms": "vision_or_neuro", "coughing": "cough", "wheezing": "wheeze", "itching": "skin", "painful_urination": "urinary_burning", "burning_urination": "urinary_burning", "blood_in_urine": "urinary_blood", "rectal_bleeding": "blood_in_stool", "blood_in_stools": "blood_in_stool", "bowel_problem": "bowel_changes", "constipation": "bowel_changes", "constipated": "bowel_changes", "stool_frequency": "bowel_frequency", "stool_type": "stool_consistency", "abdominal_bloating": "abdominal_distension", "bloating": "abdominal_distension", "menstrual": "menstrual_history", "periods": "menstrual_history", "sexual": "sexual_history", "prakriti": "ayush_prakriti", "vikriti": "ayush_vikriti", "sara": "ayush_sara", "samhanana": "ayush_samhanana", "pramana": "ayush_pramana", "satmya": "ayush_satmya", "satva": "ayush_satva", "ahara_shakti": "ayush_ahara_shakti", "vyayama_shakti": "ayush_vyayama_shakti", "vaya": "ayush_vaya", "agni": "ayush_agni", "koshta": "ayush_koshta", "ahara_vihara": "ayush_ahara_vihara", "nidana": "ayush_nidana", "samprapti": "ayush_samprapti"
+    "complaint": "chief_complaint",
+    "main_complaint": "chief_complaint",
+    "main_problem": "chief_complaint",
+    "problem": "chief_complaint",
+    "symptom": "chief_complaint",
+    "started": "onset",
+    "start": "onset",
+    "when_started": "onset",
+    "how_long": "duration",
+    "progression": "course",
+    "pattern": "timing",
+    "pain_score": "severity",
+    "pain_level": "severity",
+    "intensity": "severity",
+    "pain_type": "character",
+    "quality": "character",
+    "location": "site",
+    "where": "site",
+    "place": "site",
+    "side": "laterality",
+    "worse_with": "aggravating_factors",
+    "aggravated_by": "aggravating_factors",
+    "better_with": "relieving_factors",
+    "relieved_by": "relieving_factors",
+    "radiates_to": "radiation",
+    "associated": "associated_symptoms",
+    "other_symptoms": "associated_symptoms",
+    "family": "family_history",
+    "social_history": "personal_history",
+    "lifestyle": "personal_history",
+    "occupation_history": "occupation",
+    "smoking_history": "smoking",
+    "tobacco_use": "tobacco",
+    "alcohol_use": "alcohol",
+    "exercise": "physical_activity",
+    "diet_history": "diet",
+    "sleep_history": "sleep",
+    "ros": "review_of_systems",
+    "review_of_system": "review_of_systems",
+    "medical_history": "past_medical_history",
+    "past_history": "past_medical_history",
+    "surgical_history": "past_surgical_history",
+    "surgery_history": "past_surgical_history",
+    "operations": "past_surgical_history",
+    "hospital_history": "hospitalizations",
+    "current_medications": "medications",
+    "drugs": "medications",
+    "drug_history": "medications",
+    "drug_allergies": "allergies",
+    "medicine_allergies": "allergies",
+    "adverse_reactions": "adverse_drug_reactions",
+    "investigations": "prior_investigations",
+    "previous_tests": "prior_investigations",
+    "prior_tests": "prior_investigations",
+    "treatment_history": "prior_treatment",
+    "treatment_response": "response_to_treatment",
+    "breathlessness": "breathing_difficulty",
+    "shortness_of_breath": "breathing_difficulty",
+    "difficulty_breathing": "breathing_difficulty",
+    "nausea": "nausea_vomiting",
+    "vomiting": "nausea_vomiting",
+    "nausea_or_vomiting": "nausea_vomiting",
+    "vision": "vision_or_neuro",
+    "neurological_symptoms": "vision_or_neuro",
+    "coughing": "cough",
+    "wheezing": "wheeze",
+    "itching": "skin",
+    "painful_urination": "urinary_burning",
+    "burning_urination": "urinary_burning",
+    "blood_in_urine": "urinary_blood",
+    "rectal_bleeding": "blood_in_stool",
+    "blood_in_stools": "blood_in_stool",
+    "bowel_problem": "bowel_changes",
+    "constipation": "bowel_changes",
+    "constipated": "bowel_changes",
+    "stool_frequency": "bowel_frequency",
+    "stool_type": "stool_consistency",
+    "abdominal_bloating": "abdominal_distension",
+    "bloating": "abdominal_distension",
+    "menstrual": "menstrual_history",
+    "periods": "menstrual_history",
+    "sexual": "sexual_history",
+    "prakriti": "ayush_prakriti",
+    "vikriti": "ayush_vikriti",
+    "sara": "ayush_sara",
+    "samhanana": "ayush_samhanana",
+    "pramana": "ayush_pramana",
+    "satmya": "ayush_satmya",
+    "satva": "ayush_satva",
+    "ahara_shakti": "ayush_ahara_shakti",
+    "vyayama_shakti": "ayush_vyayama_shakti",
+    "vaya": "ayush_vaya",
+    "agni": "ayush_agni",
+    "koshta": "ayush_koshta",
+    "ahara_vihara": "ayush_ahara_vihara",
+    "nidana": "ayush_nidana",
+    "samprapti": "ayush_samprapti",
 }
 
 FIELD_PRIMARY_SECTION = {
     **{field: "hpi" for field in HPI_FIELDS},
-    **{field: "past_history" for field in {"past_medical_history", "past_surgical_history", "hospitalizations", "immunizations"}},
-    **{field: "drug_allergy" for field in {"medications", "allergies", "adverse_drug_reactions"}},
+    **{
+        field: "past_history"
+        for field in {
+            "past_medical_history",
+            "past_surgical_history",
+            "hospitalizations",
+            "immunizations",
+        }
+    },
+    **{
+        field: "drug_allergy"
+        for field in {
+            "medications",
+            "allergies",
+            "adverse_drug_reactions",
+        }
+    },
     "family_history": "family_history",
-    **{field: "personal_history" for field in {"personal_history", "occupation", "diet", "sleep", "physical_activity", "smoking", "alcohol", "tobacco", "menstrual_history", "pregnancy_status", "sexual_history"}},
+    **{
+        field: "personal_history"
+        for field in {
+            "personal_history",
+            "occupation",
+            "diet",
+            "sleep",
+            "physical_activity",
+            "smoking",
+            "alcohol",
+            "tobacco",
+            "menstrual_history",
+            "pregnancy_status",
+            "sexual_history",
+        }
+    },
     "review_of_systems": "review_of_systems",
-    **{field: "ayush" for field in AYUSH_FIELDS},
+    **{
+        field: "ayush"
+        for field in AYUSH_FIELDS
+    },
 }
 
 MULTI_VALUE_FIELDS = {
-    "past_medical_history", "past_surgical_history", "hospitalizations",
-    "immunizations", "medications", "allergies", "adverse_drug_reactions",
-    "family_history", "personal_history", "associated_symptoms",
-    "prior_treatment", "prior_investigations", "review_of_systems",
-    "aggravating_factors", "relieving_factors", "radiation"
+    "past_medical_history",
+    "past_surgical_history",
+    "hospitalizations",
+    "immunizations",
+    "medications",
+    "allergies",
+    "adverse_drug_reactions",
+    "family_history",
+    "personal_history",
+    "associated_symptoms",
+    "prior_treatment",
+    "prior_investigations",
+    "review_of_systems",
+    "aggravating_factors",
+    "relieving_factors",
+    "radiation",
 }
 
 TARGET_FIELDS = {
-    "chief_complaint": ("chief_complaint",), "onset": ("onset",), "duration": ("duration",), "course": ("course",), "site": ("site",), "laterality": ("laterality",), "severity": ("severity",), "character": ("character",), "timing": ("timing",), "frequency": ("frequency",), "aggravating_factors": ("aggravating_factors",), "relieving_factors": ("relieving_factors",), "radiation": ("radiation",), "associated_symptoms": ("associated_symptoms",), "previous_episodes": ("previous_episodes",), "prior_treatment": ("prior_treatment",), "response_to_treatment": ("response_to_treatment",), "prior_investigations": ("prior_investigations",), "impact_on_daily_life": ("impact_on_daily_life",), "breathing_difficulty": ("breathing_difficulty",), "nausea_vomiting": ("nausea_vomiting",), "vision_or_neuro": ("vision_or_neuro",), "cough": ("cough",), "wheeze": ("wheeze",), "fever": ("fever",), "bowel_frequency": ("bowel_frequency",), "stool_consistency": ("stool_consistency",), "straining": ("straining",), "blood_in_stool": ("blood_in_stool",), "abdominal_distension": ("abdominal_distension",), "urinary_frequency": ("urinary_frequency",), "urinary_burning": ("urinary_burning",), "urinary_blood": ("urinary_blood",), "past_medical_history": ("past_medical_history",), "past_surgical_history": ("past_surgical_history",), "hospitalizations": ("hospitalizations",), "immunizations": ("immunizations",), "medications": ("medications",), "allergies": ("allergies",), "adverse_drug_reactions": ("adverse_drug_reactions",), "family_history": ("family_history",), "occupation": ("occupation",), "diet": ("diet",), "sleep": ("sleep",), "physical_activity": ("physical_activity",), "smoking": ("smoking",), "alcohol": ("alcohol",), "tobacco": ("tobacco",), "menstrual_history": ("menstrual_history",), "pregnancy_status": ("pregnancy_status",), "sexual_history": ("sexual_history",), "constitutional": ("constitutional",), "cardiovascular": ("cardiovascular",), "respiratory": ("respiratory",), "gastrointestinal": ("gastrointestinal",), "genitourinary": ("genitourinary",), "neurological": ("neurological",), "musculoskeletal": ("musculoskeletal",), "skin": ("skin",), "endocrine": ("endocrine",), "hematologic": ("hematologic",), "psychiatric": ("psychiatric",), "ayush_prakriti": ("ayush_prakriti",), "ayush_vikriti": ("ayush_vikriti",), "ayush_sara": ("ayush_sara",), "ayush_samhanana": ("ayush_samhanana",), "ayush_pramana": ("ayush_pramana",), "ayush_satmya": ("ayush_satmya",), "ayush_satva": ("ayush_satva",), "ayush_ahara_shakti": ("ayush_ahara_shakti",), "ayush_vyayama_shakti": ("ayush_vyayama_shakti",), "ayush_vaya": ("ayush_vaya",), "ayush_ahara_vihara": ("ayush_ahara_vihara",), "ayush_agni": ("ayush_agni",), "ayush_koshta": ("ayush_koshta",), "ayush_nidana": ("ayush_nidana",), "ayush_samprapti": ("ayush_samprapti",)
+    "chief_complaint": ("chief_complaint",),
+    "onset": ("onset",),
+    "duration": ("duration",),
+    "course": ("course",),
+    "site": ("site",),
+    "laterality": ("laterality",),
+    "severity": ("severity",),
+    "character": ("character",),
+    "timing": ("timing",),
+    "frequency": ("frequency",),
+    "aggravating_factors": ("aggravating_factors",),
+    "relieving_factors": ("relieving_factors",),
+    "radiation": ("radiation",),
+    "associated_symptoms": ("associated_symptoms",),
+    "previous_episodes": ("previous_episodes",),
+    "prior_treatment": ("prior_treatment",),
+    "response_to_treatment": ("response_to_treatment",),
+    "prior_investigations": ("prior_investigations",),
+    "impact_on_daily_life": ("impact_on_daily_life",),
+    "breathing_difficulty": ("breathing_difficulty",),
+    "nausea_vomiting": ("nausea_vomiting",),
+    "vision_or_neuro": ("vision_or_neuro",),
+    "cough": ("cough",),
+    "wheeze": ("wheeze",),
+    "fever": ("fever",),
+    "bowel_frequency": ("bowel_frequency",),
+    "stool_consistency": ("stool_consistency",),
+    "straining": ("straining",),
+    "blood_in_stool": ("blood_in_stool",),
+    "abdominal_distension": ("abdominal_distension",),
+    "urinary_frequency": ("urinary_frequency",),
+    "urinary_burning": ("urinary_burning",),
+    "urinary_blood": ("urinary_blood",),
+    "past_medical_history": ("past_medical_history",),
+    "past_surgical_history": ("past_surgical_history",),
+    "hospitalizations": ("hospitalizations",),
+    "immunizations": ("immunizations",),
+    "medications": ("medications",),
+    "allergies": ("allergies",),
+    "adverse_drug_reactions": ("adverse_drug_reactions",),
+    "family_history": ("family_history",),
+    "occupation": ("occupation",),
+    "diet": ("diet",),
+    "sleep": ("sleep",),
+    "physical_activity": ("physical_activity",),
+    "smoking": ("smoking",),
+    "alcohol": ("alcohol",),
+    "tobacco": ("tobacco",),
+    "menstrual_history": ("menstrual_history",),
+    "pregnancy_status": ("pregnancy_status",),
+    "sexual_history": ("sexual_history",),
+    "constitutional": ("constitutional",),
+    "cardiovascular": ("cardiovascular",),
+    "respiratory": ("respiratory",),
+    "gastrointestinal": ("gastrointestinal",),
+    "genitourinary": ("genitourinary",),
+    "neurological": ("neurological",),
+    "musculoskeletal": ("musculoskeletal",),
+    "skin": ("skin",),
+    "endocrine": ("endocrine",),
+    "hematologic": ("hematologic",),
+    "psychiatric": ("psychiatric",),
+    "ayush_prakriti": ("ayush_prakriti",),
+    "ayush_vikriti": ("ayush_vikriti",),
+    "ayush_sara": ("ayush_sara",),
+    "ayush_samhanana": ("ayush_samhanana",),
+    "ayush_pramana": ("ayush_pramana",),
+    "ayush_satmya": ("ayush_satmya",),
+    "ayush_satva": ("ayush_satva",),
+    "ayush_ahara_shakti": ("ayush_ahara_shakti",),
+    "ayush_vyayama_shakti": ("ayush_vyayama_shakti",),
+    "ayush_vaya": ("ayush_vaya",),
+    "ayush_ahara_vihara": ("ayush_ahara_vihara",),
+    "ayush_agni": ("ayush_agni",),
+    "ayush_koshta": ("ayush_koshta",),
+    "ayush_nidana": ("ayush_nidana",),
+    "ayush_samprapti": ("ayush_samprapti",),
 }
 
 TARGET_DESCRIPTIONS = {
@@ -76,7 +380,7 @@ TARGET_DESCRIPTIONS = {
     "associated_symptoms": {"en": "other symptoms occurring with the main problem", "hi": "मुख्य समस्या के साथ होने वाले अन्य लक्षण"},
     "previous_episodes": {"en": "whether this has happened before", "hi": "क्या यह समस्या पहले भी हुई है"},
     "prior_treatment": {"en": "what treatment or self-care has already been tried", "hi": "अब तक कौन सा इलाज या स्वयं की देखभाल की गई है"},
-    "response_to_treatment": {"en": "how the previous treatment affected the problem", "hi": "पहले किए गए इलाज से क्या असर हुआ"},
+    "response_to_treatment": {"en": "how previous treatment affected the problem", "hi": "पहले किए गए इलाज से क्या असर हुआ"},
     "prior_investigations": {"en": "any previous tests or investigations for this problem", "hi": "इस समस्या के लिए पहले हुई जाँच या परीक्षण"},
     "impact_on_daily_life": {"en": "how the problem affects normal daily activities", "hi": "यह समस्या रोज़मर्रा के काम पर कैसे असर डालती है"},
     "breathing_difficulty": {"en": "any difficulty with breathing", "hi": "साँस लेने में कोई परेशानी"},
@@ -136,7 +440,7 @@ TARGET_DESCRIPTIONS = {
     "ayush_agni": {"en": "Agni", "hi": "अग्नि"},
     "ayush_koshta": {"en": "Koshtha", "hi": "कोष्ठ"},
     "ayush_nidana": {"en": "Nidana", "hi": "निदान"},
-    "ayush_samprapti": {"en": "Samprapti", "hi": "सम्प्राप्ति"}
+    "ayush_samprapti": {"en": "Samprapti", "hi": "सम्प्राप्ति"},
 }
 
 HPI_CORE_GROUPS = (
@@ -151,82 +455,263 @@ HPI_CORE_GROUPS = (
     ("previous_episodes", "prior_treatment", "prior_investigations"),
     ("timing", "frequency"),
 )
-PAST_REQUIRED = ("past_medical_history",
-                 "past_surgical_history", "hospitalizations")
-DRUG_REQUIRED = ("medications", "allergies")
-PERSONAL_GROUPS = ("occupation", "diet", "sleep",
-                   "physical_activity", "smoking", "alcohol", "tobacco")
+
+PAST_REQUIRED = (
+    "past_medical_history",
+    "past_surgical_history",
+    "hospitalizations",
+)
+
+DRUG_REQUIRED = (
+    "medications",
+    "allergies",
+)
+
+PERSONAL_GROUPS = (
+    "occupation",
+    "diet",
+    "sleep",
+    "physical_activity",
+    "smoking",
+    "alcohol",
+    "tobacco",
+)
+
 PERSONAL_OPTIONAL_GROUPS = (
-    "menstrual_history", "pregnancy_status", "sexual_history")
-ROS_TARGETS = ("constitutional", "cardiovascular", "respiratory", "gastrointestinal", "genitourinary",
-               "neurological", "musculoskeletal", "skin", "endocrine", "hematologic", "psychiatric")
-AYUSH_REQUIRED = ("ayush_prakriti", "ayush_vikriti", "ayush_sara", "ayush_samhanana", "ayush_pramana", "ayush_satmya", "ayush_satva",
-                  "ayush_ahara_shakti", "ayush_vyayama_shakti", "ayush_vaya", "ayush_ahara_vihara", "ayush_agni", "ayush_koshta", "ayush_nidana", "ayush_samprapti")
-DETAIL_REQUIRED = {"chief_complaint", "past_medical_history", "past_surgical_history", "hospitalizations", "medications", "allergies", "adverse_drug_reactions",
-                   "family_history", "occupation", "diet", "sleep", "physical_activity", "smoking", "alcohol", "tobacco", "menstrual_history", "pregnancy_status", "sexual_history"}
+    "menstrual_history",
+    "pregnancy_status",
+    "sexual_history",
+)
+
+ROS_TARGETS = (
+    "constitutional",
+    "cardiovascular",
+    "respiratory",
+    "gastrointestinal",
+    "genitourinary",
+    "neurological",
+    "musculoskeletal",
+    "skin",
+    "endocrine",
+    "hematologic",
+    "psychiatric",
+)
+
+AYUSH_REQUIRED = (
+    "ayush_prakriti",
+    "ayush_vikriti",
+    "ayush_sara",
+    "ayush_samhanana",
+    "ayush_pramana",
+    "ayush_satmya",
+    "ayush_satva",
+    "ayush_ahara_shakti",
+    "ayush_vyayama_shakti",
+    "ayush_vaya",
+    "ayush_ahara_vihara",
+    "ayush_agni",
+    "ayush_koshta",
+    "ayush_nidana",
+    "ayush_samprapti",
+)
+
+DETAIL_REQUIRED = {
+    "chief_complaint",
+    "past_medical_history",
+    "past_surgical_history",
+    "hospitalizations",
+    "medications",
+    "allergies",
+    "adverse_drug_reactions",
+    "family_history",
+    "occupation",
+    "diet",
+    "sleep",
+    "physical_activity",
+    "smoking",
+    "alcohol",
+    "tobacco",
+    "menstrual_history",
+    "pregnancy_status",
+    "sexual_history",
+}
 
 
 def normalize_section(section: str | None) -> str:
-    value = str(section or "hpi").strip().lower().replace("-", "_")
+    value = (
+        str(section or "hpi")
+        .strip()
+        .lower()
+        .replace("-", "_")
+    )
+
     if value == "medical_history":
         return "past_history"
+
     if value == "drug_history":
         return "drug_allergy"
-    return value if value in ALL_SECTIONS else "hpi"
+
+    return (
+        value
+        if value in ALL_SECTIONS
+        else "hpi"
+    )
 
 
 def slugify(value: str) -> str:
-    result = re.sub(r"[^a-z0-9_]+", "_", value.lower()).strip("_")
+    result = re.sub(
+        r"[^a-z0-9_]+",
+        "_",
+        value.lower(),
+    ).strip("_")
+
     return result[:80] or "fact"
 
 
-def normalize_field_name(name: str | None) -> str:
-    value = str(name or "").strip().lower().replace("-", "_").replace(" ", "_")
+def normalize_field_name(
+    name: str | None,
+) -> str:
+    value = (
+        str(name or "")
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
     if value in KNOWN_FIELDS:
         return value
-    return FIELD_ALIASES.get(value) or f"custom_{slugify(value)}"
+
+    return (
+        FIELD_ALIASES.get(value)
+        or f"custom_{slugify(value)}"
+    )
 
 
-def _clean_value(value: Any) -> Any:
+def _clean_value(
+    value: Any,
+) -> Any:
     if isinstance(value, str):
-        return " ".join(value.strip().split())
+        return " ".join(
+            value.strip().split()
+        )
+
     if isinstance(value, list):
-        return [item for item in (_clean_value(item) for item in value) if item not in (None, "")]
+        return [
+            item
+            for item in (
+                _clean_value(item)
+                for item in value
+            )
+            if item not in (None, "")
+        ]
+
     if isinstance(value, dict):
-        return {str(key): _clean_value(item) for key, item in value.items()}
+        return {
+            str(key): _clean_value(item)
+            for key, item in value.items()
+        }
+
     return value
 
 
-def _value_key(value: Any) -> str:
-    return json.dumps(_clean_value(value), ensure_ascii=False, sort_keys=True, default=str).lower()
+def _value_key(
+    value: Any,
+) -> str:
+    return json.dumps(
+        _clean_value(value),
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    ).lower()
 
 
 class InterviewState:
-    VERSION = 2
+    VERSION = 3
 
-    def __init__(self, topic: str = "general", current_section: str = "hpi", ayush_enabled: bool = False, completed_sections: set[str] | None = None, facts: list[dict[str, Any]] | None = None, question_history: list[str] | None = None, target_history: list[str] | None = None, pending_target: str | None = None, closure_asked_sections: set[str] | None = None, turn_count: int = 0) -> None:
-        self.topic = topic.strip() or "general"
-        self.current_section = normalize_section(current_section)
-        self.ayush_enabled = bool(ayush_enabled)
-        self.completed_sections = {normalize_section(item) for item in (
-            completed_sections or set()) if normalize_section(item) in ALL_SECTIONS}
-        self.facts = list(facts or [])
-        self.question_history = [str(item).strip() for item in (
-            question_history or []) if str(item).strip()]
-        self.target_history = [str(item).strip() for item in (
-            target_history or []) if str(item).strip()]
-        self.pending_target = pending_target if pending_target else None
-        self.closure_asked_sections = {normalize_section(item) for item in (
-            closure_asked_sections or set()) if normalize_section(item) in ALL_SECTIONS}
-        self.turn_count = int(turn_count or 0)
+    def __init__(
+        self,
+        topic: str = "general",
+        current_section: str = "hpi",
+        ayush_enabled: bool = False,
+        completed_sections: set[str] | None = None,
+        facts: list[dict[str, Any]] | None = None,
+        question_history: list[str] | None = None,
+        target_history: list[str] | None = None,
+        pending_target: str | None = None,
+        closure_asked_sections: set[str] | None = None,
+        turn_count: int = 0,
+    ) -> None:
+        self.topic = (
+            topic.strip()
+            or "general"
+        )
+        self.current_section = normalize_section(
+            current_section
+        )
+        self.ayush_enabled = bool(
+            ayush_enabled
+        )
+        self.completed_sections = {
+            normalize_section(item)
+            for item in (
+                completed_sections or set()
+            )
+            if normalize_section(item)
+            in ALL_SECTIONS
+        }
+        self.facts = list(
+            facts or []
+        )
+        self.question_history = [
+            str(item).strip()
+            for item in (
+                question_history or []
+            )
+            if str(item).strip()
+        ]
+        self.target_history = [
+            str(item).strip()
+            for item in (
+                target_history or []
+            )
+            if str(item).strip()
+        ]
+        self.pending_target = (
+            pending_target
+            if pending_target
+            else None
+        )
+        self.closure_asked_sections = {
+            normalize_section(item)
+            for item in (
+                closure_asked_sections or set()
+            )
+            if normalize_section(item)
+            in ALL_SECTIONS
+        }
+        self.turn_count = int(
+            turn_count or 0
+        )
 
     @classmethod
-    def empty(cls, ayush_enabled: bool = False) -> "InterviewState":
-        return cls(ayush_enabled=ayush_enabled)
+    def empty(
+        cls,
+        ayush_enabled: bool = False,
+    ) -> "InterviewState":
+        return cls(
+            ayush_enabled=ayush_enabled
+        )
 
     @classmethod
-    def from_value(cls, value: Any, legacy_fields: dict[str, Any] | None = None, ayush_enabled: bool = False) -> "InterviewState":
+    def from_value(
+        cls,
+        value: Any,
+        legacy_fields: dict[str, Any] | None = None,
+        ayush_enabled: bool = False,
+    ) -> "InterviewState":
         parsed = None
+
         if isinstance(value, str):
             try:
                 parsed = json.loads(value)
@@ -235,77 +720,189 @@ class InterviewState:
         elif isinstance(value, dict):
             parsed = value
 
-        if isinstance(parsed, dict) and parsed.get("version") == cls.VERSION:
+        if (
+            isinstance(parsed, dict)
+            and parsed.get("version") == cls.VERSION
+        ):
             return cls(
-                topic=str(parsed.get("topic") or "general"),
-                current_section=str(parsed.get("current_section") or "hpi"),
+                topic=str(
+                    parsed.get("topic")
+                    or "general"
+                ),
+                current_section=str(
+                    parsed.get("current_section")
+                    or "hpi"
+                ),
                 ayush_enabled=bool(
-                    ayush_enabled or parsed.get("ayush_enabled", False)),
-                completed_sections=set(parsed.get("completed_sections", [])),
-                facts=parsed.get("facts", []),
-                question_history=parsed.get("question_history", []),
-                target_history=parsed.get("target_history", []),
-                pending_target=parsed.get("pending_target"),
+                    ayush_enabled
+                    or parsed.get(
+                        "ayush_enabled",
+                        False,
+                    )
+                ),
+                completed_sections=set(
+                    parsed.get(
+                        "completed_sections",
+                        [],
+                    )
+                ),
+                facts=parsed.get(
+                    "facts",
+                    [],
+                ),
+                question_history=parsed.get(
+                    "question_history",
+                    [],
+                ),
+                target_history=parsed.get(
+                    "target_history",
+                    [],
+                ),
+                pending_target=parsed.get(
+                    "pending_target"
+                ),
                 closure_asked_sections=set(
-                    parsed.get("closure_asked_sections", [])),
-                turn_count=int(parsed.get("turn_count") or 0),
+                    parsed.get(
+                        "closure_asked_sections",
+                        [],
+                    )
+                ),
+                turn_count=int(
+                    parsed.get(
+                        "turn_count",
+                        0,
+                    )
+                    or 0
+                ),
             )
+
+        state = cls.empty(
+            ayush_enabled=ayush_enabled
+        )
 
         if isinstance(parsed, dict):
-            completed = parsed.get("completed_sections", [])
-            if not isinstance(completed, (list, set, tuple)):
-                completed = []
-            state = cls(
-                topic=str(parsed.get("topic") or "general"),
-                current_section=str(parsed.get("current_section") or "hpi"),
-                ayush_enabled=ayush_enabled,
-                completed_sections=set(completed),
-                facts=parsed.get("facts", []),
+            state.topic = str(
+                parsed.get(
+                    "topic",
+                    "general",
+                )
+                or "general"
             )
-        else:
-            state = cls.empty(ayush_enabled=ayush_enabled)
-
-        if not legacy_fields:
-            return state
-
-        legacy_completed = legacy_fields.get("_interview_completed_sections")
-
-        if not state.completed_sections and legacy_completed:
-            if isinstance(legacy_completed, str):
-                try:
-                    legacy_completed = json.loads(legacy_completed)
-                except json.JSONDecodeError:
-                    legacy_completed = legacy_completed.split(",")
-
-            if isinstance(legacy_completed, (list, set, tuple)):
-                state.mark_sections(list(legacy_completed))
-
-        legacy_section = legacy_fields.get("_interview_section")
-
-        if legacy_section:
-            state.current_section = normalize_section(str(legacy_section))
-
-        legacy_topic = legacy_fields.get("symptom_topic")
-
-        if legacy_topic and state.topic == "general":
-            state.topic = str(legacy_topic).strip() or state.topic
-
-        for field, value_item in legacy_fields.items():
-            if field.startswith("_") or field == "symptom_topic":
-                continue
-            state.add_fact(
-                FIELD_PRIMARY_SECTION.get(field, "hpi"),
-                field,
-                value_item,
-                None,
-                None,
-                False,
+            state.current_section = normalize_section(
+                str(
+                    parsed.get(
+                        "current_section",
+                        "hpi",
+                    )
+                    or "hpi"
+                )
             )
+            state.ayush_enabled = bool(
+                ayush_enabled
+                or parsed.get(
+                    "ayush_enabled",
+                    False,
+                )
+            )
+            state.completed_sections = {
+                normalize_section(item)
+                for item in parsed.get(
+                    "completed_sections",
+                    [],
+                )
+                if normalize_section(item)
+                in ALL_SECTIONS
+            }
+            state.facts = list(
+                parsed.get(
+                    "facts",
+                    [],
+                )
+            )
+
+        if legacy_fields:
+            legacy_completed = legacy_fields.get(
+                "_interview_completed_sections"
+            )
+
+            if (
+                not state.completed_sections
+                and legacy_completed
+            ):
+                if isinstance(
+                    legacy_completed,
+                    str,
+                ):
+                    try:
+                        legacy_completed = json.loads(
+                            legacy_completed
+                        )
+                    except json.JSONDecodeError:
+                        legacy_completed = legacy_completed.split(
+                            ","
+                        )
+
+                if isinstance(
+                    legacy_completed,
+                    (list, set, tuple),
+                ):
+                    state.mark_sections(
+                        list(
+                            legacy_completed
+                        )
+                    )
+
+            legacy_section = legacy_fields.get(
+                "_interview_section"
+            )
+
+            if legacy_section:
+                state.current_section = normalize_section(
+                    str(
+                        legacy_section
+                    )
+                )
+
+            legacy_topic = legacy_fields.get(
+                "symptom_topic"
+            )
+
+            if (
+                legacy_topic
+                and state.topic == "general"
+            ):
+                state.topic = (
+                    str(
+                        legacy_topic
+                    ).strip()
+                    or state.topic
+                )
+
+            if not state.facts:
+                for field, value_item in legacy_fields.items():
+                    if (
+                        field.startswith("_")
+                        or field == "symptom_topic"
+                    ):
+                        continue
+
+                    state.add_fact(
+                        FIELD_PRIMARY_SECTION.get(
+                            field,
+                            "hpi",
+                        ),
+                        field,
+                        value_item,
+                        None,
+                        None,
+                        False,
+                    )
 
         state.question_history = []
         state.target_history = []
         state.pending_target = None
         state.closure_asked_sections = set()
+        state.turn_count = 0
 
         return state
 
@@ -316,24 +913,46 @@ class InterviewState:
                 "topic": self.topic,
                 "current_section": self.current_section,
                 "ayush_enabled": self.ayush_enabled,
-                "completed_sections": sorted(self.completed_sections),
+                "completed_sections": sorted(
+                    self.completed_sections
+                ),
                 "facts": self.facts[-300:],
                 "question_history": self.question_history[-40:],
                 "target_history": self.target_history[-40:],
                 "pending_target": self.pending_target,
-                "closure_asked_sections": sorted(self.closure_asked_sections),
+                "closure_asked_sections": sorted(
+                    self.closure_asked_sections
+                ),
                 "turn_count": self.turn_count,
             },
             ensure_ascii=False,
             separators=(",", ":"),
         )
 
-    def add_fact(self, section: str, field: str, value: Any, evidence: str | None, turn_id: str | None, negative: bool = False) -> None:
-        normalized_section = normalize_section(section)
-        normalized_field = normalize_field_name(field)
-        cleaned_value = _clean_value(value)
+    def add_fact(
+        self,
+        section: str,
+        field: str,
+        value: Any,
+        evidence: str | None,
+        turn_id: str | None,
+        negative: bool = False,
+    ) -> None:
+        normalized_section = normalize_section(
+            section
+        )
+        normalized_field = normalize_field_name(
+            field
+        )
+        cleaned_value = _clean_value(
+            value
+        )
 
-        if cleaned_value in (None, "", []):
+        if cleaned_value in (
+            None,
+            "",
+            [],
+        ):
             return
 
         fact = {
@@ -356,8 +975,14 @@ class InterviewState:
             (
                 item.get("section"),
                 item.get("field"),
-                _value_key(item.get("value")),
-                bool(item.get("negative")),
+                _value_key(
+                    item.get("value")
+                ),
+                bool(
+                    item.get(
+                        "negative"
+                    )
+                ),
             )
             for item in self.facts
         }
@@ -365,77 +990,175 @@ class InterviewState:
         if key not in existing_keys:
             self.facts.append(fact)
 
-    def add_facts(self, facts: list[dict[str, Any]], evidence: str | None, turn_id: str | None) -> None:
+    def add_facts(
+        self,
+        facts: list[dict[str, Any]],
+        evidence: str | None,
+        turn_id: str | None,
+    ) -> None:
         for fact in facts:
-            if not isinstance(fact, dict):
+            if not isinstance(
+                fact,
+                dict,
+            ):
                 continue
 
             self.add_fact(
-                str(fact.get("section") or self.current_section),
-                str(fact.get("field") or ""),
-                fact.get("value"),
-                str(fact.get("evidence") or evidence or "").strip() or None,
+                str(
+                    fact.get(
+                        "section"
+                    )
+                    or self.current_section
+                ),
+                str(
+                    fact.get(
+                        "field"
+                    )
+                    or ""
+                ),
+                fact.get(
+                    "value"
+                ),
+                str(
+                    fact.get(
+                        "evidence"
+                    )
+                    or evidence
+                    or ""
+                ).strip()
+                or None,
                 turn_id,
-                bool(fact.get("negative", False)),
+                bool(
+                    fact.get(
+                        "negative",
+                        False,
+                    )
+                ),
             )
 
-    def add_question(self, question: str | None, target: str | None = None) -> None:
+    def add_question(
+        self,
+        question: str | None,
+        target: str | None = None,
+    ) -> None:
         if not question:
             return
 
-        value = " ".join(question.strip().split())
+        value = " ".join(
+            question.strip().split()
+        )
 
         if not value:
             return
 
-        if not self.question_history or self.question_history[-1].lower() != value.lower():
-            self.question_history.append(value)
-            self.target_history.append(str(target or "").strip())
+        if (
+            not self.question_history
+            or self.question_history[-1].lower()
+            != value.lower()
+        ):
+            self.question_history.append(
+                value
+            )
+            self.target_history.append(
+                str(
+                    target or ""
+                ).strip()
+            )
 
-        self.pending_target = target
+        self.pending_target = (
+            target
+            if target
+            else None
+        )
 
-        if target == "section_closure":
-            self.closure_asked_sections.add(self.current_section)
+    def mark_sections(
+        self,
+        sections: list[str]
+        | set[str]
+        | None,
+    ) -> None:
+        for section in (
+            sections or []
+        ):
+            normalized = normalize_section(
+                section
+            )
 
-    def mark_sections(self, sections: list[str] | set[str] | None) -> None:
-        for section in sections or []:
-            normalized = normalize_section(section)
             if normalized in ALL_SECTIONS:
-                self.completed_sections.add(normalized)
+                self.completed_sections.add(
+                    normalized
+                )
 
-    def complete_current_section(self) -> None:
-        self.completed_sections.add(self.current_section)
-        self.closure_asked_sections.discard(self.current_section)
+    def complete_current_section(
+        self,
+    ) -> None:
+        self.completed_sections.add(
+            self.current_section
+        )
+        self.closure_asked_sections.discard(
+            self.current_section
+        )
         self.pending_target = None
-        next_section = self.next_section()
-        self.current_section = next_section or self.current_section
 
-    def next_section(self) -> str | None:
+        next_section = self.next_section()
+
+        self.current_section = (
+            next_section
+            or self.current_section
+        )
+
+    def next_section(
+        self,
+    ) -> str | None:
         for section in SECTION_ORDER:
-            if section not in self.completed_sections:
+            if (
+                section
+                not in self.completed_sections
+            ):
                 return section
 
-        if self.ayush_enabled and AYUSH_SECTION not in self.completed_sections:
+        if (
+            self.ayush_enabled
+            and AYUSH_SECTION
+            not in self.completed_sections
+        ):
             return AYUSH_SECTION
 
         return None
 
     def is_complete(self) -> bool:
-        required = set(SECTION_ORDER)
+        required = set(
+            SECTION_ORDER
+        )
 
         if self.ayush_enabled:
-            required.add(AYUSH_SECTION)
+            required.add(
+                AYUSH_SECTION
+            )
 
-        return required.issubset(self.completed_sections)
+        return required.issubset(
+            self.completed_sections
+        )
 
     def known_fields(self) -> dict[str, Any]:
-        grouped: dict[str, list[dict[str, Any]]] = {}
+        grouped: dict[
+            str,
+            list[dict[str, Any]],
+        ] = {}
 
         for fact in self.facts:
-            field = str(fact.get("field") or "")
+            field = str(
+                fact.get(
+                    "field"
+                )
+                or ""
+            )
 
             if field:
-                grouped.setdefault(field, []).append(fact)
+                grouped.setdefault(
+                    field,
+                    [],
+                ).append(fact)
 
         result: dict[str, Any] = {}
 
@@ -443,13 +1166,17 @@ class InterviewState:
             positives = [
                 item.get("value")
                 for item in facts
-                if not item.get("negative")
+                if not item.get(
+                    "negative"
+                )
             ]
 
             negatives = [
                 item.get("value")
                 for item in facts
-                if item.get("negative")
+                if item.get(
+                    "negative"
+                )
             ]
 
             if positives:
@@ -457,15 +1184,33 @@ class InterviewState:
                     values: list[str] = []
 
                     for value in positives:
-                        for item in value if isinstance(value, list) else [value]:
-                            text = str(item).strip()
+                        for item in (
+                            value
+                            if isinstance(
+                                value,
+                                list,
+                            )
+                            else [value]
+                        ):
+                            text = str(
+                                item
+                            ).strip()
 
-                            if text and text not in values:
-                                values.append(text)
+                            if (
+                                text
+                                and text
+                                not in values
+                            ):
+                                values.append(
+                                    text
+                                )
 
                     if values:
-                        result[field] = values if len(
-                            values) > 1 else values[0]
+                        result[field] = (
+                            values
+                            if len(values) > 1
+                            else values[0]
+                        )
                 else:
                     result[field] = positives[-1]
 
@@ -474,18 +1219,32 @@ class InterviewState:
 
         return result
 
-    def section_facts(self, section: str) -> list[dict[str, Any]]:
-        normalized = normalize_section(section)
+    def section_facts(
+        self,
+        section: str,
+    ) -> list[dict[str, Any]]:
+        normalized = normalize_section(
+            section
+        )
 
         return [
             fact
             for fact in self.facts
-            if normalize_section(fact.get("section")) == normalized
+            if normalize_section(
+                fact.get("section")
+            )
+            == normalized
         ]
 
-    def target_value(self, target: str) -> Any:
+    def target_value(
+        self,
+        target: str,
+    ) -> Any:
         values = self.known_fields()
-        fields = TARGET_FIELDS.get(target, (target,))
+        fields = TARGET_FIELDS.get(
+            target,
+            (target,),
+        )
 
         for field in fields:
             if field in values:
@@ -493,26 +1252,47 @@ class InterviewState:
 
         return None
 
-    def target_answered(self, target: str) -> bool:
-        value = self.target_value(target)
+    def target_answered(
+        self,
+        target: str,
+    ) -> bool:
+        value = self.target_value(
+            target
+        )
 
         if value is None:
             return False
 
         if target in DETAIL_REQUIRED:
-            if isinstance(value, bool):
+            if isinstance(
+                value,
+                bool,
+            ):
                 return not value
 
-            normalized = str(value).strip().lower()
+            normalized = str(
+                value
+            ).strip().lower()
 
-            if normalized in {"yes", "y", "true", "haan", "हां", "हाँ"}:
+            if normalized in {
+                "yes",
+                "y",
+                "true",
+                "haan",
+                "हां",
+                "हाँ",
+            }:
                 return False
 
         return True
 
     def _hpi_candidates(self) -> list[str]:
-        if not self.target_answered("chief_complaint"):
-            return ["chief_complaint"]
+        if not self.target_answered(
+            "chief_complaint"
+        ):
+            return [
+                "chief_complaint"
+            ]
 
         base = [
             "onset",
@@ -555,7 +1335,11 @@ class InterviewState:
                 "impact_on_daily_life",
             ]
 
-        if topic in {"gastrointestinal", "constipation", "diarrhea"}:
+        if topic in {
+            "gastrointestinal",
+            "constipation",
+            "diarrhea",
+        }:
             base.extend(
                 [
                     "bowel_frequency",
@@ -566,7 +1350,10 @@ class InterviewState:
                     "nausea_vomiting",
                 ]
             )
-        elif topic in {"respiratory", "breathing_difficulty"}:
+        elif topic in {
+            "respiratory",
+            "breathing_difficulty",
+        }:
             base.extend(
                 [
                     "breathing_difficulty",
@@ -575,7 +1362,10 @@ class InterviewState:
                     "fever",
                 ]
             )
-        elif topic in {"headache", "neurological"}:
+        elif topic in {
+            "headache",
+            "neurological",
+        }:
             base.extend(
                 [
                     "vision_or_neuro",
@@ -593,56 +1383,33 @@ class InterviewState:
                 ]
             )
 
-        if topic in {"headache", "neurological", "musculoskeletal", "skin"}:
-            base.insert(4, "laterality")
+        if topic in {
+            "headache",
+            "neurological",
+            "musculoskeletal",
+            "skin",
+        }:
+            base.insert(
+                4,
+                "laterality",
+            )
         else:
-            base.extend(["fever", "nausea_vomiting"])
+            base.extend(
+                [
+                    "fever",
+                    "nausea_vomiting",
+                ]
+            )
 
         return [
             target
-            for target in dict.fromkeys(base)
-            if not self.target_answered(target)
-        ]
-
-    @staticmethod
-    def _target_sections(target: str) -> set[str]:
-        if not target or target == "section_closure":
-            return set()
-
-        raw_targets = target[7:] if target.startswith("bundle:") else target
-
-        targets = [
-            item.strip()
-            for item in re.split(
-                r"[,|;/]+|\band\b",
-                raw_targets,
+            for target in dict.fromkeys(
+                base
             )
-            if item.strip()
+            if not self.target_answered(
+                target
+            )
         ]
-
-        return {
-            FIELD_PRIMARY_SECTION[item]
-            for item in targets
-            if item in FIELD_PRIMARY_SECTION
-        }
-
-    def section_question_count(self, section: str | None = None) -> int:
-        current = normalize_section(section or self.current_section)
-
-        return sum(
-            1
-            for target in self.target_history
-            if current in self._target_sections(target)
-        )
-
-    def section_budget_reached(self, section: str | None = None) -> bool:
-        current = normalize_section(section or self.current_section)
-        budget = SECTION_QUESTION_BUDGETS.get(current)
-
-        if budget is None:
-            return False
-
-        return self.section_question_count(current) >= budget
 
     def candidate_targets(self) -> list[str]:
         if self.section_budget_reached():
@@ -652,16 +1419,19 @@ class InterviewState:
             return self._hpi_candidates()
 
         if self.current_section == "past_history":
+            targets = [
+                target
+                for target in (
+                    *PAST_REQUIRED,
+                    "immunizations",
+                )
+                if not self.target_answered(
+                    target
+                )
+            ]
             return list(
                 dict.fromkeys(
-                    [
-                        target
-                        for target in (
-                            *PAST_REQUIRED,
-                            "immunizations",
-                        )
-                        if not self.target_answered(target)
-                    ]
+                    targets
                 )
             )
 
@@ -669,75 +1439,196 @@ class InterviewState:
             targets = [
                 target
                 for target in DRUG_REQUIRED
-                if not self.target_answered(target)
+                if not self.target_answered(
+                    target
+                )
             ]
 
             if (
-                self.target_answered("medications")
-                and self.target_answered("allergies")
-                and not self.target_answered("adverse_drug_reactions")
+                self.target_answered(
+                    "medications"
+                )
+                and self.target_answered(
+                    "allergies"
+                )
+                and not self.target_answered(
+                    "adverse_drug_reactions"
+                )
             ):
-                targets.append("adverse_drug_reactions")
+                targets.append(
+                    "adverse_drug_reactions"
+                )
 
-            return list(dict.fromkeys(targets))
+            return list(
+                dict.fromkeys(
+                    targets
+                )
+            )
 
         if self.current_section == "family_history":
             return (
                 []
-                if self.target_answered("family_history")
-                else ["family_history"]
+                if self.target_answered(
+                    "family_history"
+                )
+                else [
+                    "family_history"
+                ]
             )
 
         if self.current_section == "personal_history":
             return [
                 target
                 for target in PERSONAL_GROUPS
-                if not self.target_answered(target)
+                if not self.target_answered(
+                    target
+                )
             ]
 
         if self.current_section == "review_of_systems":
             return [
                 target
                 for target in ROS_TARGETS
-                if not self.target_answered(target)
+                if not self.target_answered(
+                    target
+                )
             ]
 
         return [
             target
             for target in AYUSH_REQUIRED
-            if not self.target_answered(target)
+            if not self.target_answered(
+                target
+            )
         ]
 
+    @staticmethod
+    def _split_targets(
+        target: str | None,
+    ) -> list[str]:
+        if not target:
+            return []
+
+        raw = (
+            target[7:]
+            if target.startswith("bundle:")
+            else target
+        )
+
+        return [
+            item.strip()
+            for item in re.split(
+                r"[,|;/]+|\band\b",
+                raw,
+                flags=re.IGNORECASE,
+            )
+            if item.strip()
+        ]
+
+    def section_question_count(
+        self,
+        section: str | None = None,
+    ) -> int:
+        current = normalize_section(
+            section
+            or self.current_section
+        )
+
+        count = 0
+
+        for target in self.target_history:
+            targets = self._split_targets(
+                target
+            )
+
+            sections = {
+                FIELD_PRIMARY_SECTION.get(
+                    item
+                )
+                for item in targets
+            }
+
+            if current in sections:
+                count += 1
+
+        return count
+
+    def section_budget_reached(
+        self,
+        section: str | None = None,
+    ) -> bool:
+        current = normalize_section(
+            section
+            or self.current_section
+        )
+
+        budget = SECTION_QUESTION_BUDGETS.get(
+            current
+        )
+
+        if budget is None:
+            return False
+
+        return (
+            self.section_question_count(
+                current
+            )
+            >= budget
+        )
+
     def hpi_ready_for_closure(self) -> bool:
-        if not self.target_answered("chief_complaint"):
+        if not self.target_answered(
+            "chief_complaint"
+        ):
             return False
 
         covered = sum(
-            any(self.target_answered(field) for field in group)
+            any(
+                self.target_answered(
+                    field
+                )
+                for field in group
+            )
             for group in HPI_CORE_GROUPS
         )
 
-        return covered >= 6 and self.target_answered("associated_symptoms")
+        return (
+            covered >= 6
+            and self.target_answered(
+                "associated_symptoms"
+            )
+        )
 
     def past_ready_for_closure(self) -> bool:
         return all(
-            self.target_answered(field)
-            for field in (*PAST_REQUIRED, "immunizations")
+            self.target_answered(
+                field
+            )
+            for field in (
+                *PAST_REQUIRED,
+                "immunizations",
+            )
         )
 
     def drug_ready_for_closure(self) -> bool:
         return all(
-            self.target_answered(field)
+            self.target_answered(
+                field
+            )
             for field in DRUG_REQUIRED
         )
 
     def family_ready_for_closure(self) -> bool:
-        return self.target_answered("family_history")
+        return self.target_answered(
+            "family_history"
+        )
 
     def personal_ready_for_closure(self) -> bool:
         return (
             sum(
-                self.target_answered(field)
+                self.target_answered(
+                    field
+                )
                 for field in PERSONAL_GROUPS
             )
             >= 5
@@ -746,7 +1637,9 @@ class InterviewState:
     def ros_ready_for_closure(self) -> bool:
         return (
             sum(
-                self.target_answered(field)
+                self.target_answered(
+                    field
+                )
                 for field in ROS_TARGETS
             )
             >= 6
@@ -755,30 +1648,76 @@ class InterviewState:
     def ayush_ready_for_closure(self) -> bool:
         return (
             sum(
-                self.target_answered(field)
+                self.target_answered(
+                    field
+                )
                 for field in AYUSH_REQUIRED
             )
-            >= len(AYUSH_REQUIRED)
+            >= len(
+                AYUSH_REQUIRED
+            )
         )
 
-    def section_summary(self) -> dict[str, dict[str, Any]]:
+    def section_naturally_ready(
+        self,
+        section: str | None = None,
+    ) -> bool:
+        current = normalize_section(
+            section
+            or self.current_section
+        )
+
+        return {
+            "hpi": self.hpi_ready_for_closure(),
+            "past_history": self.past_ready_for_closure(),
+            "drug_allergy": self.drug_ready_for_closure(),
+            "family_history": self.family_ready_for_closure(),
+            "personal_history": self.personal_ready_for_closure(),
+            "review_of_systems": self.ros_ready_for_closure(),
+            AYUSH_SECTION: self.ayush_ready_for_closure(),
+        }.get(
+            current,
+            False,
+        )
+
+    def section_summary(
+        self,
+    ) -> dict[str, dict[str, Any]]:
         return {
             section: {
-                "completed": section in self.completed_sections,
+                "completed": (
+                    section
+                    in self.completed_sections
+                ),
                 "facts": [
                     {
-                        "field": fact.get("field"),
-                        "value": fact.get("value"),
-                        "negative": bool(fact.get("negative")),
+                        "field": fact.get(
+                            "field"
+                        ),
+                        "value": fact.get(
+                            "value"
+                        ),
+                        "negative": bool(
+                            fact.get(
+                                "negative"
+                            )
+                        ),
                     }
-                    for fact in self.section_facts(section)
+                    for fact in self.section_facts(
+                        section
+                    )
                 ],
             }
             for section in ALL_SECTIONS
         }
 
-    def render_section(self, section: str) -> str | None:
-        facts = self.section_facts(section)
+    def render_section(
+        self,
+        section: str,
+    ) -> str | None:
+        facts = self.section_facts(
+            section
+        )
 
         if not facts:
             return None
@@ -788,26 +1727,51 @@ class InterviewState:
 
         for fact in facts:
             field = str(
-                fact.get("field") or "detail"
-            ).replace("_", " ")
+                fact.get(
+                    "field"
+                )
+                or "detail"
+            ).replace(
+                "_",
+                " ",
+            )
 
             value = (
                 "No / not reported"
-                if fact.get("negative")
+                if fact.get(
+                    "negative"
+                )
                 else (
                     ", ".join(
                         str(item)
-                        for item in fact.get("value")
+                        for item in fact.get(
+                            "value"
+                        )
                     )
-                    if isinstance(fact.get("value"), list)
-                    else str(fact.get("value"))
+                    if isinstance(
+                        fact.get(
+                            "value"
+                        ),
+                        list,
+                    )
+                    else str(
+                        fact.get(
+                            "value"
+                        )
+                    )
                 )
             )
 
-            line = f"{field}: {value}"
+            line = (
+                f"{field}: {value}"
+            )
 
             if line not in seen:
-                lines.append(line)
+                lines.append(
+                    line
+                )
                 seen.add(line)
 
-        return "; ".join(lines)
+        return "; ".join(
+            lines
+        )

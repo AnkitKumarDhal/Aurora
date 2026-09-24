@@ -7,12 +7,25 @@ from typing import Any
 from uuid import uuid4
 
 from backend.ai.interview.extractor import InterviewExtractor
-from backend.ai.interview.state import AYUSH_SECTION, FIELD_PRIMARY_SECTION, InterviewState, normalize_field_name, normalize_section
+from backend.ai.interview.state import (
+    AYUSH_SECTION,
+    FIELD_PRIMARY_SECTION,
+    InterviewState,
+    normalize_field_name,
+    normalize_section,
+)
 from backend.ai.red_flag_engine import detect_red_flags
 from backend.domain.clinical_signal import ClinicalSignal
 from backend.domain.clinical_summary import ClinicalSummary
 from backend.domain.conversation import ConversationTurn
-from backend.domain.enums import ClinicalSignalType, ConversationInputType, SessionStatus, Speaker, SummaryStatus, UrgencyLevel
+from backend.domain.enums import (
+    ClinicalSignalType,
+    ConversationInputType,
+    SessionStatus,
+    Speaker,
+    SummaryStatus,
+    UrgencyLevel,
+)
 from backend.domain.triage import TriageResult
 from backend.services.clinical_session import ClinicalSessionService
 from backend.services.clinical_signal import ClinicalSignalService
@@ -43,20 +56,32 @@ class InterviewController:
         session_id: str,
         language: str | None = None,
     ) -> dict[str, Any]:
-        session = await self.session_service.get_session(session_id)
+        session = await self.session_service.get_session(
+            session_id
+        )
 
         if session is None:
-            raise ValueError("Clinical session not found")
+            raise ValueError(
+                "Clinical session not found"
+            )
 
-        signals = await self.signal_service.get_session_signals(session_id)
+        signals = (
+            await self.signal_service.get_session_signals(
+                session_id
+            )
+        )
 
         state = self._load_state(
             signals,
-            self._is_ayush_department(session.department_id),
+            self._is_ayush_department(
+                session.department_id
+            ),
         )
 
-        turns = await self.conversation_service.get_session_turns(
-            session_id
+        turns = (
+            await self.conversation_service.get_session_turns(
+                session_id
+            )
         )
 
         patient_turns = [
@@ -65,13 +90,18 @@ class InterviewController:
             if turn.speaker == Speaker.PATIENT
         ]
 
-        response_language = language or next(
-            (
-                turn.language
-                for turn in reversed(patient_turns)
-                if turn.language
-            ),
-            "en",
+        response_language = (
+            language
+            or next(
+                (
+                    turn.language
+                    for turn in reversed(
+                        patient_turns
+                    )
+                    if turn.language
+                ),
+                "en",
+            )
         )
 
         red_flag_result = self._run_red_flag_screen(
@@ -80,13 +110,16 @@ class InterviewController:
         )
 
         completed = bool(
-            red_flag_result["triage_required"]
+            red_flag_result[
+                "triage_required"
+            ]
             or state.is_complete()
         )
 
         if (
             not completed
-            and state.current_section in state.completed_sections
+            and state.current_section
+            in state.completed_sections
         ):
             state.current_section = (
                 state.next_section()
@@ -95,16 +128,17 @@ class InterviewController:
 
         if (
             not completed
-            and state.section_budget_reached()
+            and not state.question_history
         ):
-            state.complete_current_section()
-
-        if not completed and not state.question_history:
-            decision = await self.extractor.generate_question(
-                state,
-                self._conversation_for_ai(turns),
-                response_language,
-                session_id,
+            decision = (
+                await self.extractor.generate_question(
+                    state,
+                    self._conversation_for_ai(
+                        turns
+                    ),
+                    response_language,
+                    session_id,
+                )
             )
 
             state.add_question(
@@ -133,14 +167,18 @@ class InterviewController:
             "session_id": session_id,
             "topic": state.topic,
             "known_fields": state.known_fields(),
-            "patient_turns": len(patient_turns),
+            "patient_turns": len(
+                patient_turns
+            ),
             "next_question": (
                 None
                 if completed
                 else latest_question
             ),
             "completed": completed,
-            "red_flags": red_flag_result["red_flags"],
+            "red_flags": red_flag_result[
+                "red_flags"
+            ],
             "ai_enabled": self.extractor.enabled,
         }
 
@@ -227,7 +265,9 @@ class InterviewController:
 
         state = self._load_state(
             signals,
-            self._is_ayush_department(session.department_id),
+            self._is_ayush_department(
+                session.department_id
+            ),
         )
 
         state.turn_count += 1
@@ -238,13 +278,18 @@ class InterviewController:
             )
         )
 
-        response_language = language or next(
-            (
-                item.language
-                for item in reversed(turns)
-                if item.language
-            ),
-            "en",
+        response_language = (
+            language
+            or next(
+                (
+                    item.language
+                    for item in reversed(
+                        turns
+                    )
+                    if item.language
+                ),
+                "en",
+            )
         )
 
         facts = self.extractor.extract_facts(
@@ -260,11 +305,16 @@ class InterviewController:
                 turn_id,
             )
 
-        topic = self.extractor.detect_topic(text)
+        topic = self.extractor.detect_topic(
+            text
+        )
 
-        if topic and (
-            not state.topic
-            or state.topic == "general"
+        if (
+            topic
+            and (
+                not state.topic
+                or state.topic == "general"
+            )
         ):
             state.topic = topic
 
@@ -306,40 +356,43 @@ class InterviewController:
                 response_language
             )
             state.pending_target = None
+
         else:
-            if state.section_budget_reached():
+            should_advance = (
+                state.section_budget_reached()
+                or state.section_naturally_ready()
+            )
+
+            if should_advance:
                 state.complete_current_section()
 
-            if (
-                not state.is_complete()
-                and state.current_section
-                not in state.completed_sections
-            ):
-                candidates = state.candidate_targets()
+            if not state.is_complete():
+                decision = (
+                    await self.extractor.generate_question(
+                        state,
+                        self._conversation_for_ai(
+                            turns
+                        ),
+                        response_language,
+                        session_id,
+                    )
+                )
 
-                if candidates:
-                    decision = (
-                        await self.extractor.generate_question(
-                            state,
-                            self._conversation_for_ai(
-                                turns
-                            ),
-                            response_language,
-                            session_id,
-                        )
+                if decision.question:
+                    next_question = (
+                        decision.question
+                    )
+                    assistant_response = (
+                        decision.question
+                    )
+                    ai_used = (
+                        decision.ai_used
                     )
 
-                    if decision.question:
-                        next_question = (
-                            decision.question
-                        )
-                        assistant_response = next_question
-                        ai_used = decision.ai_used
-
-                        state.add_question(
-                            next_question,
-                            decision.target,
-                        )
+                    state.add_question(
+                        decision.question,
+                        decision.target,
+                    )
 
             if state.is_complete():
                 completed = True
@@ -380,13 +433,17 @@ class InterviewController:
         extracted = {
             fact["field"]: fact["value"]
             for fact in facts
-            if not fact.get("negative")
+            if not fact.get(
+                "negative"
+            )
         }
 
         negatives = [
             fact["field"]
             for fact in facts
-            if fact.get("negative")
+            if fact.get(
+                "negative"
+            )
         ]
 
         return {
@@ -398,7 +455,9 @@ class InterviewController:
             "known_fields": state.known_fields(),
             "extracted_fields": extracted,
             "negative_fields": negatives,
-            "red_flags": red_flag_result["red_flags"],
+            "red_flags": red_flag_result[
+                "red_flags"
+            ],
             "ai_used": ai_used,
         }
 
@@ -460,7 +519,9 @@ class InterviewController:
 
         if (
             not state.is_complete()
-            and not red_flag_result["triage_required"]
+            and not red_flag_result[
+                "triage_required"
+            ]
         ):
             raise ValueError(
                 "Interview is not complete"
@@ -505,7 +566,9 @@ class InterviewController:
                 urgency_level=UrgencyLevel.LEVEL_1,
                 priority_score=20,
                 red_flags_present=bool(
-                    red_flag_result["red_flags"]
+                    red_flag_result[
+                        "red_flags"
+                    ]
                 ),
             )
 
@@ -579,7 +642,9 @@ class InterviewController:
         }
 
         return InterviewState.from_value(
-            values.get("_interview_state"),
+            values.get(
+                "_interview_state"
+            ),
             legacy_fields=values,
             ayush_enabled=ayush_enabled,
         )
@@ -593,9 +658,15 @@ class InterviewController:
 
         try:
             severity = float(
-                known.get("severity", 0)
+                known.get(
+                    "severity",
+                    0,
+                )
             )
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
             severity = 0
 
         if severity >= 7:
@@ -613,6 +684,7 @@ class InterviewController:
                 ClinicalSignalType.SYMPTOM,
                 1.0,
             )
+
         elif severity >= 4:
             await self._upsert_signal(
                 session_id,
@@ -628,6 +700,7 @@ class InterviewController:
                 ClinicalSignalType.SYMPTOM,
                 1.0,
             )
+
         elif severity > 0:
             await self._upsert_signal(
                 session_id,
@@ -645,11 +718,17 @@ class InterviewController:
             )
 
         duration = str(
-            known.get("duration") or ""
+            known.get(
+                "duration"
+            )
+            or ""
         ).lower()
 
         course = str(
-            known.get("course") or ""
+            known.get(
+                "course"
+            )
+            or ""
         ).lower()
 
         persistent = bool(
@@ -682,32 +761,44 @@ class InterviewController:
     ) -> None:
         existing_values = {
             signal.name: signal.value
-            for signal in await self.signal_service.get_session_signals(
-                session_id
+            for signal in (
+                await self.signal_service.get_session_signals(
+                    session_id
+                )
             )
         }
 
         for fact in state.facts:
-            if fact.get("turn_id") != turn_id:
+            if fact.get(
+                "turn_id"
+            ) != turn_id:
                 continue
 
             field = normalize_field_name(
                 fact.get("field")
             )
 
-            if field.startswith("custom_"):
+            if field.startswith(
+                "custom_"
+            ):
                 continue
 
             value = (
                 False
-                if fact.get("negative")
-                else fact.get("value")
+                if fact.get(
+                    "negative"
+                )
+                else fact.get(
+                    "value"
+                )
             )
 
             if value is None:
                 continue
 
-            existing = existing_values.get(field)
+            existing = existing_values.get(
+                field
+            )
 
             final_value = self._merge_signal_value(
                 field,
@@ -715,11 +806,15 @@ class InterviewController:
                 value,
             )
 
-            section = FIELD_PRIMARY_SECTION.get(
-                field,
-                normalize_section(
-                    fact.get("section")
-                ),
+            section = (
+                FIELD_PRIMARY_SECTION.get(
+                    field,
+                    normalize_section(
+                        fact.get(
+                            "section"
+                        )
+                    ),
+                )
             )
 
             if (
@@ -732,9 +827,13 @@ class InterviewController:
                 session_id,
                 field,
                 final_value,
-                self._signal_type_for(field),
+                self._signal_type_for(
+                    field
+                ),
                 0.95
-                if fact.get("negative")
+                if fact.get(
+                    "negative"
+                )
                 else 0.9,
             )
 
@@ -749,7 +848,11 @@ class InterviewController:
         if new_value is None:
             return existing
 
-        if existing is None or existing is False or existing is True:
+        if (
+            existing is None
+            or existing is False
+            or existing is True
+        ):
             return new_value
 
         if field not in {
@@ -780,13 +883,23 @@ class InterviewController:
         ):
             for item in (
                 source
-                if isinstance(source, list)
+                if isinstance(
+                    source,
+                    list,
+                )
                 else [source]
             ):
-                value = str(item).strip()
+                value = str(
+                    item
+                ).strip()
 
-                if value and value not in values:
-                    values.append(value)
+                if (
+                    value
+                    and value not in values
+                ):
+                    values.append(
+                        value
+                    )
 
         return (
             values[0]
@@ -929,7 +1042,9 @@ class InterviewController:
                 "value": signal_value,
                 "confidence": confidence,
                 "source": "interview_ai",
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(
+                    timezone.utc
+                ),
             },
         )
 
@@ -940,27 +1055,43 @@ class InterviewController:
         if (
             isinstance(
                 value,
-                (bool, int, float),
+                (
+                    bool,
+                    int,
+                    float,
+                ),
             )
             or value is None
         ):
             return value
 
-        if isinstance(value, list):
+        if isinstance(
+            value,
+            list,
+        ):
             return ", ".join(
                 str(item)
                 for item in value
                 if str(item).strip()
             )
 
-        if isinstance(value, dict):
+        if isinstance(
+            value,
+            dict,
+        ):
             return json.dumps(
                 value,
                 ensure_ascii=False,
-                separators=(",", ":"),
+                separators=(
+                    ",",
+                    ":",
+                ),
             )
 
-        return str(value).strip() or None
+        return (
+            str(value).strip()
+            or None
+        )
 
     @staticmethod
     def _signal_type_for(
@@ -999,10 +1130,13 @@ class InterviewController:
             {
                 "role": (
                     "patient"
-                    if turn.speaker == Speaker.PATIENT
+                    if turn.speaker
+                    == Speaker.PATIENT
                     else "assistant"
                 ),
-                "content": turn.content or "",
+                "content": (
+                    turn.content or ""
+                ),
                 "language": turn.language,
             }
             for turn in turns
@@ -1011,7 +1145,7 @@ class InterviewController:
                 Speaker.PATIENT,
                 Speaker.SYSTEM,
             }
-        ][-8:]
+        ][-6:]
 
     @staticmethod
     def _run_red_flag_screen(
@@ -1039,42 +1173,65 @@ class InterviewController:
         )
 
         complaint = self._value_as_string(
-            known_fields.get("chief_complaint")
+            known_fields.get(
+                "chief_complaint"
+            )
         )
 
         section_values = (
-            ("HPI", state.render_section("hpi")),
+            (
+                "HPI",
+                state.render_section(
+                    "hpi"
+                ),
+            ),
             (
                 "Past history",
-                state.render_section("past_history"),
+                state.render_section(
+                    "past_history"
+                ),
             ),
             (
                 "Drug and allergy history",
-                state.render_section("drug_allergy"),
+                state.render_section(
+                    "drug_allergy"
+                ),
             ),
             (
                 "Family history",
-                state.render_section("family_history"),
+                state.render_section(
+                    "family_history"
+                ),
             ),
             (
                 "Personal history",
-                state.render_section("personal_history"),
+                state.render_section(
+                    "personal_history"
+                ),
             ),
             (
                 "Review of systems",
-                state.render_section("review_of_systems"),
+                state.render_section(
+                    "review_of_systems"
+                ),
             ),
             (
                 "AYUSH history",
-                state.render_section("ayush"),
+                state.render_section(
+                    "ayush"
+                ),
             ),
         )
 
-        history = "\n".join(
-            f"{label}: {value}"
-            for label, value in section_values
-            if value
-        ) or None
+        history = (
+            "\n".join(
+                f"{label}: {value}"
+                for label, value
+                in section_values
+                if value
+            )
+            or None
+        )
 
         past_medical_history = (
             self._as_list(
@@ -1091,31 +1248,53 @@ class InterviewController:
 
         if (
             not past_medical_history
-            and state.render_section("past_history")
+            and state.render_section(
+                "past_history"
+            )
         ):
             past_medical_history = [
-                state.render_section("past_history")
+                state.render_section(
+                    "past_history"
+                )
             ]
 
         medications = self._as_list(
-            known_fields.get("medications")
+            known_fields.get(
+                "medications"
+            )
         )
 
         allergies = self._as_list(
-            known_fields.get("allergies")
+            known_fields.get(
+                "allergies"
+            )
         )
 
         clinical_signal_names = sorted(
             {
-                str(fact.get("field"))
+                str(
+                    fact.get(
+                        "field"
+                    )
+                )
                 for fact in state.facts
-                if fact.get("field")
+                if fact.get(
+                    "field"
+                )
                 and not str(
-                    fact.get("field")
-                ).startswith("custom_")
+                    fact.get(
+                        "field"
+                    )
+                ).startswith(
+                    "custom_"
+                )
                 and not str(
-                    fact.get("field")
-                ).startswith("_")
+                    fact.get(
+                        "field"
+                    )
+                ).startswith(
+                    "_"
+                )
             }
         )
 
@@ -1127,21 +1306,27 @@ class InterviewController:
             "medications": medications,
             "allergies": allergies,
             "clinical_signals": clinical_signal_names,
-            "generated_at": datetime.now(timezone.utc),
+            "generated_at": datetime.now(
+                timezone.utc
+            ),
         }
 
         if existing is None:
-            return await self.summary_service.create_summary(
-                ClinicalSummary(
-                    summary_id=f"summary_{uuid4().hex}",
-                    session_id=session_id,
-                    **values,
+            return (
+                await self.summary_service.create_summary(
+                    ClinicalSummary(
+                        summary_id=f"summary_{uuid4().hex}",
+                        session_id=session_id,
+                        **values,
+                    )
                 )
             )
 
-        updated = await self.summary_service.update_summary(
-            existing.summary_id,
-            values,
+        updated = (
+            await self.summary_service.update_summary(
+                existing.summary_id,
+                values,
+            )
         )
 
         if updated is None:
@@ -1158,14 +1343,19 @@ class InterviewController:
         if value is None:
             return []
 
-        if isinstance(value, list):
+        if isinstance(
+            value,
+            list,
+        ):
             return [
                 str(item)
                 for item in value
                 if str(item).strip()
             ]
 
-        value_text = str(value).strip()
+        value_text = str(
+            value
+        ).strip()
 
         return (
             [value_text]
@@ -1180,26 +1370,37 @@ class InterviewController:
         if value is None:
             return None
 
-        value_text = str(value).strip()
+        value_text = str(
+            value
+        ).strip()
 
-        return value_text or None
+        return (
+            value_text
+            or None
+        )
 
     @staticmethod
     def _red_flag_message(
         language: str | None,
     ) -> str:
+        if language == "hi":
+            return (
+                "आपकी जानकारी दर्ज कर ली गई है। कृपया आगे बढ़ें ताकि स्वास्थ्यकर्मी इसकी जल्द समीक्षा कर सकें।"
+            )
+
         return (
-            "आपकी जानकारी दर्ज कर ली गई है। कृपया आगे बढ़ें ताकि स्वास्थ्यकर्मी इसकी जल्द समीक्षा कर सकें।"
-            if language == "hi"
-            else "I have recorded what you shared. Please continue so a healthcare professional can review it promptly."
+            "I have recorded what you shared. Please continue so a healthcare professional can review it promptly."
         )
 
     @staticmethod
     def _completion_message(
         language: str | None,
     ) -> str:
+        if language == "hi":
+            return (
+                "धन्यवाद। आपकी मेडिकल हिस्ट्री दर्ज कर ली गई है।"
+            )
+
         return (
-            "धन्यवाद। आपकी मेडिकल हिस्ट्री दर्ज कर ली गई है।"
-            if language == "hi"
-            else "Thank you. Your medical history has been recorded."
+            "Thank you. Your medical history has been recorded."
         )
