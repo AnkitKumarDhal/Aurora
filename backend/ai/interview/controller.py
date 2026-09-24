@@ -292,6 +292,8 @@ class InterviewController:
             )
         )
 
+        pending_before = state._split_targets(state.pending_target)
+
         facts = self.extractor.extract_facts(
             text,
             state,
@@ -304,6 +306,19 @@ class InterviewController:
                 text,
                 turn_id,
             )
+
+        pending_answered = any(
+            state.target_answered(target)
+            for target in pending_before
+        )
+
+        if pending_before and pending_answered:
+            state.unproductive_turns = 0
+        elif pending_before:
+            state.unproductive_turns += 1
+            if state.unproductive_turns >= 1:
+                state.skip_pending_targets()
+                state.unproductive_turns = 0
 
         topic = self.extractor.detect_topic(
             text
