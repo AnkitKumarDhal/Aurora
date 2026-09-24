@@ -911,6 +911,23 @@ class InterviewExtractor:
                 False,
             )
 
+        # These sections are better handled deterministically as compact
+        # grouped questions. It prevents the local model from turning one
+        # history section into a long checklist while still allowing the HPI
+        # to branch adaptively.
+        if state.current_section in {
+            "past_history",
+            "drug_allergy",
+            "personal_history",
+            "review_of_systems",
+            "ayush",
+        }:
+            return self._fallback_decision(
+                state,
+                candidates,
+                language,
+            )
+
         if (
             not self.enabled
             or self.provider != "lemonade"
@@ -939,21 +956,28 @@ class InterviewExtractor:
                 candidates,
             )
 
+            decision_targets = state._split_targets(decision.target)
+            recent_targets = set()
+            for item in state.target_history[-3:]:
+                recent_targets.update(state._split_targets(item))
+
+            decision_is_repeated_target = bool(
+                decision_targets
+                and set(decision_targets).issubset(recent_targets)
+            )
+
             if (
                 decision.question
                 and decision.target
-                and self._question_key(
-                    decision.question
-                )
+                and not decision_is_repeated_target
+                and self._question_key(decision.question)
                 not in {
                     self._question_key(item)
                     for item in state.question_history
                 }
                 and all(
                     not state.target_answered(item)
-                    for item in state._split_targets(
-                        decision.target
-                    )
+                    for item in decision_targets
                     if item
                 )
             ):
@@ -2864,16 +2888,26 @@ class InterviewExtractor:
             self._question_key(item)
             for item in state.question_history
         }
+        recent_targets = set()
+        for item in state.target_history[-3:]:
+            recent_targets.update(state._split_targets(item))
 
         for bundle in QUESTION_BUNDLES:
             available = [
                 target
                 for target in bundle
                 if target in candidates
-                and not state.target_answered(
-                    target
-                )
+                and not state.target_answered(target)
+                and target not in recent_targets
             ]
+
+            if len(available) < 2:
+                available = [
+                    target
+                    for target in bundle
+                    if target in candidates
+                    and not state.target_answered(target)
+                ]
 
             if len(available) < 2:
                 continue
@@ -2898,7 +2932,13 @@ class InterviewExtractor:
                     False,
                 )
 
-        for target in candidates:
+        preferred_candidates = [
+            target
+            for target in candidates
+            if target not in recent_targets
+        ] or list(candidates)
+
+        for target in preferred_candidates:
             if state.target_answered(target):
                 continue
 

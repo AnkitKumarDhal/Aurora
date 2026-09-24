@@ -94,15 +94,38 @@ export function TextAIConsultation({
       setIsThinking(false);
       return;
     }
-    if (result.assistant_response)
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: `ai-${result.turn_id}`,
-          sender: "ai",
-          text: result.assistant_response!,
-        },
-      ]);
+    if (result.assistant_response) {
+      const questionKey = result.assistant_response
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\u0900-\u097f]+/gi, " ")
+        .replace(/\\s+/g, " ")
+        .trim();
+
+      setMessages((previous) => {
+        const alreadyShown = previous.some(
+          (message) =>
+            message.sender === "ai" &&
+            message.text
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9\u0900-\u097f]+/gi, " ")
+              .replace(/\\s+/g, " ")
+              .trim() === questionKey,
+        );
+
+        if (alreadyShown) return previous;
+
+        return [
+          ...previous,
+          {
+            id: `ai-${result.turn_id}`,
+            sender: "ai",
+            text: result.assistant_response!,
+          },
+        ];
+      });
+    }
     if (result.completed) {
       setCompleted(true);
       setCanContinue(true);
