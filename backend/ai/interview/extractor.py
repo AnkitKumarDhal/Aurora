@@ -8,18 +8,90 @@ from typing import Any
 
 import httpx
 
-from backend.ai.interview.state import InterviewState, normalize_field_name
+from backend.ai.interview.state import FIELD_PRIMARY_SECTION, TARGET_DESCRIPTIONS, TARGET_FIELDS, InterviewState, normalize_field_name
 from backend.config import settings
 
 TOPIC_KEYWORDS = {
-    "chest_pain": ("chest pain", "chest pressure", "chest discomfort", "सीने में दर्द", "सीने में दबाव"),
-    "headache": ("headache", "head pain", "migraine", "सिरदर्द", "सिर में दर्द", "माइग्रेन"),
-    "respiratory": ("cough", "coughing", "breathless", "shortness of breath", "difficulty breathing", "breathing problem", "खांसी", "खाँसी", "सांस फूलना", "साँस फूलना"),
-    "gastrointestinal": ("constipation", "constipated", "hard stool", "hard stools", "diarrhea", "loose stools", "loose motions", "stomach pain", "abdominal pain", "vomiting", "nausea", "कब्ज", "दस्त", "पेट में दर्द", "उल्टी", "मतली"),
-    "urinary": ("urine", "urination", "burning while urinating", "painful urination", "पेशाब", "मूत्र", "पेशाब में जलन"),
-    "skin": ("rash", "itching", "skin problem", "दाने", "चकत्ते", "खुजली", "त्वचा"),
-    "musculoskeletal": ("back pain", "joint pain", "muscle pain", "neck pain", "कमर दर्द", "जोड़ों का दर्द"),
-    "neurological": ("numbness", "tingling", "weakness", "सुन्नपन", "झनझनाहट", "कमजोरी", "कमज़ोरी"),
+    "chest_pain": (
+        "chest pain",
+        "chest pressure",
+        "chest discomfort",
+        "सीने में दर्द",
+        "सीने में दबाव",
+    ),
+    "headache": (
+        "headache",
+        "head pain",
+        "migraine",
+        "सिरदर्द",
+        "सिर में दर्द",
+        "माइग्रेन",
+    ),
+    "respiratory": (
+        "cough",
+        "coughing",
+        "breathless",
+        "shortness of breath",
+        "difficulty breathing",
+        "breathing problem",
+        "खांसी",
+        "खाँसी",
+        "सांस फूलना",
+        "साँस फूलना",
+    ),
+    "gastrointestinal": (
+        "constipation",
+        "constipated",
+        "hard stool",
+        "hard stools",
+        "diarrhea",
+        "loose stools",
+        "loose motions",
+        "stomach pain",
+        "abdominal pain",
+        "vomiting",
+        "nausea",
+        "कब्ज",
+        "दस्त",
+        "पेट में दर्द",
+        "उल्टी",
+        "मतली",
+    ),
+    "urinary": (
+        "urine",
+        "urination",
+        "burning while urinating",
+        "painful urination",
+        "पेशाब",
+        "मूत्र",
+        "पेशाब में जलन",
+    ),
+    "skin": (
+        "rash",
+        "itching",
+        "skin problem",
+        "दाने",
+        "चकत्ते",
+        "खुजली",
+        "त्वचा",
+    ),
+    "musculoskeletal": (
+        "back pain",
+        "joint pain",
+        "muscle pain",
+        "neck pain",
+        "कमर दर्द",
+        "जोड़ों का दर्द",
+    ),
+    "neurological": (
+        "numbness",
+        "tingling",
+        "weakness",
+        "सुन्नपन",
+        "झनझनाहट",
+        "कमजोरी",
+        "कमज़ोरी",
+    ),
 }
 
 NEGATIVE_ANSWERS = {
@@ -42,91 +114,576 @@ NEGATIVE_ANSWERS = {
     "पता नहीं",
 }
 
-TARGET_FIELD = {
-    "chief_complaint": "chief_complaint",
-    "onset": "onset",
-    "duration": "duration",
-    "course": "course",
-    "site": "site",
-    "laterality": "laterality",
-    "severity": "severity",
-    "character": "character",
-    "timing": "timing",
-    "frequency": "frequency",
-    "aggravating_factors": "aggravating_factors",
-    "relieving_factors": "relieving_factors",
-    "radiation": "radiation",
-    "associated_symptoms": "associated_symptoms",
-    "previous_episodes": "previous_episodes",
-    "prior_treatment": "prior_treatment",
-    "response_to_treatment": "response_to_treatment",
-    "prior_investigations": "prior_investigations",
-    "impact_on_daily_life": "impact_on_daily_life",
-    "breathing_difficulty": "breathing_difficulty",
-    "nausea_vomiting": "nausea_vomiting",
-    "vision_or_neuro": "vision_or_neuro",
-    "cough": "cough",
-    "wheeze": "wheeze",
-    "fever": "fever",
-    "bowel_frequency": "bowel_frequency",
-    "stool_consistency": "stool_consistency",
-    "straining": "straining",
-    "blood_in_stool": "blood_in_stool",
-    "abdominal_distension": "abdominal_distension",
-    "urinary_frequency": "urinary_frequency",
-    "urinary_burning": "urinary_burning",
-    "urinary_blood": "urinary_blood",
-    "past_medical_history": "past_medical_history",
-    "past_surgical_history": "past_surgical_history",
-    "hospitalizations": "hospitalizations",
-    "immunizations": "immunizations",
-    "medications": "medications",
-    "allergies": "allergies",
-    "adverse_drug_reactions": "adverse_drug_reactions",
-    "family_history": "family_history",
-    "occupation": "occupation",
-    "diet": "diet",
-    "sleep": "sleep",
-    "physical_activity": "physical_activity",
-    "smoking": "smoking",
-    "alcohol": "alcohol",
-    "tobacco": "tobacco",
-    "menstrual_history": "menstrual_history",
-    "pregnancy_status": "pregnancy_status",
-    "sexual_history": "sexual_history",
-    "constitutional": "constitutional",
-    "cardiovascular": "cardiovascular",
-    "respiratory": "respiratory",
-    "gastrointestinal": "gastrointestinal",
-    "genitourinary": "genitourinary",
-    "neurological": "neurological",
-    "musculoskeletal": "musculoskeletal",
-    "skin": "skin",
-    "endocrine": "endocrine",
-    "hematologic": "hematologic",
-    "psychiatric": "psychiatric",
-    "ayush_prakriti": "ayush_prakriti",
-    "ayush_vikriti": "ayush_vikriti",
-    "ayush_sara": "ayush_sara",
-    "ayush_samhanana": "ayush_samhanana",
-    "ayush_pramana": "ayush_pramana",
-    "ayush_satmya": "ayush_satmya",
-    "ayush_satva": "ayush_satva",
-    "ayush_ahara_shakti": "ayush_ahara_shakti",
-    "ayush_vyayama_shakti": "ayush_vyayama_shakti",
-    "ayush_vaya": "ayush_vaya",
-    "ayush_ahara_vihara": "ayush_ahara_vihara",
-    "ayush_agni": "ayush_agni",
-    "ayush_koshta": "ayush_koshta",
-    "ayush_nidana": "ayush_nidana",
-    "ayush_samprapti": "ayush_samprapti",
+QUESTION_BUNDLES = (
+    (
+        "onset",
+        "duration",
+        "course",
+    ),
+    (
+        "site",
+        "laterality",
+    ),
+    (
+        "severity",
+        "character",
+        "impact_on_daily_life",
+    ),
+    (
+        "timing",
+        "frequency",
+        "associated_symptoms",
+    ),
+    (
+        "aggravating_factors",
+        "relieving_factors",
+    ),
+    (
+        "previous_episodes",
+        "prior_treatment",
+        "response_to_treatment",
+        "prior_investigations",
+    ),
+    (
+        "bowel_frequency",
+        "stool_consistency",
+        "straining",
+        "blood_in_stool",
+    ),
+    (
+        "abdominal_distension",
+        "nausea_vomiting",
+        "fever",
+    ),
+    (
+        "breathing_difficulty",
+        "cough",
+        "wheeze",
+        "fever",
+    ),
+    (
+        "urinary_frequency",
+        "urinary_burning",
+        "urinary_blood",
+        "fever",
+    ),
+    (
+        "past_medical_history",
+        "past_surgical_history",
+        "hospitalizations",
+        "immunizations",
+    ),
+    (
+        "medications",
+        "allergies",
+        "adverse_drug_reactions",
+    ),
+    (
+        "occupation",
+        "diet",
+        "sleep",
+        "physical_activity",
+        "smoking",
+        "alcohol",
+        "tobacco",
+    ),
+    (
+        "menstrual_history",
+        "pregnancy_status",
+        "sexual_history",
+    ),
+    (
+        "constitutional",
+        "cardiovascular",
+        "respiratory",
+        "gastrointestinal",
+        "genitourinary",
+        "neurological",
+    ),
+)
+
+TARGET_TERM_HINTS = {
+    "site": (
+        "chest",
+        "stomach",
+        "abdomen",
+        "head",
+        "back",
+        "neck",
+        "throat",
+        "arm",
+        "leg",
+        "below stomach",
+        "upper abdomen",
+        "lower abdomen",
+    ),
+    "laterality": (
+        "left",
+        "right",
+        "both sides",
+        "both",
+    ),
+    "character": (
+        "burning",
+        "pressure",
+        "squeezing",
+        "stabbing",
+        "throbbing",
+        "sharp",
+        "dull",
+        "aching",
+        "twisting",
+        "turning",
+        "churning",
+        "cramping",
+    ),
+    "timing": (
+        "constant",
+        "all the time",
+        "nonstop",
+        "continuous",
+        "comes and goes",
+        "on and off",
+        "intermittent",
+        "morning",
+        "afternoon",
+        "evening",
+        "night",
+    ),
+    "aggravating_factors": (
+        "worse",
+        "worsens",
+        "worse when",
+        "worse with",
+        "makes it worse",
+        "make it worse",
+    ),
+    "relieving_factors": (
+        "better",
+        "helps",
+        "relief",
+        "improves",
+        "eases",
+        "makes it better",
+    ),
+    "radiation": (
+        "radiate",
+        "spreads to",
+        "spread to",
+        "goes to",
+        "moves to",
+        "arm",
+        "shoulder",
+        "jaw",
+        "neck",
+        "back",
+    ),
+    "associated_symptoms": (
+        "nausea",
+        "vomit",
+        "fever",
+        "dizziness",
+        "headache",
+        "cough",
+        "weakness",
+        "pain",
+        "bloating",
+    ),
+    "previous_episodes": (
+        "before",
+        "previously",
+        "ever had",
+        "happened before",
+        "first time",
+        "पहले",
+    ),
+    "prior_treatment": (
+        "medicine",
+        "medication",
+        "drug",
+        "remedy",
+        "pharmacist",
+        "treated",
+        "treatment",
+        "दवा",
+    ),
+    "response_to_treatment": (
+        "helped",
+        "better",
+        "relief",
+        "improved",
+        "same",
+        "unchanged",
+        "no effect",
+        "for about",
+        "for 2 hours",
+    ),
+    "prior_investigations": (
+        "test",
+        "tests",
+        "scan",
+        "x-ray",
+        "xray",
+        "ultrasound",
+        "blood work",
+        "investigation",
+    ),
+    "impact_on_daily_life": (
+        "work",
+        "sleep",
+        "daily",
+        "activities",
+        "walking",
+        "eating",
+        "working",
+        "cannot",
+        "unable",
+    ),
+    "nausea_vomiting": (
+        "nausea",
+        "nauseous",
+        "vomit",
+        "vomiting",
+        "मतली",
+        "उल्टी",
+    ),
+    "vision_or_neuro": (
+        "vision",
+        "blurred",
+        "numbness",
+        "weakness",
+        "tingling",
+        "dizziness",
+        "fainting",
+    ),
+    "cough": (
+        "cough",
+        "coughing",
+        "खांसी",
+        "खाँसी",
+    ),
+    "wheeze": (
+        "wheez",
+        "घरघराहट",
+    ),
+    "fever": (
+        "fever",
+        "temperature",
+        "chills",
+        "बुखार",
+    ),
+    "bowel_frequency": (
+        "times a day",
+        "times per day",
+        "bowel movement",
+        "bowel movements",
+        "motions",
+        "stools",
+    ),
+    "stool_consistency": (
+        "hard",
+        "soft",
+        "loose",
+        "watery",
+        "normal",
+        "stools are",
+        "stool is",
+        "very hard",
+        "सख्त",
+        "ढीला",
+        "पानी जैसा",
+    ),
+    "straining": (
+        "strain",
+        "straining",
+        "push hard",
+        "जोर",
+    ),
+    "blood_in_stool": (
+        "blood",
+        "bleeding",
+        "खून",
+    ),
+    "abdominal_distension": (
+        "bloat",
+        "bloated",
+        "distension",
+        "swelling",
+        "पेट फूल",
+        "सूजन",
+    ),
+    "breathing_difficulty": (
+        "shortness of breath",
+        "difficulty breathing",
+        "trouble breathing",
+        "cannot breathe",
+        "breathless",
+        "breathing",
+        "सांस",
+        "साँस",
+    ),
+    "urinary_frequency": (
+        "urine",
+        "urination",
+        "urinary frequency",
+        "frequency of urination",
+        "पेशाब",
+    ),
+    "urinary_burning": (
+        "burning while urinating",
+        "painful urination",
+        "burning",
+        "जलन",
+    ),
+    "urinary_blood": (
+        "blood in urine",
+        "blood in my urine",
+        "पेशाब में खून",
+    ),
+    "past_medical_history": (
+        "diabetes",
+        "hypertension",
+        "blood pressure",
+        "asthma",
+        "thyroid",
+        "heart disease",
+        "kidney disease",
+        "liver disease",
+        "epilepsy",
+        "cancer",
+        "medical condition",
+        "disease",
+        "बीमारी",
+        "मधुमेह",
+        "अस्थमा",
+        "थायरॉइड",
+    ),
+    "past_surgical_history": (
+        "surgery",
+        "surgeries",
+        "operation",
+        "operations",
+        "operated",
+        "सर्जरी",
+        "ऑपरेशन",
+    ),
+    "hospitalizations": (
+        "hospital",
+        "admitted",
+        "hospitalized",
+        "भर्ती",
+    ),
+    "immunizations": (
+        "vaccine",
+        "vaccination",
+        "immunization",
+        "covid vaccine",
+        "टीका",
+    ),
+    "medications": (
+        "medicine",
+        "medicines",
+        "medication",
+        "medications",
+        "drug",
+        "drugs",
+        "tablet",
+        "tablets",
+        "दवा",
+    ),
+    "allergies": (
+        "allergy",
+        "allergies",
+        "allergic",
+        "एलर्जी",
+    ),
+    "adverse_drug_reactions": (
+        "reaction to",
+        "reactions to",
+        "side effect",
+        "side effects",
+        "adverse reaction",
+        "bad reaction",
+    ),
+    "family_history": (
+        "family",
+        "mother",
+        "father",
+        "brother",
+        "sister",
+        "runs in my family",
+        "परिवार",
+    ),
+    "occupation": (
+        "job",
+        "work",
+        "occupation",
+        "desk job",
+        "profession",
+        "काम",
+        "नौकरी",
+    ),
+    "diet": (
+        "diet",
+        "eat",
+        "eating",
+        "meals",
+        "meal",
+        "food",
+        "roti",
+        "rice",
+        "potato",
+        "vegetable",
+        "भोजन",
+    ),
+    "sleep": (
+        "sleep",
+        "sleeping",
+        "sleep pattern",
+        "hours of sleep",
+        "नींद",
+    ),
+    "physical_activity": (
+        "exercise",
+        "physical activity",
+        "activity",
+        "walking",
+        "gym",
+        "active",
+        "व्यायाम",
+    ),
+    "smoking": (
+        "smoke",
+        "smoking",
+        "cigarette",
+        "सिगरेट",
+        "धूम्रपान",
+    ),
+    "alcohol": (
+        "alcohol",
+        "drink alcohol",
+        "drinking",
+        "शराब",
+    ),
+    "tobacco": (
+        "tobacco",
+        "gutkha",
+        "paan",
+        "तंबाकू",
+    ),
+    "menstrual_history": (
+        "period",
+        "periods",
+        "menstrual",
+        "menstruation",
+        "मासिक",
+    ),
+    "pregnancy_status": (
+        "pregnant",
+        "pregnancy",
+        "गर्भावस्था",
+    ),
+    "sexual_history": (
+        "sexual",
+        "sex",
+        "sexual health",
+        "यौन",
+    ),
+    "constitutional": (
+        "fever",
+        "chills",
+        "fatigue",
+        "weight loss",
+        "weight gain",
+        "appetite",
+    ),
+    "cardiovascular": (
+        "chest pain",
+        "palpitation",
+        "palpitations",
+        "heart",
+    ),
+    "respiratory": (
+        "cough",
+        "breath",
+        "breathing",
+        "wheeze",
+    ),
+    "gastrointestinal": (
+        "nausea",
+        "vomit",
+        "abdominal",
+        "stomach",
+        "diarrhea",
+        "constipation",
+        "bloating",
+    ),
+    "genitourinary": (
+        "urine",
+        "urination",
+        "urinary",
+        "painful urination",
+    ),
+    "neurological": (
+        "dizziness",
+        "fainting",
+        "numbness",
+        "weakness",
+        "tingling",
+    ),
+    "musculoskeletal": (
+        "joint",
+        "muscle",
+        "back pain",
+        "neck pain",
+    ),
+    "skin": (
+        "rash",
+        "itch",
+        "skin",
+    ),
+    "endocrine": (
+        "thyroid",
+        "heat intolerance",
+        "cold intolerance",
+    ),
+    "hematologic": (
+        "easy bruising",
+        "bleeding",
+        "anemia",
+    ),
+    "psychiatric": (
+        "anxiety",
+        "depression",
+        "stress",
+        "panic",
+    ),
 }
 
-TARGET_TRANSLATIONS = {
-    "section_closure": {
-        "en": "anything else important to add",
-        "hi": "और कोई महत्वपूर्ण बात",
-    }
+BINARY_TARGETS = {
+    "straining",
+    "blood_in_stool",
+    "abdominal_distension",
+    "breathing_difficulty",
+    "wheeze",
+    "fever",
+    "urinary_burning",
+    "urinary_blood",
+    "smoking",
+    "alcohol",
+    "tobacco",
+}
+
+NEGATABLE_TARGETS = BINARY_TARGETS | {
+    "past_medical_history",
+    "past_surgical_history",
+    "hospitalizations",
+    "immunizations",
+    "medications",
+    "allergies",
+    "adverse_drug_reactions",
+    "family_history",
+    "previous_episodes",
 }
 
 
@@ -164,14 +721,20 @@ class InterviewExtractor:
 
         if not candidates:
             return QuestionDecision(
-                self._emergency_question(state.current_section, language),
+                self._emergency_question(
+                    state.current_section,
+                    language,
+                ),
                 None,
                 False,
             )
 
         if not self.enabled or self.provider != "lemonade":
             return QuestionDecision(
-                self._emergency_question_for_target(candidates[0], language),
+                self._emergency_question_for_target(
+                    candidates[0],
+                    language,
+                ),
                 candidates[0],
                 False,
             )
@@ -181,38 +744,28 @@ class InterviewExtractor:
             conversation,
             language,
             candidates,
+            forced_target,
         )
 
         try:
-            content = await self._call_model(prompt, session_id)
-            decision = self._parse_question(content, candidates)
-
-            if (
-                decision.question
-                and decision.target
-                and decision.question.lower()
-                not in {item.lower() for item in state.question_history}
-            ):
-                return decision
-
-            forced = candidates[0]
             content = await self._call_model(
-                self._build_question_prompt(
-                    state,
-                    conversation,
-                    language,
-                    [forced],
-                    forced,
-                ),
+                prompt,
                 session_id,
             )
-            decision = self._parse_question(content, [forced])
+
+            decision = self._parse_question(
+                content,
+                candidates,
+            )
 
             if (
                 decision.question
                 and decision.target
                 and decision.question.lower()
-                not in {item.lower() for item in state.question_history}
+                not in {
+                    item.lower()
+                    for item in state.question_history
+                }
             ):
                 return decision
 
@@ -225,7 +778,10 @@ class InterviewExtractor:
             )
 
         return QuestionDecision(
-            self._emergency_question_for_target(candidates[0], language),
+            self._emergency_question_for_target(
+                candidates[0],
+                language,
+            ),
             candidates[0],
             False,
         )
@@ -242,11 +798,19 @@ class InterviewExtractor:
             return []
 
         facts: list[dict[str, Any]] = []
-        target = state.pending_target
-        section = state.current_section
         topic = self.detect_topic(normalized)
 
-        if topic and state.known_fields().get("chief_complaint") is None:
+        pending_targets = self._pending_targets(
+            state.pending_target
+        )
+
+        if (
+            topic
+            and state.known_fields().get(
+                "chief_complaint"
+            ) is None
+            and not pending_targets
+        ):
             facts.append(
                 self._fact(
                     "hpi",
@@ -257,19 +821,56 @@ class InterviewExtractor:
                 )
             )
 
-        if target and target != "section_closure" and target in TARGET_FIELD:
-            field = TARGET_FIELD[target]
-            negative = self.is_negative_answer(normalized) or self._target_negative(
+        if "chief_complaint" in pending_targets:
+            facts.append(
+                self._fact(
+                    "hpi",
+                    "chief_complaint",
+                    normalized,
+                    normalized,
+                    turn_id,
+                )
+            )
+
+        whole_answer_negative = self.is_negative_answer(
+            normalized
+        )
+
+        for target in pending_targets:
+            if (
+                target not in TARGET_FIELDS
+                or target == "section_closure"
+                or target == "chief_complaint"
+            ):
+                continue
+
+            negative = (
+                whole_answer_negative
+                or (
+                    target in NEGATABLE_TARGETS
+                    and self._target_negative(
+                        target,
+                        normalized,
+                    )
+                )
+            )
+
+            value = self._bundle_target_value(
                 target,
                 normalized,
+                negative,
             )
-            value = self._target_value(target, normalized, negative)
 
             if value is not None:
+                section = FIELD_PRIMARY_SECTION.get(
+                    target,
+                    state.current_section,
+                )
+
                 facts.append(
                     self._fact(
                         section,
-                        field,
+                        target,
                         value,
                         normalized,
                         turn_id,
@@ -289,20 +890,22 @@ class InterviewExtractor:
 
     @staticmethod
     def is_negative_answer(text: str) -> bool:
-        value = InterviewExtractor._normalize_text(text)
+        normalized = InterviewExtractor._normalize_text(
+            text
+        )
 
         if (
-            value in NEGATIVE_ANSWERS
-            or "nothing else" in value
-            or "कुछ नहीं" in value
-            or "और कुछ नहीं" in value
+            normalized in NEGATIVE_ANSWERS
+            or "nothing else" in normalized
+            or "कुछ नहीं" in normalized
+            or "और कुछ नहीं" in normalized
         ):
             return True
 
         return bool(
             re.fullmatch(
                 r"(?:no|none|n/?a|नहीं)(?:\s+(?:more|else|nothing))?",
-                value,
+                normalized,
             )
         )
 
@@ -311,7 +914,10 @@ class InterviewExtractor:
         normalized = text.lower()
 
         for topic, keywords in TOPIC_KEYWORDS.items():
-            if any(keyword in normalized for keyword in keywords):
+            if any(
+                keyword in normalized
+                for keyword in keywords
+            ):
                 return topic
 
         return None
@@ -341,12 +947,12 @@ class InterviewExtractor:
             },
         }
 
-        urls = self._candidate_urls()
         last_error: Exception | None = None
 
-        for url in urls:
+        for url in self._candidate_urls():
             try:
                 started = time.monotonic()
+
                 timeout = httpx.Timeout(
                     connect=3.0,
                     read=self.timeout,
@@ -354,21 +960,29 @@ class InterviewExtractor:
                     pool=3.0,
                 )
 
-                async with httpx.AsyncClient(timeout=timeout) as client:
+                async with httpx.AsyncClient(
+                    timeout=timeout
+                ) as client:
                     response = await client.post(
                         url,
                         json=payload,
                     )
 
                     if (
-                        response.status_code in {400, 404, 422}
-                        and "chat_template_kwargs" in payload
+                        response.status_code
+                        in {400, 404, 422}
+                        and "chat_template_kwargs"
+                        in payload
                     ):
-                        retry_payload = dict(payload)
+                        retry_payload = dict(
+                            payload
+                        )
+
                         retry_payload.pop(
                             "chat_template_kwargs",
                             None,
                         )
+
                         response = await client.post(
                             url,
                             json=retry_payload,
@@ -378,7 +992,8 @@ class InterviewExtractor:
                     body = response.json()
 
                 elapsed = round(
-                    (time.monotonic() - started) * 1000,
+                    (time.monotonic() - started)
+                    * 1000,
                     2,
                 )
 
@@ -388,33 +1003,63 @@ class InterviewExtractor:
                     else None
                 )
 
-                if not isinstance(choices, list) or not choices:
+                if (
+                    not isinstance(choices, list)
+                    or not choices
+                ):
                     raise ValueError(
                         "Local model returned no choices"
                     )
 
-                choice = choices[0]
-                message = (
-                    choice.get("message", {})
-                    if isinstance(choice, dict)
+                choice = (
+                    choices[0]
+                    if isinstance(
+                        choices[0],
+                        dict,
+                    )
                     else {}
                 )
 
-                content = (
-                    message.get("content")
-                    if isinstance(message, dict)
-                    else None
+                message = (
+                    choice.get(
+                        "message",
+                        {},
+                    )
+                    if isinstance(
+                        choice.get(
+                            "message",
+                            {},
+                        ),
+                        dict,
+                    )
+                    else {}
+                )
+
+                content = message.get(
+                    "content"
                 )
 
                 if isinstance(content, list):
                     content = "".join(
-                        item.get("text", "")
-                        if isinstance(item, dict)
+                        item.get(
+                            "text",
+                            "",
+                        )
+                        if isinstance(
+                            item,
+                            dict,
+                        )
                         else str(item)
                         for item in content
                     )
 
-                if not isinstance(content, str) or not content.strip():
+                if (
+                    not isinstance(
+                        content,
+                        str,
+                    )
+                    or not content.strip()
+                ):
                     raise ValueError(
                         "Local model returned empty content"
                     )
@@ -435,7 +1080,9 @@ class InterviewExtractor:
                 KeyError,
                 TypeError,
             ) as exc:
-                last_error = InterviewModelError(str(exc))
+                last_error = InterviewModelError(
+                    str(exc)
+                )
 
                 self._debug(
                     "QUESTION_ENDPOINT_FAILURE",
@@ -457,15 +1104,34 @@ class InterviewExtractor:
         candidates: list[str],
         forced: str | None = None,
     ) -> str:
-        recent = conversation[-18:]
+        recent = conversation[-8:]
         known = state.known_fields()
 
         candidate_text = "\n".join(
-            f"- {item}: {TARGET_TRANSLATIONS.get(item,
-                                                 {}).get(language, item.replace('_', ' '))}"
-            if item == "section_closure"
-            else f"- {item}: {self._description(item, language)}"
+            f"- {item}: "
+            f"{TARGET_DESCRIPTIONS.get(item, {}).get(
+                language, item.replace('_', ' '))}"
             for item in candidates
+        )
+
+        candidate_set = set(candidates)
+        valid_bundles: list[str] = []
+
+        for bundle in QUESTION_BUNDLES:
+            usable = tuple(
+                item
+                for item in bundle
+                if item in candidate_set
+            )
+
+            if len(usable) >= 2:
+                valid_bundles.append(
+                    ",".join(usable)
+                )
+
+        bundle_text = "\n".join(
+            f"- {item}"
+            for item in valid_bundles
         )
 
         force = (
@@ -478,31 +1144,37 @@ class InterviewExtractor:
             f"Preferred language: {language}\n"
             f"Current section: {state.current_section}\n"
             f"Clinical topic: {state.topic}\n"
-            f"Known history: {json.dumps(
-                known, ensure_ascii=False, default=str)}\n"
-            f"Recent questions: {json.dumps(
-                state.question_history[-10:], ensure_ascii=False)}\n"
-            f"Recent target sequence: {json.dumps(
-                state.target_history[-10:], ensure_ascii=False)}\n"
-            f"Recent conversation: {json.dumps(
-                recent, ensure_ascii=False, default=str)}\n"
-            f"Allowed targets for the next question:\n{candidate_text}\n"
+            f"Known history: "
+            f"{json.dumps(known, ensure_ascii=False, default=str)}\n"
+            f"Recent questions: "
+            f"{json.dumps(state.question_history[-6:], ensure_ascii=False)}\n"
+            f"Recent target sequence: "
+            f"{json.dumps(state.target_history[-6:], ensure_ascii=False)}\n"
+            f"Recent conversation: "
+            f"{json.dumps(recent, ensure_ascii=False, default=str)}\n"
+            f"Allowed targets:\n{candidate_text}\n"
+            f"Preferred related target bundles:\n{bundle_text}\n"
             f"{force}"
-            "Choose exactly one allowed target. "
-            "Ask exactly one concise patient-facing question about that target. "
-            "Do not combine separate history domains. "
+            "Choose the most useful allowed target or closely related allowed targets from one section. "
+            "Ask exactly one concise patient-facing question that the patient can answer in one response. "
+            "When a valid bundle is available, prefer bundling closely related targets to reduce interview time. "
+            "For past history, combine medical conditions, surgeries, hospitalizations, and immunizations when possible. "
+            "For drug and allergy history, combine medicines, allergies, and adverse reactions when possible. "
+            "For personal history, combine occupation, diet, sleep, physical activity, smoking, alcohol, and tobacco when possible. "
+            "For review of systems, screen several relevant systems together rather than one system at a time. "
+            "Never ask a section closure question. "
             "Do not diagnose, explain, prescribe, reassure, or recommend treatment. "
-            "Never repeat an already answered target unless the latest answer was vague or incomplete. "
-            "For chest pain, prioritize the clinically relevant SOCRATES elements still missing. "
-            "For other complaints, adapt to the symptom and prior answers. "
-            "If target is section_closure, ask whether anything important remains to be added for the current section. "
+            "Never repeat an already answered target unless its answer is genuinely incomplete. "
             "Return exactly two lines and nothing else:\n"
-            "TARGET: <target>\n"
+            "TARGET: <target> or <target1,target2,...>\n"
             "QUESTION: <question>"
         )
 
     @staticmethod
-    def _debug(event: str, **data: Any) -> None:
+    def _debug(
+        event: str,
+        **data: Any,
+    ) -> None:
         if not settings.interview_debug:
             return
 
@@ -523,15 +1195,12 @@ class InterviewExtractor:
         return (
             "You are Aurora's clinical history-taking interviewer. "
             "Your job is only to collect history before a clinician consultation. "
-            "Follow the required order HPI, past medical and surgical history, "
-            "drug and allergy history, family history, personal history, review "
-            "of systems, then AYUSH-specific history only when AYUSH mode is enabled. "
-            "Adapt HPI follow-up questions to the patient's complaint and answers. "
-            "Use one question at a time. Every question must be answerable by "
-            "speaking or tapping. Preserve the patient's meaning. Do not infer "
-            "facts that were not stated. Do not diagnose or recommend treatment. "
-            "Keep questions natural, short, respectful, and in the patient's "
-            "selected language."
+            "Follow the required order HPI, past medical and surgical history, drug and allergy history, family history, personal history, review of systems, then AYUSH-specific history only when AYUSH mode is enabled. "
+            "Adapt questions to the patient's complaint and answers. "
+            "You may ask about closely related details together when that reduces the number of turns. "
+            "Preserve the patient's meaning and do not infer facts that were not stated. "
+            "Do not diagnose or recommend treatment. "
+            "Keep questions natural, short, respectful, and in the patient's selected language."
         )
 
     def _parse_question(
@@ -558,19 +1227,61 @@ class InterviewExtractor:
             flags=re.IGNORECASE | re.DOTALL,
         )
 
-        target = (
-            target_match.group(1).strip().strip("`\"'").lower()
+        raw_target = (
+            target_match.group(1)
+            .strip()
+            .strip("`\"'")
             if target_match
-            else None
+            else ""
         )
 
-        if target and target not in candidates:
-            target = None
+        raw_target = re.sub(
+            r"^bundle\s*:\s*",
+            "",
+            raw_target,
+            flags=re.IGNORECASE,
+        )
+
+        targets = list(
+            dict.fromkeys(
+                item.strip().lower()
+                for item in re.split(
+                    r"[,|;/]+|\band\b",
+                    raw_target,
+                )
+                if item.strip()
+            )
+        )
+
+        target = None
+
+        if (
+            targets
+            and 1 <= len(targets) <= 7
+            and all(
+                item in candidates
+                for item in targets
+            )
+        ):
+            if len(targets) == 1:
+                target = targets[0]
+            elif any(
+                set(targets).issubset(
+                    set(bundle)
+                )
+                for bundle in QUESTION_BUNDLES
+            ):
+                target = (
+                    "bundle:"
+                    + ",".join(targets)
+                )
 
         question = (
             question_match.group(1).strip()
             if question_match
-            else self._extract_question_line(cleaned)
+            else self._extract_question_line(
+                cleaned
+            )
         )
 
         question = re.sub(
@@ -593,24 +1304,25 @@ class InterviewExtractor:
         )[0].strip()
 
         if "?" in question:
-            question = question.split("?", 1)[0].strip() + "?"
+            question = (
+                question.split(
+                    "?",
+                    1,
+                )[0].strip()
+                + "?"
+            )
         elif question:
             question += "?"
 
-        if not self._valid_question(question):
+        if (
+            not self._valid_question(
+                question
+            )
+            or target is None
+        ):
             return QuestionDecision(
                 "",
                 target,
-                True,
-            )
-
-        if target is None and len(candidates) == 1:
-            target = candidates[0]
-
-        if target is None:
-            return QuestionDecision(
-                "",
-                None,
                 True,
             )
 
@@ -621,7 +1333,9 @@ class InterviewExtractor:
         )
 
     @staticmethod
-    def _extract_question_line(content: str) -> str:
+    def _extract_question_line(
+        content: str,
+    ) -> str:
         lines = [
             line.strip()
             for line in content.splitlines()
@@ -635,13 +1349,15 @@ class InterviewExtractor:
         return lines[-1] if lines else ""
 
     @staticmethod
-    def _valid_question(question: str) -> bool:
+    def _valid_question(
+        question: str,
+    ) -> bool:
         if len(question) < 8 or len(question) > 320:
             return False
 
         lower = question.lower()
 
-        if any(
+        return not any(
             marker in lower
             for marker in (
                 "target:",
@@ -650,25 +1366,29 @@ class InterviewExtractor:
                 "{",
                 "}",
             )
-        ):
-            return False
-
-        return True
-
-    @staticmethod
-    def _description(
-        target: str,
-        language: str,
-    ) -> str:
-        from backend.ai.interview.state import TARGET_DESCRIPTIONS
-
-        description = (
-            TARGET_DESCRIPTIONS.get(target, {}).get(language)
-            or TARGET_DESCRIPTIONS.get(target, {}).get("en")
-            or target.replace("_", " ")
         )
 
-        return description
+    @staticmethod
+    def _pending_targets(
+        target: str | None,
+    ) -> list[str]:
+        if not target:
+            return []
+
+        raw = (
+            target[7:]
+            if target.startswith("bundle:")
+            else target
+        )
+
+        return [
+            item.strip().lower()
+            for item in re.split(
+                r"[,|;/]+|\band\b",
+                raw,
+            )
+            if item.strip()
+        ]
 
     @staticmethod
     def _target_negative(
@@ -676,130 +1396,44 @@ class InterviewExtractor:
         text: str,
     ) -> bool:
         normalized = text.lower()
-
-        terms = {
-            "straining": (
-                "strain",
-                "push hard",
-                "जोर",
-            ),
-            "blood_in_stool": (
-                "blood",
-                "bleeding",
-                "खून",
-            ),
-            "abdominal_distension": (
-                "bloat",
-                "swelling",
-                "फूल",
-                "सूजन",
-            ),
-            "breathing_difficulty": (
-                "breath",
-                "breathing",
-                "सांस",
-                "साँस",
-            ),
-            "wheeze": (
-                "wheez",
-                "घरघराहट",
-            ),
-            "fever": (
-                "fever",
-                "temperature",
-                "बुखार",
-            ),
-            "urinary_burning": (
-                "burning",
-                "painful urination",
-                "जलन",
-            ),
-            "urinary_blood": (
-                "blood",
-                "खून",
-            ),
-            "smoking": (
-                "smoke",
-                "smoking",
-                "cigarette",
-                "धूम्रपान",
-            ),
-            "alcohol": (
-                "alcohol",
-                "drink",
-                "शराब",
-            ),
-            "tobacco": (
-                "tobacco",
-                "तंबाकू",
-            ),
-            "medications": (
-                "medicine",
-                "medicines",
-                "medication",
-                "medications",
-                "drug",
-                "drugs",
-                "दवा",
-                "दवाइ",
-            ),
-            "allergies": (
-                "allergy",
-                "allergies",
-                "allergic",
-                "एलर्जी",
-            ),
-            "family_history": (
-                "family",
-                "परिवार",
-            ),
-            "past_surgical_history": (
-                "surgery",
-                "operation",
-                "operated",
-                "सर्जरी",
-                "ऑपरेशन",
-            ),
-            "past_medical_history": (
-                "disease",
-                "diabetes",
-                "hypertension",
-                "asthma",
-                "history",
-                "बीमारी",
-                "मधुमेह",
-                "अस्थमा",
-            ),
-            "hospitalizations": (
-                "hospital",
-                "admitted",
-                "भर्ती",
-            ),
-        }.get(target, ())
-
-        if not any(term in normalized for term in terms):
-            return False
-
-        english_terms = [
-            re.escape(term)
-            for term in terms
-            if re.match(r"[A-Za-z]", term)
-        ]
-
-        if not english_terms:
-            return "नहीं" in normalized
-
-        pattern = (
-            r"(?:^|\b)(?:no|not|never|don[’']t|do not|without)"
-            r"\s+(?:\w+\s+){0,4}(?:"
-            + "|".join(english_terms)
-            + r")\b"
+        terms = TARGET_TERM_HINTS.get(
+            target,
+            (),
         )
 
-        return bool(re.search(pattern, normalized)) or "नहीं" in normalized
+        if not terms:
+            return False
+
+        positive = False
+        negative = False
+
+        for term in terms:
+            for match in re.finditer(
+                re.escape(term),
+                normalized,
+            ):
+                prefix = normalized[
+                    max(
+                        0,
+                        match.start() - 35,
+                    ):match.start()
+                ]
+
+                if (
+                    re.search(
+                        r"\b(?:no|not|never|without|don't|do not|denies)\b",
+                        prefix,
+                    )
+                    or "नहीं" in prefix
+                ):
+                    negative = True
+                else:
+                    positive = True
+
+        return negative and not positive
 
     @staticmethod
-    def _target_value(
+    def _bundle_target_value(
         target: str,
         text: str,
         negative: bool,
@@ -809,114 +1443,365 @@ class InterviewExtractor:
 
         normalized = text.lower()
 
-        binary = {
-            "straining",
-            "blood_in_stool",
-            "abdominal_distension",
-            "breathing_difficulty",
-            "wheeze",
-            "fever",
-            "urinary_burning",
-            "urinary_blood",
-            "smoking",
-            "alcohol",
-            "tobacco",
-        }
-
-        if target in binary:
-            if target == "straining" and not any(
-                word in normalized
-                for word in (
-                    "strain",
-                    "push hard",
-                    "जोर",
-                )
-            ):
-                return text
-
-            if target == "blood_in_stool" and not any(
-                word in normalized
-                for word in (
-                    "blood",
-                    "bleeding",
-                    "खून",
-                )
-            ):
-                return text
-
-            if target == "abdominal_distension" and not any(
-                word in normalized
-                for word in (
-                    "bloat",
-                    "swelling",
-                    "सूजन",
-                    "फूल",
-                )
-            ):
-                return text
-
-            if target == "breathing_difficulty" and not any(
-                word in normalized
-                for word in (
-                    "breath",
-                    "breathing",
-                    "सांस",
-                    "साँस",
-                )
-            ):
-                return text
-
-            return True
+        if target == "chief_complaint":
+            return text
 
         if target == "severity":
             match = re.search(
-                r"\b(10|[0-9])\s*(?:/|out of|में से)?\s*10\b",
+                r"^\s*(10|[0-9])"
+                r"(?:\s*(?:/|out of|में से)\s*10)?"
+                r"(?:\s|,|;|$)",
                 normalized,
             )
 
             if match:
-                return int(match.group(1))
+                return int(
+                    match.group(1)
+                )
 
-        if target in {"onset", "duration"}:
             match = re.search(
-                r"\b(?:started|began|since|for)\s+([^,.!?;]+)",
+                r"\b(10|[0-9])\s*"
+                r"(?:/|out of|में से)\s*10\b",
+                normalized,
+            )
+
+            if match:
+                return int(
+                    match.group(1)
+                )
+
+            return None
+
+        if target in {
+            "onset",
+            "duration",
+        }:
+            match = re.search(
+                r"\b(?:started|began|since|for)\s+"
+                r"([^,.!?;]+)",
                 normalized,
             )
 
             if match:
                 return match.group(1).strip()
 
-            duration = re.search(
-                r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|a couple|a few)\s+(day|days|hour|hours|week|weeks|month|months|year|years)\b",
+            match = re.search(
+                r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|a couple|a few)\s+"
+                r"(day|days|hour|hours|week|weeks|month|months|year|years)\b",
                 normalized,
             )
 
-            if duration:
-                return f"{duration.group(1)} {duration.group(2)}"
+            return (
+                f"{match.group(1)} {match.group(2)}"
+                if match
+                else None
+            )
 
-        if target == "bowel_frequency":
+        if target == "course":
+            if re.search(
+                r"\b(?:same|unchanged|no change|stable)\b",
+                normalized,
+            ):
+                return "unchanged"
+
+            if re.search(
+                r"\b(?:worse|worsening|getting worse)\b",
+                normalized,
+            ):
+                return "worsening"
+
+            if re.search(
+                r"\b(?:better|improving|getting better)\b",
+                normalized,
+            ):
+                return "improving"
+
+            return None
+
+        if target == "site":
             match = re.search(
-                r"\b\d+(?:\.\d+)?\s*(?:times?|bowel movements?)\s*(?:a|per)\s*(?:day|week|month)\b",
+                r"\b(?:in|at|around|below|above|near)\s+"
+                r"([^,.!?;]+)",
                 normalized,
             )
 
             if match:
-                return match.group(0)
+                return match.group(1).strip()
 
-        if target == "stool_consistency":
+            for term in TARGET_TERM_HINTS["site"]:
+                if term in normalized:
+                    return term
+
+            return None
+
+        if target == "laterality":
+            if (
+                "both sides" in normalized
+                or re.search(
+                    r"\bboth\b",
+                    normalized,
+                )
+            ):
+                return "both"
+
+            if "left" in normalized:
+                return "left"
+
+            if "right" in normalized:
+                return "right"
+
+            return None
+
+        if target == "character":
             for value in (
-                "watery",
-                "loose",
-                "hard",
-                "normal",
-                "सख्त",
-                "ढीला",
-                "पानी जैसा",
+                "burning",
+                "pressure",
+                "squeezing",
+                "stabbing",
+                "throbbing",
+                "sharp",
+                "dull",
+                "aching",
+                "twisting",
+                "turning",
+                "churning",
+                "cramping",
             ):
                 if value in normalized:
                     return value
 
-        return text
+            match = re.search(
+                r"\b(?:feels like|feel like|feels as if|like)\s+"
+                r"([^,.!?;]+)",
+                normalized,
+            )
+
+            return (
+                match.group(1).strip()
+                if match
+                else None
+            )
+
+        if target in {
+            "timing",
+            "frequency",
+            "bowel_frequency",
+            "urinary_frequency",
+        }:
+            if target == "timing":
+                if any(
+                    item in normalized
+                    for item in (
+                        "constant",
+                        "all the time",
+                        "nonstop",
+                        "continuous",
+                    )
+                ):
+                    return "constant"
+
+                if any(
+                    item in normalized
+                    for item in (
+                        "comes and goes",
+                        "on and off",
+                        "intermittent",
+                    )
+                ):
+                    return "intermittent"
+
+                if any(
+                    item in normalized
+                    for item in (
+                        "morning",
+                        "afternoon",
+                        "evening",
+                        "night",
+                    )
+                ):
+                    return text
+
+                return None
+
+            if (
+                target == "urinary_frequency"
+                and not any(
+                    item in normalized
+                    for item in TARGET_TERM_HINTS[
+                        "urinary_frequency"
+                    ]
+                )
+            ):
+                return None
+
+            match = re.search(
+                r"\b\d+(?:\.\d+)?\s*"
+                r"(?:times?|bowel movements?|motions?)\s*"
+                r"(?:a|per)\s*"
+                r"(?:day|week|month)\b",
+                normalized,
+            )
+
+            return (
+                match.group(0)
+                if match
+                else None
+            )
+
+        if target == "stool_consistency":
+            match = re.search(
+                r"\b(?:stools?|bowel movements?|stool)\b"
+                r"[^,.!?;]{0,25}\b"
+                r"(?:very\s+)?"
+                r"(hard|soft|loose|watery|normal)\b",
+                normalized,
+            )
+
+            return (
+                match.group(1)
+                if match
+                else None
+            )
+
+        if target in BINARY_TARGETS:
+            return (
+                True
+                if any(
+                    term in normalized
+                    for term in TARGET_TERM_HINTS.get(
+                        target,
+                        (),
+                    )
+                )
+                else None
+            )
+
+        if target == "occupation":
+            match = re.search(
+                r"(?:^|[,;])\s*"
+                r"((?:desk|office|field|home)\s+job|"
+                r"(?:my\s+)?job\s+(?:is|as)\s+[^,;]+|"
+                r"(?:i\s+)?work(?:\s+as)?\s+[^,;]+|"
+                r"occupation\s+is\s+[^,;]+)",
+                normalized,
+            )
+
+            if match:
+                value = match.group(1).strip()
+
+                value = re.sub(
+                    r"^(?:my\s+job\s+is|job\s+is|job\s+as|"
+                    r"i\s+work\s+as|i\s+work|occupation\s+is)\s+",
+                    "",
+                    value,
+                ).strip()
+
+                return value
+
+            if "desk job" in normalized:
+                return "desk job"
+
+        if target == "diet":
+            match = re.search(
+                r"(?:i\s+eat|my\s+diet\s+is|my\s+usual\s+diet\s+is|"
+                r"meals?\s+(?:are|include))\s+([^,;]+)",
+                normalized,
+            )
+
+            if match:
+                return match.group(1).strip()
+
+            if any(
+                term in normalized
+                for term in TARGET_TERM_HINTS["diet"]
+            ):
+                for marker in (
+                    "roti",
+                    "rice",
+                    "potato",
+                    "vegetable",
+                    "food",
+                ):
+                    if marker in normalized:
+                        start = normalized.find(
+                            marker
+                        )
+
+                        positions = [
+                            position
+                            for position in (
+                                normalized.find(
+                                    ",",
+                                    start,
+                                ),
+                                normalized.find(
+                                    ";",
+                                    start,
+                                ),
+                            )
+                            if position >= 0
+                        ]
+
+                        end = min(
+                            positions
+                            or [len(normalized)]
+                        )
+
+                        return normalized[
+                            start:end
+                        ].strip()
+
+        if target == "sleep":
+            match = re.search(
+                r"\b(?:very good|good|poor|bad|normal|disturbed)"
+                r"\s+sleep(?:[^,;]*)",
+                normalized,
+            )
+
+            if match:
+                return match.group(0).strip()
+
+            match = re.search(
+                r"\bsleep(?:\s+pattern)?\s+(?:is|of)?\s*"
+                r"([^,;]+)",
+                normalized,
+            )
+
+            if match:
+                return match.group(1).strip()
+
+        if target == "physical_activity":
+            match = re.search(
+                r"\b(?:not much|very little|little|no|high|low|regular|daily)\s+"
+                r"(?:physical\s+activity|exercise)(?:[^,;]*)",
+                normalized,
+            )
+
+            if match:
+                return match.group(0).strip()
+
+            match = re.search(
+                r"\b(?:physical\s+activity|exercise|activity)\s+"
+                r"(?:is|includes|involves)?\s*"
+                r"([^,;]+)",
+                normalized,
+            )
+
+            if match:
+                return match.group(1).strip()
+
+        terms = TARGET_TERM_HINTS.get(
+            target,
+            (),
+        )
+
+        if any(
+            term in normalized
+            for term in terms
+        ):
+            return text
+
+        return None
 
     def _cross_section_facts(
         self,
@@ -929,7 +1814,8 @@ class InterviewExtractor:
 
         if state.current_section == "hpi":
             severity = re.search(
-                r"\b(10|[0-9])\s*(?:/|out of|में से)?\s*10\b",
+                r"\b(10|[0-9])\s*"
+                r"(?:/|out of|में से)\s*10\b",
                 normalized,
             )
 
@@ -938,14 +1824,17 @@ class InterviewExtractor:
                     self._fact(
                         "hpi",
                         "severity",
-                        int(severity.group(1)),
+                        int(
+                            severity.group(1)
+                        ),
                         text,
                         turn_id,
                     )
                 )
 
             duration = re.search(
-                r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|a couple|a few)\s+(day|days|hour|hours|week|weeks|month|months|year|years)\b",
+                r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|a couple|a few)\s+"
+                r"(day|days|hour|hours|week|weeks|month|months|year|years)\b",
                 normalized,
             )
 
@@ -954,347 +1843,241 @@ class InterviewExtractor:
                     self._fact(
                         "hpi",
                         "duration",
-                        f"{duration.group(1)} {duration.group(2)}",
+                        (
+                            f"{duration.group(1)} "
+                            f"{duration.group(2)}"
+                        ),
                         text,
                         turn_id,
                     )
                 )
 
-            if any(
-                term in normalized
-                for term in (
-                    "constipation",
-                    "constipated",
-                    "कब्ज",
+            topic = self.detect_topic(
+                text
+            )
+
+            if topic in {
+                "gastrointestinal",
+                "constipation",
+                "diarrhea",
+            }:
+                bowel_value = (
+                    "constipation"
+                    if (
+                        "constip" in normalized
+                        or "कब्ज" in normalized
+                    )
+                    else (
+                        "diarrhea"
+                        if (
+                            "diarr" in normalized
+                            or "loose stool" in normalized
+                            or "दस्त" in normalized
+                        )
+                        else "gastrointestinal"
+                    )
                 )
-            ):
+
                 facts.append(
                     self._fact(
                         "hpi",
                         "bowel_changes",
-                        "constipation",
+                        bowel_value,
                         text,
                         turn_id,
                     )
                 )
 
-            if any(
-                term in normalized
-                for term in (
-                    "diarrhea",
-                    "loose stools",
-                    "loose motions",
-                    "दस्त",
-                )
+            for field in (
+                "stool_consistency",
+                "straining",
+                "blood_in_stool",
+                "abdominal_distension",
+                "nausea_vomiting",
+                "breathing_difficulty",
+                "cough",
+                "wheeze",
+                "fever",
+                "urinary_frequency",
+                "urinary_burning",
+                "urinary_blood",
             ):
-                facts.append(
-                    self._fact(
-                        "hpi",
-                        "bowel_changes",
-                        "diarrhea",
-                        text,
-                        turn_id,
-                    )
-                )
-
-            if any(
-                term in normalized
-                for term in (
-                    "hard stool",
-                    "hard stools",
-                    "hard bowel movement",
-                    "सख्त",
-                )
-            ):
-                facts.append(
-                    self._fact(
-                        "hpi",
-                        "stool_consistency",
-                        "hard",
-                        text,
-                        turn_id,
-                    )
-                )
-
-            if any(
-                term in normalized
-                for term in (
-                    "straining",
-                    "strain to pass stool",
-                    "have to strain",
-                    "जोर लगाना",
-                )
-            ):
-                facts.append(
-                    self._fact(
-                        "hpi",
-                        "straining",
-                        True,
-                        text,
-                        turn_id,
-                    )
-                )
-
-            if any(
-                term in normalized
-                for term in (
-                    "blood in stool",
-                    "blood in stools",
-                    "blood while passing stool",
-                    "rectal bleeding",
-                    "मल में खून",
-                )
-            ):
-                facts.append(
-                    self._fact(
-                        "hpi",
-                        "blood_in_stool",
-                        True,
-                        text,
-                        turn_id,
-                    )
-                )
-
-            if any(
-                term in normalized
-                for term in (
-                    "no blood",
-                    "there is no blood",
-                    "खून नहीं",
-                )
-            ):
-                facts.append(
-                    self._fact(
-                        "hpi",
-                        "blood_in_stool",
-                        False,
-                        text,
-                        turn_id,
-                        True,
-                    )
-                )
-
-            if any(
-                term in normalized
-                for term in (
-                    "bloating",
-                    "bloated",
-                    "abdominal distension",
-                    "stomach bloating",
-                    "पेट फूल",
-                )
-            ):
-                facts.append(
-                    self._fact(
-                        "hpi",
-                        "abdominal_distension",
-                        True,
-                        text,
-                        turn_id,
-                    )
-                )
-
-        if any(
-            term in normalized
-            for term in (
-                "allergic to",
-                "allergy to",
-                "allergy",
-                "allergies",
-                "एलर्जी",
-            )
-        ):
-            negative = self._target_negative(
-                "allergies",
-                normalized,
-            )
-
-            facts.append(
-                self._fact(
-                    "drug_allergy",
-                    "allergies",
-                    False if negative else text,
-                    text,
-                    turn_id,
-                    negative,
-                )
-            )
-
-        if (
-            re.search(
-                r"\b(?:take|taking|takes|on)\b.{0,60}\b\d+\s*(?:mg|mcg|ml)\b",
-                normalized,
-            )
-            or any(
-                term in normalized
-                for term in (
-                    "metformin",
-                    "insulin",
-                    "amlodipine",
-                    "paracetamol",
-                    "ibuprofen",
-                    "medicine",
-                    "medicines",
-                    "medication",
-                    "medications",
-                    "drugs",
-                    "दवा",
-                    "दवाइ",
-                )
-            )
-        ):
-            negative = self._target_negative(
-                "medications",
-                normalized,
-            ) or self.is_negative_answer(text)
-
-            facts.append(
-                self._fact(
-                    "drug_allergy",
-                    "medications",
-                    False if negative else text,
-                    text,
-                    turn_id,
-                    negative,
-                )
-            )
-
-        if any(
-            term in normalized
-            for term in (
-                "surgery",
-                "operation",
-                "operated",
-                "सर्जरी",
-                "ऑपरेशन",
-            )
-        ):
-            negative = self._target_negative(
-                "past_surgical_history",
-                normalized,
-            )
-
-            facts.append(
-                self._fact(
-                    "past_history",
-                    "past_surgical_history",
-                    False if negative else text,
-                    text,
-                    turn_id,
-                    negative,
-                )
-            )
-
-        if any(
-            term in normalized
-            for term in (
-                "diabetes",
-                "hypertension",
-                "blood pressure",
-                "asthma",
-                "thyroid",
-                "heart disease",
-                "kidney disease",
-                "liver disease",
-                "epilepsy",
-                "cancer",
-                "मधुमेह",
-                "ब्लड प्रेशर",
-                "अस्थमा",
-                "थायरॉइड",
-            )
-        ):
-            negative = self._target_negative(
-                "past_medical_history",
-                normalized,
-            )
-
-            facts.append(
-                self._fact(
-                    "past_history",
-                    "past_medical_history",
-                    False if negative else text,
-                    text,
-                    turn_id,
-                    negative,
-                )
-            )
-
-        if any(
-            term in normalized
-            for term in (
-                "my father",
-                "my mother",
-                "my brother",
-                "my sister",
-                "family history",
-                "runs in my family",
-                "मेरे पिता",
-                "मेरी मां",
-                "मेरी माँ",
-                "मेरे भाई",
-                "मेरी बहन",
-                "परिवार",
-            )
-        ):
-            negative = self._target_negative(
-                "family_history",
-                normalized,
-            )
-
-            facts.append(
-                self._fact(
-                    "family_history",
-                    "family_history",
-                    False if negative else text,
-                    text,
-                    turn_id,
-                    negative,
-                )
-            )
-
-        for field, terms in (
-            (
-                "smoking",
-                (
-                    "smoke",
-                    "smoking",
-                    "cigarette",
-                    "धूम्रपान",
-                ),
-            ),
-            (
-                "alcohol",
-                (
-                    "alcohol",
-                    "drink alcohol",
-                    "शराब",
-                ),
-            ),
-            (
-                "tobacco",
-                (
-                    "tobacco",
-                    "तंबाकू",
-                ),
-            ),
-        ):
-            if any(term in normalized for term in terms):
                 negative = self._target_negative(
                     field,
                     normalized,
                 )
 
+                value = self._bundle_target_value(
+                    field,
+                    normalized,
+                    negative,
+                )
+
+                if value is not None:
+                    facts.append(
+                        self._fact(
+                            "hpi",
+                            field,
+                            value,
+                            text,
+                            turn_id,
+                            value is False
+                            and negative,
+                        )
+                    )
+
+            for field in (
+                "course",
+                "site",
+                "laterality",
+                "character",
+                "timing",
+                "frequency",
+                "aggravating_factors",
+                "relieving_factors",
+                "radiation",
+                "associated_symptoms",
+                "previous_episodes",
+                "prior_treatment",
+                "response_to_treatment",
+                "prior_investigations",
+                "impact_on_daily_life",
+            ):
+                negative = self._target_negative(
+                    field,
+                    normalized,
+                )
+
+                value = self._bundle_target_value(
+                    field,
+                    normalized,
+                    negative,
+                )
+
+                if value is not None:
+                    facts.append(
+                        self._fact(
+                            "hpi",
+                            field,
+                            value,
+                            text,
+                            turn_id,
+                            value is False
+                            and negative,
+                        )
+                    )
+
+        for field in (
+            "past_medical_history",
+            "past_surgical_history",
+            "hospitalizations",
+            "immunizations",
+            "medications",
+            "allergies",
+            "adverse_drug_reactions",
+            "family_history",
+        ):
+            negative = self._target_negative(
+                field,
+                normalized,
+            )
+
+            value = self._bundle_target_value(
+                field,
+                normalized,
+                negative,
+            )
+
+            if value is not None:
                 facts.append(
                     self._fact(
-                        "personal_history",
+                        FIELD_PRIMARY_SECTION.get(
+                            field,
+                            "past_history",
+                        ),
                         field,
-                        False if negative else text,
+                        value,
                         text,
                         turn_id,
-                        negative,
+                        value is False
+                        and negative,
                     )
                 )
+
+        if state.current_section == "personal_history":
+            for field in (
+                "occupation",
+                "diet",
+                "sleep",
+                "physical_activity",
+                "smoking",
+                "alcohol",
+                "tobacco",
+                "menstrual_history",
+                "pregnancy_status",
+                "sexual_history",
+            ):
+                negative = self._target_negative(
+                    field,
+                    normalized,
+                )
+
+                value = self._bundle_target_value(
+                    field,
+                    normalized,
+                    negative,
+                )
+
+                if value is not None:
+                    facts.append(
+                        self._fact(
+                            "personal_history",
+                            field,
+                            value,
+                            text,
+                            turn_id,
+                            value is False
+                            and negative,
+                        )
+                    )
+
+        if state.current_section == "review_of_systems":
+            for field in (
+                "constitutional",
+                "cardiovascular",
+                "respiratory",
+                "gastrointestinal",
+                "genitourinary",
+                "neurological",
+                "musculoskeletal",
+                "skin",
+                "endocrine",
+                "hematologic",
+                "psychiatric",
+            ):
+                negative = self._target_negative(
+                    field,
+                    normalized,
+                )
+
+                value = self._bundle_target_value(
+                    field,
+                    normalized,
+                    negative,
+                )
+
+                if value is not None:
+                    facts.append(
+                        self._fact(
+                            "review_of_systems",
+                            field,
+                            value,
+                            text,
+                            turn_id,
+                            value is False
+                            and negative,
+                        )
+                    )
 
         return facts
 
@@ -1343,11 +2126,18 @@ class InterviewExtractor:
         return result
 
     @staticmethod
-    def _complaint_from_topic(topic: str) -> str:
-        return topic.replace("_", " ")
+    def _complaint_from_topic(
+        topic: str,
+    ) -> str:
+        return topic.replace(
+            "_",
+            " ",
+        )
 
     @staticmethod
-    def _normalize_text(text: str) -> str:
+    def _normalize_text(
+        text: str,
+    ) -> str:
         return re.sub(
             r"[,.!?।]+",
             "",
@@ -1358,12 +2148,16 @@ class InterviewExtractor:
         configured = self.url.rstrip("/")
         urls = [configured]
 
-        replacements = (
-            ("/api/v1/", "/v1/"),
-            ("/v1/", "/api/v1/"),
-        )
-
-        for old, new in replacements:
+        for old, new in (
+            (
+                "/api/v1/",
+                "/v1/",
+            ),
+            (
+                "/v1/",
+                "/api/v1/",
+            ),
+        ):
             if old in configured:
                 alt = configured.replace(
                     old,
@@ -1381,33 +2175,47 @@ class InterviewExtractor:
         section: str,
         language: str,
     ) -> str:
-        if language == "hi":
-            return "कृपया अपनी स्वास्थ्य समस्या के बारे में थोड़ा और बताइए?"
-
-        return "Could you tell me a little more about your health problem?"
+        return (
+            "कृपया अपनी स्वास्थ्य समस्या के बारे में थोड़ा और बताइए?"
+            if language == "hi"
+            else "Could you tell me a little more about your health problem?"
+        )
 
     @staticmethod
     def _emergency_question_for_target(
         target: str,
         language: str,
     ) -> str:
-        if target == "section_closure":
-            return (
-                "क्या इस हिस्से के बारे में कोई और महत्वपूर्ण बात बतानी है?"
-                if language == "hi"
-                else "Is there anything else important you would like to add about this part of your history?"
-            )
+        raw_target = (
+            target[7:]
+            if target.startswith("bundle:")
+            else target
+        )
 
-        from backend.ai.interview.state import TARGET_DESCRIPTIONS
+        first = (
+            raw_target.split(
+                ",",
+                1,
+            )[0].strip()
+        )
 
         description = (
-            TARGET_DESCRIPTIONS.get(target, {}).get(language)
-            or TARGET_DESCRIPTIONS.get(target, {}).get("en")
-            or target.replace("_", " ")
+            TARGET_DESCRIPTIONS.get(
+                first,
+                {},
+            ).get(language)
+            or TARGET_DESCRIPTIONS.get(
+                first,
+                {},
+            ).get("en")
+            or first.replace(
+                "_",
+                " ",
+            )
         )
 
         return (
-            f"कृपया बताइए {description} के बारे में क्या जानकारी है?"
+            f"कृपया {description} के बारे में बताइए?"
             if language == "hi"
             else f"Could you tell me about {description}?"
         )
