@@ -6,7 +6,9 @@ from typing import Any
 
 def _normalise(text: str) -> str:
     text = text.lower()
-    text = re.sub(r"[^a-z0-9\s\-]", " ", text)
+    # Preserve Devanagari so Hindi and mixed-language safety signals reach
+    # the rule engine instead of being stripped out.
+    text = re.sub(r"[^a-z0-9\u0900-\u097f\s\-]", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
@@ -16,13 +18,35 @@ def _contains(text: str, phrases: tuple[str, ...]) -> bool:
 
 
 def _contains_negated(text: str, phrase: str) -> bool:
+    escaped = re.escape(phrase)
+
+    # Look immediately before the signal. This avoids falsely negating a
+    # positive symptom when a later, unrelated symptom is denied, e.g.
+    # "I have chest pain but no fever".
     patterns = (
-        rf"\bno\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
-        rf"\bnot\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
-        rf"\bwithout\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
-        rf"\bdenies\b[^.?!]{{0,30}}\b{re.escape(phrase)}\b",
+        rf"\b(?:no|not|without|denies)\b[^.?!]{{0,30}}\b{escaped}\b",
+        rf"(?:नहीं|नही|बिना|nahi|nahin|bina)\s*.{{0,30}}{escaped}",
     )
-    return any(re.search(pattern, text) for pattern in patterns)
+
+    return any(
+        re.search(
+            pattern,
+            text,
+            flags=re.IGNORECASE,
+        )
+        for pattern in patterns
+    )
+
+
+def _contains_non_negated(
+    text: str,
+    phrases: tuple[str, ...],
+) -> bool:
+    return any(
+        phrase in text
+        and not _contains_negated(text, phrase)
+        for phrase in phrases
+    )
 
 
 def detect_red_flags(
@@ -53,17 +77,34 @@ def detect_red_flags(
     # Chest pain
     # ------------------------------------------------------------------
 
+    chest_pain_phrases = (
+        "chest pain",
+        "pain in my chest",
+        "chest discomfort",
+        "chest pressure",
+        "pressure in my chest",
+        "tightness in my chest",
+        "सीने में दर्द",
+        "सीने में दबाव",
+        "सीने में जकड़न",
+        "छाती में दर्द",
+        "छाती में दबाव",
+        "seene mein dard",
+        "seene mein dabav",
+        "seene mein jakdan",
+        "seene mein bhari pan",
+    )
+
     chest_pain = _contains(
         text,
-        (
-            "chest pain",
-            "pain in my chest",
-            "chest discomfort",
-            "chest pressure",
-            "pressure in my chest",
-            "tightness in my chest",
-        ),
-    ) and not _contains_negated(text, "chest pain")
+        chest_pain_phrases,
+    ) and not any(
+        _contains_negated(
+            text,
+            phrase,
+        )
+        for phrase in chest_pain_phrases
+    )
 
     character = _normalise(str(structured_fields.get("character", "")))
     radiation = _normalise(str(structured_fields.get("radiation", "")))
@@ -77,7 +118,7 @@ def detect_red_flags(
         str(structured_fields.get("relieving_factors", ""))
     )
 
-    chest_pressure = _contains(
+    chest_pressure = _contains_non_negated(
         character,
         (
             "pressure",
@@ -86,10 +127,14 @@ def detect_red_flags(
             "tight",
             "tightness",
             "heavy",
+            "दबाव",
+            "जकड़न",
+            "भारी",
+            "कसाव",
         ),
     )
 
-    chest_radiation = _contains(
+    chest_radiation = _contains_non_negated(
         radiation,
         (
             "arm",
@@ -97,19 +142,26 @@ def detect_red_flags(
             "jaw",
             "neck",
             "back",
+            "हाथ",
+            "कंधे",
+            "जबड़े",
+            "गर्दन",
+            "पीठ",
         ),
     )
 
-    sweating = _contains(
+    sweating = _contains_non_negated(
         f"{associated} {text}",
         (
             "sweating",
             "sweaty",
             "cold sweat",
+            "पसीना",
+            "पसीना आना",
         ),
     )
 
-    exertional = _contains(
+    exertional = _contains_non_negated(
         aggravating,
         (
             "exercise",
@@ -118,15 +170,23 @@ def detect_red_flags(
             "running",
             "stairs",
             "physical activity",
+            "व्यायाम",
+            "चलने",
+            "दौड़ने",
+            "सीढ़ी",
+            "मेहनत",
         ),
     )
 
-    rest_relief = _contains(
+    rest_relief = _contains_non_negated(
         relieving,
         (
             "rest",
             "sitting",
             "sitting down",
+            "आराम",
+            "बैठने",
+            "बैठने से",
         ),
     )
 
@@ -156,19 +216,45 @@ def detect_red_flags(
     # Severe breathing difficulty
     # ------------------------------------------------------------------
 
-    breathing = _contains(
-        text,
-        (
-            "difficulty breathing",
-            "shortness of breath",
-            "cannot breathe",
-            "can't breathe",
-            "struggling to breathe",
-            "gasping",
-        ),
+    breathing_phrases = (
+        "difficulty breathing",
+        "shortness of breath",
+        "cannot breathe",
+        "can't breathe",
+        "struggling to breathe",
+        "gasping",
+        "सांस लेने में दिक्कत",
+        "साँस लेने में दिक्कत",
+        "सांस फूलना",
+        "साँस फूलना",
+        "दम घुटना",
+        "साँस नहीं आ रही",
+        "सांस नहीं आ रही",
+        "saans phoolna",
+        "saans lene mein dikkat",
+        "saans nahi aa rahi",
+        "saans nahin aa rahi",
+        "dam ghutna",
+        "saans lene mein mushkil",
+        "saans lene mein bahut dikkat",
+        "saans nahi le pa raha",
+        "saans nahi le paa raha",
+        "साँस नहीं ले पा रहा",
+        "सांस नहीं ले पा रहा",
     )
 
-    if breathing and not _contains_negated(text, "shortness of breath"):
+    breathing = _contains(
+        text,
+        breathing_phrases,
+    )
+
+    if breathing and not any(
+        _contains_negated(
+            text,
+            phrase,
+        )
+        for phrase in breathing_phrases
+    ):
         add_flag(
             "Severe breathing difficulty requires prompt triage assessment.",
             "severe_breathing_difficulty",
@@ -178,7 +264,7 @@ def detect_red_flags(
     # Loss of consciousness
     # ------------------------------------------------------------------
 
-    if _contains(
+    if _contains_non_negated(
         text,
         (
             "passed out",
@@ -186,6 +272,13 @@ def detect_red_flags(
             "lost consciousness",
             "loss of consciousness",
             "unconscious",
+            "passed unconscious",
+            "बेहोश",
+            "बेहोशी",
+            "होश खो दिया",
+            "behosh",
+            "behoshi",
+            "hosh kho diya",
         ),
     ):
         add_flag(
@@ -197,7 +290,7 @@ def detect_red_flags(
     # Stroke-like symptoms
     # ------------------------------------------------------------------
 
-    stroke = _contains(
+    stroke = _contains_non_negated(
         text,
         (
             "face drooping",
@@ -212,6 +305,20 @@ def detect_red_flags(
             "difficulty speaking",
             "slurred speech",
             "speech difficulty",
+            "चेहरा टेढ़ा",
+            "अचानक कमजोरी",
+            "एक तरफ कमजोरी",
+            "एक तरफ सुन्नपन",
+            "अचानक सुन्नपन",
+            "बोलने में दिक्कत",
+            "बोलने में परेशानी",
+            "लड़खड़ाती बोली",
+            "chehra tedha",
+            "achanak kamzori",
+            "ek taraf kamzori",
+            "ek taraf sunnpan",
+            "bolne mein dikkat",
+            "bolne mein pareshani",
         ),
     )
 
@@ -225,7 +332,7 @@ def detect_red_flags(
     # Severe bleeding
     # ------------------------------------------------------------------
 
-    bleeding = _contains(
+    bleeding = _contains_non_negated(
         text,
         (
             "severe bleeding",
@@ -233,6 +340,17 @@ def detect_red_flags(
             "bleeding heavily",
             "vomiting blood",
             "coughing blood",
+            "बहुत ज्यादा खून",
+            "तेज खून बहना",
+            "खून की उल्टी",
+            "खून की खांसी",
+            "खून की खाँसी",
+            "bahut zyada khoon",
+            "bahut khoon beh raha",
+            "tez khoon behna",
+            "bahut tez khoon behna",
+            "khoon ki ulti",
+            "khoon ki khansi",
         ),
     )
 
@@ -246,7 +364,7 @@ def detect_red_flags(
     # Severe allergic reaction
     # ------------------------------------------------------------------
 
-    airway_swelling = _contains(
+    airway_swelling = _contains_non_negated(
         text,
         (
             "swollen tongue",
@@ -254,6 +372,12 @@ def detect_red_flags(
             "swollen throat",
             "swelling of my throat",
             "throat closing",
+            "जीभ में सूजन",
+            "गले में सूजन",
+            "गला बंद",
+            "jeebh mein sujan",
+            "gale mein sujan",
+            "gala band",
         ),
     )
 
@@ -267,13 +391,24 @@ def detect_red_flags(
     # Severe/sudden headache
     # ------------------------------------------------------------------
 
-    severe_headache = _contains(
+    severe_headache = _contains_non_negated(
         text,
         (
             "worst headache of my life",
             "thunderclap headache",
             "sudden severe headache",
             "very severe headache",
+            "जिंदगी का सबसे तेज सिरदर्द",
+            "अचानक बहुत तेज सिरदर्द",
+            "बहुत तेज सिरदर्द",
+            "अचानक तेज सिरदर्द",
+            "zindagi ka sabse tez sir dard",
+            "achanak bahut tez sir dard",
+            "achanak bahut tez sar dard",
+            "bahut tez sir dard",
+            "bahut tez sar dard",
+            "achanak tez sir dard",
+            "sabse tez sir dard",
         ),
     )
 

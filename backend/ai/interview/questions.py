@@ -170,12 +170,36 @@ SECTION_QUESTIONS = {
     ),
     "review_of_systems": (QuestionSpec("review_of_systems", "Apart from this problem, have you noticed any other new symptoms or changes in your health?", "इस समस्या के अलावा क्या आपने कोई और नए लक्षण या अपने स्वास्थ्य में कोई बदलाव देखा है?"),),
     "ayush": (
-        QuestionSpec("ayush_prakriti", "Do you know your Ayurvedic Prakriti or constitution?",
-                     "क्या आपको अपनी आयुर्वेदिक प्रकृति या शरीर की संरचना के बारे में जानकारी है?"),
-        QuestionSpec("ayush_vikriti", "Has an Ayurvedic practitioner identified any current imbalance or Vikriti?",
-                     "क्या किसी आयुर्वेदिक चिकित्सक ने वर्तमान विकृति या असंतुलन बताया है?"),
-        QuestionSpec("ayush_ahara_vihara", "Is there any important AYUSH information about your diet or daily routine?",
-                     "आपके भोजन या दैनिक दिनचर्या से जुड़ी कोई महत्वपूर्ण आयुष जानकारी है?"),
+        QuestionSpec("ayush_prakriti", "Do you know your Ayurvedic Prakriti or constitution? If you have been told it before, please share it; otherwise you can say you do not know.",
+                     "क्या आपको अपनी आयुर्वेदिक प्रकृति या शरीर की संरचना के बारे में जानकारी है? यदि पहले किसी ने बताया है तो बताइए, नहीं पता हो तो आप कह सकते हैं कि आपको जानकारी नहीं है।"),
+        QuestionSpec("ayush_vikriti", "Has an AYUSH practitioner ever told you about a current Vikriti or imbalance?",
+                     "क्या किसी आयुष चिकित्सक ने आपको वर्तमान विकृति या असंतुलन के बारे में कभी बताया है?"),
+        QuestionSpec("ayush_sara", "If you know your Ayurvedic Sara, or tissue quality, what were you told?",
+                     "यदि आपको अपनी आयुर्वेदिक सार या धातु की गुणवत्ता के बारे में बताया गया है, तो क्या बताया गया था?"),
+        QuestionSpec("ayush_samhanana", "If you know your Samhanana or body compactness, what were you told?",
+                     "यदि आपको अपने संहनन या शरीर की बनावट के बारे में बताया गया है, तो क्या बताया गया था?"),
+        QuestionSpec("ayush_pramana", "If you know your Pramana or body proportions, what information were you given?",
+                     "यदि आपको अपने प्रमाण या शरीर के अनुपात के बारे में बताया गया है, तो क्या जानकारी दी गई थी?"),
+        QuestionSpec("ayush_satmya", "If an AYUSH practitioner has described your Satmya or suitability or tolerance to foods or routines, what did they tell you?",
+                     "यदि किसी आयुष चिकित्सक ने आपके सात्म्य या किन खाद्य पदार्थों और दिनचर्याओं के अनुकूल होने के बारे में बताया है, तो क्या बताया था?"),
+        QuestionSpec("ayush_satva", "If you know your Satva or mental disposition as described in an AYUSH consultation, what were you told?",
+                     "यदि आयुष परामर्श में आपके सत्त्व या मानसिक प्रवृत्ति के बारे में कुछ बताया गया है, तो क्या बताया था?"),
+        QuestionSpec("ayush_ahara_shakti", "What were you told about your Ahara Shakti, or your usual capacity to take food?",
+                     "आपकी आहार शक्ति या सामान्य रूप से भोजन ग्रहण करने की क्षमता के बारे में क्या बताया गया है?"),
+        QuestionSpec("ayush_vyayama_shakti", "What were you told about your Vyayama Shakti, or your usual exercise capacity?",
+                     "आपकी व्यायाम शक्ति या सामान्य व्यायाम क्षमता के बारे में क्या बताया गया है?"),
+        QuestionSpec("ayush_vaya", "What age-related or Vaya information is relevant in your AYUSH history?",
+                     "आपके आयुष इतिहास में वय या उम्र से जुड़ी कौन सी जानकारी प्रासंगिक है?"),
+        QuestionSpec("ayush_ahara_vihara", "Are there any important AYUSH details about your diet, daily routine, sleep, activity, or habits?",
+                     "आपके भोजन, दैनिक दिनचर्या, नींद, गतिविधि या आदतों से जुड़ी कोई महत्वपूर्ण आयुष जानकारी है?"),
+        QuestionSpec("ayush_agni", "If you know your Agni or digestive pattern from an AYUSH consultation, what were you told?",
+                     "यदि आयुष परामर्श में आपकी अग्नि या पाचन प्रकृति के बारे में बताया गया है, तो क्या बताया गया था?"),
+        QuestionSpec("ayush_koshta", "If you know your Koshtha or bowel pattern as described in AYUSH, what were you told?",
+                     "यदि आयुष में आपके कोष्ठ या मल त्याग के पैटर्न के बारे में बताया गया है, तो क्या बताया गया था?"),
+        QuestionSpec("ayush_nidana", "Were any AYUSH-specific causes or Nidana for your present problem explained to you by a practitioner?",
+                     "क्या किसी आयुष चिकित्सक ने आपकी वर्तमान समस्या के लिए कोई आयुष-विशिष्ट कारण या निदान के बारे में बताया है?"),
+        QuestionSpec("ayush_samprapti", "Were you given any explanation of how the present problem developed according to your AYUSH consultation?",
+                     "क्या आपके आयुष परामर्श में वर्तमान समस्या के विकसित होने की प्रक्रिया या सम्प्राप्ति के बारे में कुछ समझाया गया था?"),
     ),
 }
 
@@ -233,53 +257,36 @@ def section_questions(section: str, topic: str) -> tuple[QuestionSpec, ...]:
     return tuple(result)
 
 
-def section_complete(state: InterviewState, section: str) -> bool:
-    normalized = section
+def section_complete(
+    state: InterviewState,
+    section: str,
+) -> bool:
+    normalized = normalize_section(
+        section
+    )
+
     if normalized in state.completed_sections:
         return True
-    if normalized in state.stopped_sections:
-        if normalized != "hpi":
-            return bool(state.section_fields(normalized))
-        known = state.known_fields()
-        answered_hpi = len([field for field in state.section_fields(
-            "hpi") if field != "chief_complaint"])
-        return bool(known.get("chief_complaint")) and answered_hpi >= 3
-    if normalized == "hpi":
-        known = state.known_fields()
-        required = TOPIC_REQUIRED.get(state.topic, TOPIC_REQUIRED["general"])
-        missing = required - set(known)
-        if "onset" in missing and ("onset" in known or "duration" in known):
-            missing.remove("onset")
-        return bool(known.get("chief_complaint")) and not missing
-    required_by_section = {
-        "past_history": {"past_medical_history", "past_surgical_history", "hospitalizations"},
-        "drug_allergy": {"medications", "allergies", "adverse_drug_reactions"},
-        "family_history": {"family_history"},
-        "personal_history": {"occupation", "smoking", "alcohol", "diet", "sleep", "physical_activity"},
-        "review_of_systems": {"review_of_systems"},
-        "ayush": {"ayush_prakriti", "ayush_vikriti", "ayush_ahara_vihara"},
-    }
-    required = required_by_section.get(normalized, set())
-    known = state.known_fields()
-    return required.issubset(known)
 
+    if normalized != state.current_section:
+        return False
+
+    return state.section_naturally_ready()
 
 def choose_question(state: InterviewState, language: str, suggested_field: str | None = None) -> QuestionSpec | None:
     specs = section_questions(state.current_section, state.topic)
     if suggested_field:
         for item in specs:
-            if item.field == suggested_field and not state.answered(item.field):
+            if item.field == suggested_field and not state.target_answered(item.field):
                 return item
     for item in specs:
-        if item.field in {"onset", "duration"} and (state.answered("onset") or state.answered("duration")):
-            continue
-        if not state.answered(item.field):
+        if not state.target_answered(item.field):
             return item
     return None
 
 
 def next_section(state: InterviewState) -> str | None:
-    order = (*SECTION_ORDER, "ayush") if state.ayush_required else SECTION_ORDER
+    order = (*SECTION_ORDER, "ayush") if state.ayush_enabled else SECTION_ORDER
     for section in order:
         if section not in state.completed_sections:
             return section
@@ -288,9 +295,31 @@ def next_section(state: InterviewState) -> str | None:
 
 def is_explicit_negative(text: str) -> bool:
     value = " ".join(text.strip().lower().split())
-    return value in {"no", "none", "not applicable", "not relevant", "नहीं", "कोई नहीं"}
+    return value in {
+        "no",
+        "none",
+        "not applicable",
+        "not relevant",
+        "नहीं",
+        "कोई नहीं",
+        "nahi",
+        "nahin",
+    }
 
 
 def is_stop_answer(text: str) -> bool:
     value = " ".join(text.strip().lower().split())
-    return value in {"nothing else", "nothing more", "no more", "that's all", "thats all", "that is all", "कुछ नहीं", "और कुछ नहीं", "बस इतना ही"}
+    return value in {
+        "nothing else",
+        "nothing more",
+        "no more",
+        "that's all",
+        "thats all",
+        "that is all",
+        "कुछ नहीं",
+        "और कुछ नहीं",
+        "बस इतना ही",
+        "kuch nahi",
+        "kuch nahin",
+        "bas itna hi",
+    }

@@ -24,6 +24,9 @@ TOPIC_KEYWORDS = {
         "chest discomfort",
         "सीने में दर्द",
         "सीने में दबाव",
+        "seene mein dard",
+        "seene mein dabav",
+        "seene mein jakdan",
     ),
     "headache": (
         "headache",
@@ -32,6 +35,8 @@ TOPIC_KEYWORDS = {
         "सिरदर्द",
         "सिर में दर्द",
         "माइग्रेन",
+        "sir dard",
+        "sar dard",
     ),
     "respiratory": (
         "cough",
@@ -44,6 +49,9 @@ TOPIC_KEYWORDS = {
         "खाँसी",
         "सांस फूलना",
         "साँस फूलना",
+        "saans phoolna",
+        "saans lene mein dikkat",
+        "khansi",
     ),
     "gastrointestinal": (
         "constipation",
@@ -64,6 +72,11 @@ TOPIC_KEYWORDS = {
         "पेट में दर्द",
         "उल्टी",
         "मतली",
+        "pet mein dard",
+        "pet dard",
+        "ulti",
+        "kabz",
+        "dast",
     ),
     "urinary": (
         "urine",
@@ -73,6 +86,8 @@ TOPIC_KEYWORDS = {
         "पेशाब",
         "मूत्र",
         "पेशाब में जलन",
+        "peshab",
+        "peshab mein jalan",
     ),
     "skin": (
         "rash",
@@ -82,6 +97,9 @@ TOPIC_KEYWORDS = {
         "चकत्ते",
         "खुजली",
         "त्वचा",
+        "khujli",
+        "dane",
+        "chakatte",
     ),
     "musculoskeletal": (
         "back pain",
@@ -90,6 +108,9 @@ TOPIC_KEYWORDS = {
         "neck pain",
         "कमर दर्द",
         "जोड़ों का दर्द",
+        "kamar dard",
+        "jodon ka dard",
+        "jodon mein dard",
     ),
     "neurological": (
         "numbness",
@@ -101,6 +122,10 @@ TOPIC_KEYWORDS = {
         "झनझनाहट",
         "कमजोरी",
         "कमज़ोरी",
+        "chakkar",
+        "sunnpan",
+        "jhunjhunahat",
+        "kamzori",
     ),
 }
 
@@ -117,12 +142,72 @@ NEGATIVE_ANSWERS = {
     "na",
     "n/a",
     "नहीं",
+    "nahi",
+    "nahin",
+    "kuch nahi",
+    "kuch nahin",
     "कुछ नहीं",
     "और कुछ नहीं",
     "कोई नहीं",
     "लागू नहीं",
+    "nope",
+    "nah",
+    "nahi hai",
+    "nahin hai",
+    "नहीं है",
+    "नहीं हुआ",
+    "नहीं हुई",
+    "नहीं करता",
+    "नहीं करती",
+    "nahi hua",
+    "nahi hui",
+    "nahi karta",
+    "nahi karti",
     "पता नहीं",
 }
+
+UNKNOWN_ANSWERS = {
+    "i don't know",
+    "i do not know",
+    "don't know",
+    "do not know",
+    "not sure",
+    "not certain",
+    "unknown",
+    "not known",
+    "not available",
+    "pata nahi",
+    "pata nahin",
+    "पता नहीं",
+    "pata nahi",
+    "pata nahin",
+    "mujhe nahi pata",
+    "mujhe nahin pata",
+    "मुझे नहीं पता",
+    "मालूम नहीं",
+    "नहीं पता",
+    "i don't remember",
+    "i do not remember",
+    "don't remember",
+    "do not remember",
+    "i cannot remember",
+    "याद नहीं",
+    "याद नहीं है",
+    "मुझे याद नहीं",
+    "mujhe yaad nahi",
+    "mujhe yaad nahin",
+    "yaad nahi",
+    "yaad nahin",
+    "i haven't been assessed",
+    "i have not been assessed",
+    "never had an ayush assessment",
+    "never had an ayurvedic assessment",
+    "कोई आयुष जांच नहीं हुई",
+    "कोई आयुष मूल्यांकन नहीं हुआ",
+    "आयुर्वेदिक जांच नहीं हुई",
+    "आयुर्वेदिक मूल्यांकन नहीं हुआ",
+}
+
 
 QUESTION_BUNDLES = (
     (
@@ -214,6 +299,31 @@ QUESTION_BUNDLES = (
         "hematologic",
         "psychiatric",
     ),
+    (
+        "ayush_prakriti",
+        "ayush_vikriti",
+        "ayush_sara",
+        "ayush_samhanana",
+    ),
+    (
+        "ayush_pramana",
+        "ayush_satmya",
+        "ayush_satva",
+    ),
+    (
+        "ayush_ahara_shakti",
+        "ayush_vyayama_shakti",
+        "ayush_vaya",
+    ),
+    (
+        "ayush_ahara_vihara",
+        "ayush_agni",
+        "ayush_koshta",
+    ),
+    (
+        "ayush_nidana",
+        "ayush_samprapti",
+    ),
 )
 
 BOOLEAN_TARGETS = {
@@ -231,6 +341,17 @@ BOOLEAN_TARGETS = {
 }
 
 NEGATABLE_TARGETS = BOOLEAN_TARGETS | {
+    "constitutional",
+    "cardiovascular",
+    "respiratory",
+    "gastrointestinal",
+    "genitourinary",
+    "neurological",
+    "musculoskeletal",
+    "skin",
+    "endocrine",
+    "hematologic",
+    "psychiatric",
     "nausea_vomiting",
     "previous_episodes",
     "prior_investigations",
@@ -322,6 +443,85 @@ BOOLEAN_TERMS = {
         "gutkha",
         "paan masala",
         "तंबाकू",
+        "tambaku",
+        "gutka",
+    ),
+}
+
+AYUSH_TARGET_TERMS = {
+    "ayush_prakriti": (
+        "prakriti",
+        "prakruti",
+        "constitution",
+        "vata",
+        "pitta",
+        "kapha",
+        "वात",
+        "पित्त",
+        "कफ",
+        "प्रकृति",
+    ),
+    "ayush_vikriti": (
+        "vikriti",
+        "vikruti",
+        "imbalance",
+        "dosha imbalance",
+        "विकृति",
+        "असंतुलन",
+        "दोष असंतुलन",
+    ),
+    "ayush_sara": ("sara", "saara", "सार"),
+    "ayush_samhanana": ("samhanana", "संहनन"),
+    "ayush_pramana": ("pramana", "pramaana", "प्रमाण"),
+    "ayush_satmya": ("satmya", "सात्म्य"),
+    "ayush_satva": ("satva", "sattva", "sattwa", "सत्त्व"),
+    "ayush_ahara_shakti": (
+        "ahara shakti",
+        "aahar shakti",
+        "आहार शक्ति",
+    ),
+    "ayush_vyayama_shakti": (
+        "vyayama shakti",
+        "vyaayam shakti",
+        "व्यायाम शक्ति",
+    ),
+    "ayush_vaya": (
+        "vaya",
+        "vayas",
+        "age",
+        "वय",
+        "उम्र",
+    ),
+    "ayush_ahara_vihara": (
+        "ahara-vihara",
+        "ahara vihara",
+        "aahar vihar",
+        "daily routine",
+        "आहार",
+        "विहार",
+        "दैनिक दिनचर्या",
+    ),
+    "ayush_agni": ("agni", "digestion", "अग्नि", "पाचन"),
+    "ayush_koshta": (
+        "koshta",
+        "koshtha",
+        "kostha",
+        "bowel pattern",
+        "कोष्ठ",
+    ),
+    "ayush_nidana": (
+        "nidana",
+        "nidaan",
+        "cause",
+        "causes",
+        "निदान",
+        "कारण",
+    ),
+    "ayush_samprapti": (
+        "samprapti",
+        "how the problem developed",
+        "सम्प्राप्ति",
+        "समप्राप्ति",
     ),
 }
 
@@ -389,6 +589,9 @@ TEXT_TARGET_TERMS = {
         "ब्लड प्रेशर",
         "अस्थमा",
         "थायरॉइड",
+        "madhumeh",
+        "uchcha raktchaap",
+        "hriday rog",
     ),
     "past_surgical_history": (
         "surgery",
@@ -398,6 +601,9 @@ TEXT_TARGET_TERMS = {
         "operated",
         "सर्जरी",
         "ऑपरेशन",
+        "operation hua",
+        "operation hua tha",
+        "surgery hui",
     ),
     "hospitalizations": (
         "hospital",
@@ -423,12 +629,18 @@ TEXT_TARGET_TERMS = {
         "tablets",
         "supplement",
         "दवा",
+        "dawai",
+        "dawa",
+        "medicine le raha",
+        "medicine leti",
     ),
     "allergies": (
         "allergy",
         "allergies",
         "allergic",
         "एलर्जी",
+        "alergy",
+        "allergy hai",
     ),
     "adverse_drug_reactions": (
         "reaction to",
@@ -446,6 +658,11 @@ TEXT_TARGET_TERMS = {
         "my brother",
         "my sister",
         "परिवार",
+        "parivar",
+        "mere pita",
+        "meri maa",
+        "mere bhai",
+        "meri behen",
     ),
     "occupation": (
         "job",
@@ -513,17 +730,38 @@ ROS_TERMS = {
         "weight loss",
         "weight gain",
         "appetite",
+        "बुखार",
+        "ठंड लगना",
+        "थकान",
+        "वजन कम",
+        "वजन बढ़",
+        "भूख",
+        "bukhar",
+        "thakan",
+        "bhukh",
     ),
     "cardiovascular": (
         "chest pain",
         "palpitation",
         "palpitations",
+        "सीने में दर्द",
+        "धड़कन",
+        "दिल की धड़कन",
+        "seene mein dard",
+        "dhadkan",
     ),
     "respiratory": (
         "cough",
         "breath",
         "breathing",
         "wheeze",
+        "खांसी",
+        "खाँसी",
+        "सांस",
+        "साँस",
+        "घरघराहट",
+        "khansi",
+        "saans",
     ),
     "gastrointestinal": (
         "nausea",
@@ -533,12 +771,28 @@ ROS_TERMS = {
         "diarrhea",
         "constipation",
         "bloating",
+        "मतली",
+        "उल्टी",
+        "पेट",
+        "दस्त",
+        "कब्ज",
+        "पेट फूलना",
+        "matli",
+        "ulti",
+        "pet dard",
+        "dast",
+        "kabz",
     ),
     "genitourinary": (
         "urine",
         "urination",
         "urinary",
         "painful urination",
+        "पेशाब",
+        "मूत्र",
+        "पेशाब में जलन",
+        "peshab",
+        "peshab mein jalan",
     ),
     "neurological": (
         "dizziness",
@@ -546,33 +800,75 @@ ROS_TERMS = {
         "numbness",
         "weakness",
         "tingling",
+        "चक्कर",
+        "बेहोशी",
+        "सुन्नपन",
+        "कमजोरी",
+        "कमज़ोरी",
+        "झनझनाहट",
+        "chakkar",
+        "behoshi",
+        "sunnpan",
+        "kamzori",
+        "jhunjhunahat",
     ),
     "musculoskeletal": (
         "joint",
         "muscle",
         "back pain",
         "neck pain",
+        "जोड़",
+        "जोड़ों",
+        "मांसपेशी",
+        "कमर दर्द",
+        "गर्दन दर्द",
+        "jodon",
+        "jodon ka dard",
+        "kamar dard",
     ),
     "skin": (
         "rash",
         "itch",
         "skin",
+        "दाने",
+        "चकत्ते",
+        "खुजली",
+        "त्वचा",
+        "dane",
+        "khujli",
+        "chakatte",
     ),
     "endocrine": (
         "thyroid",
         "heat intolerance",
         "cold intolerance",
+        "थायरॉइड",
+        "गर्मी सहन",
+        "ठंड सहन",
     ),
     "hematologic": (
         "easy bruising",
         "bleeding",
         "anemia",
+        "आसानी से नीला",
+        "खून बहना",
+        "खून की कमी",
+        "khoon behna",
+        "khoon ki kami",
     ),
     "psychiatric": (
         "anxiety",
         "depression",
         "stress",
         "panic",
+        "चिंता",
+        "उदासी",
+        "तनाव",
+        "घबराहट",
+        "chinta",
+        "udaasi",
+        "tanav",
+        "ghabrahat",
     ),
 }
 
@@ -619,13 +915,10 @@ class InterviewExtractor:
             not self.enabled
             or self.provider != "lemonade"
         ):
-            return QuestionDecision(
-                self._emergency_question_for_target(
-                    candidates[0],
-                    language,
-                ),
-                candidates[0],
-                False,
+            return self._fallback_decision(
+                state,
+                candidates,
+                language,
             )
 
         prompt = self._build_question_prompt(
@@ -649,11 +942,20 @@ class InterviewExtractor:
             if (
                 decision.question
                 and decision.target
-                and decision.question.lower()
+                and self._question_key(
+                    decision.question
+                )
                 not in {
-                    item.lower()
+                    self._question_key(item)
                     for item in state.question_history
                 }
+                and all(
+                    not state.target_answered(item)
+                    for item in state._split_targets(
+                        decision.target
+                    )
+                    if item
+                )
             ):
                 return decision
 
@@ -665,13 +967,10 @@ class InterviewExtractor:
                 error=str(exc),
             )
 
-        return QuestionDecision(
-            self._emergency_question_for_target(
-                candidates[0],
-                language,
-            ),
-            candidates[0],
-            False,
+        return self._fallback_decision(
+            state,
+            candidates,
+            language,
         )
 
     def extract_facts(
@@ -706,17 +1005,6 @@ class InterviewExtractor:
                 )
             )
 
-        if topic:
-            facts.append(
-                self._fact(
-                    "hpi",
-                    "chief_complaint",
-                    normalized,
-                    normalized,
-                    turn_id,
-                )
-            )
-
         if (
             topic
             and (
@@ -732,7 +1020,24 @@ class InterviewExtractor:
             )
         )
 
-        if self.is_negative_answer(
+        if self.is_unknown_answer(
+            normalized
+        ):
+            for target in pending_targets:
+                facts.append(
+                    self._fact(
+                        FIELD_PRIMARY_SECTION.get(
+                            target,
+                            state.current_section,
+                        ),
+                        target,
+                        "unknown",
+                        normalized,
+                        turn_id,
+                    )
+                )
+
+        elif self.is_negative_answer(
             normalized
         ):
             for target in pending_targets:
@@ -751,8 +1056,36 @@ class InterviewExtractor:
                         )
                     )
 
+        elif self.is_affirmative_answer(
+            normalized
+        ):
+            for target in pending_targets:
+                if target in BOOLEAN_TARGETS:
+                    facts.append(
+                        self._fact(
+                            FIELD_PRIMARY_SECTION.get(
+                                target,
+                                state.current_section,
+                            ),
+                            target,
+                            True,
+                            normalized,
+                            turn_id,
+                        )
+                    )
+
         for target in TARGET_FIELDS:
             if target == "chief_complaint":
+                continue
+
+            if (
+                target in {"onset", "duration"}
+                and not self._should_extract_temporal_target(
+                    target,
+                    normalized,
+                    pending_targets,
+                )
+            ):
                 continue
 
             value, negative = self._extract_target(
@@ -777,6 +1110,36 @@ class InterviewExtractor:
                 )
             )
 
+        extracted_targets = {
+            str(fact.get("field") or "")
+            for fact in facts
+        }
+
+        # Preserve natural, context-rich answers when one target is pending.
+        # This catches answers such as "teacher", "six hours", "Vata", or
+        # "since last night" even when no keyword extractor has a rule for it.
+        if (
+            len(pending_targets) == 1
+            and pending_targets[0] not in extracted_targets
+            and self._can_context_capture(
+                pending_targets[0],
+                normalized,
+            )
+        ):
+            target = pending_targets[0]
+            facts.append(
+                self._fact(
+                    FIELD_PRIMARY_SECTION.get(
+                        target,
+                        state.current_section,
+                    ),
+                    target,
+                    normalized,
+                    normalized,
+                    turn_id,
+                )
+            )
+
         facts.extend(
             self._cross_section_facts(
                 normalized,
@@ -790,6 +1153,40 @@ class InterviewExtractor:
         )
 
     @staticmethod
+    def is_unknown_answer(
+        text: str,
+    ) -> bool:
+        normalized = InterviewExtractor._normalize_text(
+            text
+        )
+
+        return normalized in UNKNOWN_ANSWERS
+
+    @staticmethod
+    def is_affirmative_answer(
+        text: str,
+    ) -> bool:
+        normalized = InterviewExtractor._normalize_text(
+            text
+        )
+
+        return normalized in {
+            "yes",
+            "y",
+            "yeah",
+            "yep",
+            "sure",
+            "haan",
+            "ha",
+            "haa",
+            "ji",
+            "हाँ",
+            "हां",
+            "हॉं",
+            "जी",
+        }
+
+    @staticmethod
     def is_negative_answer(
         text: str,
     ) -> bool:
@@ -797,17 +1194,15 @@ class InterviewExtractor:
             text
         )
 
-        if (
-            normalized in NEGATIVE_ANSWERS
-            or "nothing else" in normalized
-            or "और कुछ नहीं" in normalized
-        ):
+        if normalized in NEGATIVE_ANSWERS:
             return True
 
         return bool(
             re.fullmatch(
-                r"(?:no|none|n/?a|नहीं)(?:\s+(?:more|else|nothing))?",
+                r"(?:no|none|n/?a|nahi|nahin|नहीं)"
+                r"(?:\s+(?:more|else|nothing))?",
                 normalized,
+                flags=re.IGNORECASE,
             )
         )
 
@@ -816,15 +1211,40 @@ class InterviewExtractor:
         text: str,
     ) -> str | None:
         normalized = text.lower()
+        matches: list[tuple[int, str]] = []
 
         for topic, keywords in TOPIC_KEYWORDS.items():
-            if any(
-                keyword in normalized
-                for keyword in keywords
-            ):
-                return topic
+            for keyword in keywords:
+                start = normalized.find(
+                    keyword
+                )
 
-        return None
+                if start < 0:
+                    continue
+
+                if InterviewExtractor._is_negated(
+                    normalized,
+                    start,
+                    len(keyword),
+                ):
+                    continue
+
+                matches.append(
+                    (
+                        len(keyword),
+                        topic,
+                    )
+                )
+
+        if not matches:
+            return None
+
+        matches.sort(
+            key=lambda item: item[0],
+            reverse=True,
+        )
+
+        return matches[0][1]
 
     def _extract_target(
         self,
@@ -833,11 +1253,29 @@ class InterviewExtractor:
     ) -> tuple[Any, bool]:
         normalized = text.lower()
 
+        if target in AYUSH_TARGET_TERMS:
+            terms = AYUSH_TARGET_TERMS[target]
+
+            if any(
+                term in normalized
+                for term in terms
+            ):
+                return (
+                    text.strip(),
+                    False,
+                )
+
+            return (
+                None,
+                False,
+            )
+
         if target == "severity":
             patterns = (
                 r"\b(10|[0-9])\s*(?:/|out of|में से)?\s*10\b",
                 r"^\s*(10|[0-9])\s*$",
                 r"\b(?:pain|severity|discomfort)\s*(?:is|of|at)?\s*(10|[0-9])\b",
+                r"\b(?:तीव्रता|दर्द|तकलीफ|तकलीफ़)\s*(?:\S+\s*){0,3}(10|[0-9])\b",
             )
 
             for pattern in patterns:
@@ -863,6 +1301,16 @@ class InterviewExtractor:
             "onset",
             "duration",
         }:
+            temporal = self._extract_temporal_answer(
+                normalized
+            )
+
+            if temporal:
+                return (
+                    temporal,
+                    False,
+                )
+
             match = re.search(
                 r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|a couple|a few)\s+"
                 r"(day|days|hour|hours|week|weeks|month|months|year|years)\b",
@@ -894,7 +1342,9 @@ class InterviewExtractor:
 
         if target == "course":
             if re.search(
-                r"\b(?:same|unchanged|no change|stable)\b",
+                r"\b(?:same|unchanged|no change|stable)\b"
+                r"|जैसा था|कोई बदलाव नहीं|स्थिर|उसी तरह|वैसा ही"
+                r"|waisa hi|usi tarah|koi badlav nahi",
                 normalized,
             ):
                 return (
@@ -903,7 +1353,9 @@ class InterviewExtractor:
                 )
 
             if re.search(
-                r"\b(?:worse|worsening|getting worse)\b",
+                r"\b(?:worse|worsening|getting worse)\b"
+                r"|बढ़ रहा|बढ़ रही|बढ़ गया|बढ़ गई|और खराब"
+                r"|badh raha|badh rahi|badh gaya|badh gayi|aur kharab",
                 normalized,
             ):
                 return (
@@ -912,7 +1364,9 @@ class InterviewExtractor:
                 )
 
             if re.search(
-                r"\b(?:better|improving|getting better)\b",
+                r"\b(?:better|improving|getting better)\b"
+                r"|बेहतर|सुधार|ठीक हो रहा|ठीक हो रही"
+                r"|behtar|sudhar|theek ho raha|theek ho rahi",
                 normalized,
             ):
                 return (
@@ -929,7 +1383,9 @@ class InterviewExtractor:
             patterns = (
                 r"\b(?:in|at|around|below|above|near)\s+"
                 r"([^,.!?;]+)",
-                r"\b(lower abdomen|upper abdomen|abdomen|stomach|chest|head|back|neck|throat|arm|leg)\b",
+                r"\b(lower abdomen|upper abdomen|abdomen|stomach|chest|head|back|neck|throat|arm|leg|"
+                r"पेट|पेट के ऊपर|पेट के नीचे|सीना|छाती|सिर|कमर|गर्दन|गला|बांह|बाँह|हाथ|पैर|"
+                r"pet|seena|chhati|sir|kamar|gardan|gala|haath|pair)\b",
             )
 
             for pattern in patterns:
@@ -950,14 +1406,18 @@ class InterviewExtractor:
             )
 
         if target == "laterality":
-            if "both sides" in normalized:
+            if (
+                "both sides" in normalized
+                or "दोनों तरफ" in normalized
+                or "दोनों तरफ़" in normalized
+            ):
                 return (
                     "both",
                     False,
                 )
 
             if re.search(
-                r"\bleft\b",
+                r"\bleft\b|\bबायां\b|\bबायाँ\b",
                 normalized,
             ):
                 return (
@@ -966,7 +1426,7 @@ class InterviewExtractor:
                 )
 
             if re.search(
-                r"\bright\b",
+                r"\bright\b|\bदायां\b|\bदायाँ\b",
                 normalized,
             ):
                 return (
@@ -993,6 +1453,17 @@ class InterviewExtractor:
                 "turning",
                 "churning",
                 "cramping",
+                "जलन",
+                "दबाव",
+                "जकड़न",
+                "चुभने",
+                "चुभता",
+                "धड़कता",
+                "तेज",
+                "तेज़",
+                "भारी",
+                "ऐंठन",
+                "मरोड़",
             ):
                 if value in normalized:
                     return (
@@ -1027,6 +1498,9 @@ class InterviewExtractor:
                     "continuous",
                     "throughout the day",
                     "throughout",
+                    "लगातार",
+                    "हर समय",
+                    "पूरे दिन",
                 )
             ):
                 return (
@@ -1040,6 +1514,10 @@ class InterviewExtractor:
                     "comes and goes",
                     "on and off",
                     "intermittent",
+                    "आता जाता",
+                    "आता-जाता",
+                    "बीच-बीच में",
+                    "कभी-कभी",
                 )
             ):
                 return (
@@ -1054,6 +1532,10 @@ class InterviewExtractor:
                     "afternoon",
                     "evening",
                     "night",
+                    "सुबह",
+                    "दोपहर",
+                    "शाम",
+                    "रात",
                 )
             ):
                 return (
@@ -1072,12 +1554,27 @@ class InterviewExtractor:
             "urinary_frequency",
         }:
             match = re.search(
-                r"\b\d+(?:\.\d+)?\s*"
+                r"\b(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|"
+                r"a couple|a few)\s*"
                 r"(?:times?|bowel movements?|motions?)"
                 r"(?:\s*(?:a|per)\s*)?"
                 r"(?:day|week|month)?\b",
                 normalized,
             )
+
+            if not match:
+                match = re.search(
+                    r"\b(?:दिन में|हर दिन|रोज़|रोज)\s*\d+\s*(?:बार|बारी)\b",
+                    normalized,
+                )
+
+            if not match:
+                match = re.search(
+                    r"\b(?:din mein|har din|roz|roj)\s*"
+                    r"(?:\d+|ek|do|teen|char|paanch|panch|chhe|saat|aath|nau|das)\s*baar\b",
+                    normalized,
+                    flags=re.IGNORECASE,
+                )
 
             if match:
                 return (
@@ -1101,6 +1598,14 @@ class InterviewExtractor:
                 "सख्त",
                 "ढीला",
                 "पानी जैसा",
+                "पानी जैसी",
+                "पानी",
+                "सामान्य",
+                "बहुत सख्त",
+                "bahut sakht",
+                "sakht",
+                "dheela",
+                "pani jaisa",
             ):
                 if value in normalized:
                     return (
@@ -1127,19 +1632,11 @@ class InterviewExtractor:
                 if position < 0:
                     continue
 
-                prefix = normalized[
-                    max(
-                        0,
-                        position - 45,
-                    ):position
-                ]
-
-                negative = bool(
-                    re.search(
-                        r"\b(?:no|not|never|without|don't|do not|denies|none)\b",
-                        prefix,
-                    )
-                ) or "नहीं" in prefix
+                negative = self._is_negated(
+                    normalized,
+                    position,
+                    len(term),
+                )
 
                 return (
                     False if negative else True,
@@ -1221,6 +1718,8 @@ class InterviewExtractor:
                 r"\bworse with\b([^,.!?;]+)",
                 r"\bgets worse when\b([^,.!?;]+)",
                 r"\bgets worse with\b([^,.!?;]+)",
+                r"(?:बढ़ता है|बढ़ जाती है|बढ़ जाता है)\s*([^,.!?;]*)",
+                r"(?:badhta hai|badh jata hai|badh jaati hai)\s*([^,.!?;]*)",
             )
 
             for pattern in patterns:
@@ -1254,6 +1753,8 @@ class InterviewExtractor:
                 r"\bgets better when\b([^,.!?;]+)",
                 r"\bgets better with\b([^,.!?;]+)",
                 r"\bhelps\b([^,.!?;]*)",
+                r"(?:कम होता है|कम हो जाता है|आराम मिलता है)\s*([^,.!?;]*)",
+                r"(?:kam hota hai|kam ho jata hai|aaram milta hai)\s*([^,.!?;]*)",
             )
 
             for pattern in patterns:
@@ -1280,18 +1781,24 @@ class InterviewExtractor:
             )
 
         if target == "occupation":
-            match = re.search(
-                r"\b(?:desk job|office job|works? as|work as|job is|occupation is)\s*"
-                r"([^,.!?;]*)",
-                normalized,
+            patterns = (
+                r"\b(?:desk job|office job|works? as|work as|job is|occupation is)\s*([^,.!?;]*)",
+                r"(?:मैं|मेरी)\s+(?:एक\s+)?(छात्र|विद्यार्थी|शिक्षक|इंजीनियर|डॉक्टर|किसान|व्यवसायी|नौकरी|व्यापारी)",
+                r"\b(i am|i'm)\s+(?:a\s+)?(student|teacher|engineer|doctor|farmer|businessman|businesswoman)\b",
+                r"\b(i study|i am studying|i'm studying)\s+([^,.!?;]+)",
+                r"\b(?:main|mai)\s+(?:student|teacher|engineer|doctor|farmer|vyapari|naukri)\b",
             )
 
-            if match:
-                value = match.group(0).strip()
-                return (
-                    value,
-                    False,
+            for pattern in patterns:
+                match = re.search(
+                    pattern,
+                    normalized,
                 )
+                if match:
+                    return (
+                        match.group(0).strip(),
+                        False,
+                    )
 
             return (
                 None,
@@ -1319,10 +1826,24 @@ class InterviewExtractor:
                     "potato",
                     "vegetable",
                     "meals",
+                    "vegetarian",
+                    "veg",
+                    "non-veg",
+                    "non veg",
+                    "शाकाहारी",
+                    "मांसाहारी",
+                    "शाकाहार",
+                    "मांसाहार",
+                    "घर का खाना",
+                    "दूध",
+                    "चावल",
+                    "रोटी",
+                    "सब्जी",
+                    "सब्ज़ी",
                 )
             ):
                 return (
-                    normalized,
+                    text.strip(),
                     False,
                 )
 
@@ -1335,9 +1856,25 @@ class InterviewExtractor:
             if re.search(
                 r"\b(?:very good|good|poor|bad|normal|disturbed)\s+sleep\b",
                 normalized,
+            ) or re.search(
+                r"\b\d+(?:\.\d+)?\s*(?:hours?|hrs?)\s+(?:of\s+)?sleep\b",
+                normalized,
+            ) or re.search(
+                r"\b\d+(?:\.\d+)?\s*घंटे\b.*(?:नींद|सोता|सोती|सोना)",
+                normalized,
+            ) or any(
+                term in normalized
+                for term in (
+                    "अच्छी नींद",
+                    "कम नींद",
+                    "नींद खराब",
+                    "नींद ठीक",
+                    "नींद नहीं आती",
+                    "sleep",
+                )
             ):
                 return (
-                    normalized,
+                    text.strip(),
                     False,
                 )
 
@@ -1360,6 +1897,15 @@ class InterviewExtractor:
                     "gym",
                     "active",
                     "व्यायाम",
+                    "चलना",
+                    "टहलना",
+                    "कसरत",
+                    "सक्रिय",
+                    "exercise nahi",
+                    "vyayam",
+                    "walking karta",
+                    "walk karta",
+                    "walk karti",
                 )
             ):
                 return (
@@ -1492,6 +2038,129 @@ class InterviewExtractor:
             False,
         )
 
+    @staticmethod
+    def _should_extract_temporal_target(
+        target: str,
+        text: str,
+        pending_targets: list[str],
+    ) -> bool:
+        if target not in {"onset", "duration"}:
+            return True
+
+        temporal_pending = {
+            item
+            for item in pending_targets
+            if item in {"onset", "duration"}
+        }
+
+        if len(temporal_pending) == 1:
+            return target in temporal_pending
+
+        if len(temporal_pending) == 0:
+            return target == "onset"
+
+        normalized = text.strip().lower()
+
+        # Reference-point language describes onset.
+        if re.search(
+            r"\b(?:started|began|since|yesterday|today|tonight|last\s+night|"
+            r"this\s+morning|last\s+week|last\s+month|last\s+year|ago)\b",
+            normalized,
+        ) or re.search(
+            r"(?:कल|आज|परसों|पिछले\s+(?:हफ्ते|सप्ताह|महीने|साल)|"
+            r"\d+\s*(?:दिन|हफ्ते|महीने|साल)\s*(?:पहले|पूर्व))",
+            normalized,
+        ):
+            return target == "onset"
+
+        # "for N days/weeks" is duration rather than a calendar onset.
+        if re.search(
+            r"\bfor\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|"
+            r"a\s+couple|a\s+few)\s+(?:day|days|hour|hours|week|weeks|month|months|year|years)\b",
+            normalized,
+        ) or re.search(
+            r"(?:\d+|एक|दो|तीन|चार|पाँच|पांच|छह|छः|सात|आठ|नौ|दस)\s+"
+            r"(?:दिन|दिनों|हफ्ते|सप्ताह|महीने|साल)\s+से",
+            normalized,
+        ):
+            return target == "duration"
+
+        return target == "onset"
+
+    @staticmethod
+    def _extract_temporal_answer(
+        text: str,
+    ) -> str | None:
+        normalized = text.strip().lower()
+
+        patterns = (
+            r"\b(?:the\s+)?day\s+before\s+yesterday\b",
+            r"\b(?:yesterday|today|tonight|last\s+night|this\s+morning|this\s+afternoon|this\s+evening|yesterday\s+morning|yesterday\s+afternoon|yesterday\s+evening|last\s+week|this\s+week|last\s+month|this\s+month|last\s+year|this\s+year)\b",
+            r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a\s+couple(?:\s+of)?|a\s+few)\s+(?:second|seconds|minute|minutes|hour|hours|day|days|night|nights|week|weeks|month|months|year|years)\s+ago\b",
+            r"\b(?:since|from|starting\s+from)\s+(?:the\s+)?(?:day\s+before\s+yesterday|yesterday|today|tonight|last\s+night|this\s+morning|last\s+week|last\s+month|last\s+year)\b",
+            r"\b(?:since|from|starting\s+from)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a\s+couple(?:\s+of)?|a\s+few)\s+(?:second|seconds|minute|minutes|hour|hours|day|days|night|nights|week|weeks|month|months|year|years)\s+(?:ago|back)\b",
+            r"(?:आज\s+(?:सुबह|दोपहर|शाम)|आज|कल\s+(?:सुबह|दोपहर|शाम|रात)|कल|परसों|पिछले\s+(?:हफ्ते|सप्ताह|महीने|साल)|इस\s+(?:हफ्ते|सप्ताह|महीने|साल))",
+            r"\b(?:aaj|kal|parson)(?:\s+(?:subah|dopahar|shaam|raat))?\b",
+            r"\b(?:pichhle|pichle)\s+(?:hafte|saptah|mahine|saal)\b",
+            r"(?:\d+|एक|दो|तीन|चार|पाँच|पांच|छह|छः|सात|आठ|नौ|दस|कुछ)\s+(?:से\s+)?(?:दिन|दिनों|हफ्ते|सप्ताह|महीने|साल)\s+(?:पहले|पूर्व)",
+            r"(?:एक|दो|तीन|चार|पाँच|पांच|छह|छः|सात|आठ|नौ|दस|कुछ)\s+(?:दिन|दिनों|हफ्ते|सप्ताह|महीने|साल)\s+से",
+            r"\b(?:ek|do|teen|char|paanch|panch|chhe|che|saat|aath|nau|das|kuch)\s+(?:din|dino|hafte|saptah|saptaah|mahine|saal)\s+se\b",
+        )
+
+        for pattern in patterns:
+            match = re.search(
+                pattern,
+                normalized,
+                flags=re.IGNORECASE,
+            )
+
+            if match:
+                return match.group(0).strip()
+
+        return None
+
+    @staticmethod
+    def _can_context_capture(
+        target: str,
+        text: str,
+    ) -> bool:
+        if (
+            not target
+            or target == "chief_complaint"
+            or target in BOOLEAN_TARGETS
+        ):
+            return False
+
+        normalized = InterviewExtractor._normalize_text(
+            text
+        )
+
+        if normalized in {
+            "yes",
+            "y",
+            "yeah",
+            "yep",
+            "haan",
+            "हाँ",
+            "हां",
+            "no",
+            "n",
+            "nope",
+            "none",
+            "नहीं",
+            "कोई नहीं",
+        }:
+            return False
+
+        if (
+            not normalized
+            or "?" in normalized
+            or len(normalized) < 2
+        ):
+            return False
+
+        return True
+
     def _cross_section_facts(
         self,
         text: str,
@@ -1517,24 +2186,11 @@ class InterviewExtractor:
 
                 matched = True
 
-                prefix = normalized[
-                    max(
-                        0,
-                        position - 40,
-                    ):position
-                ]
-
-                if (
-                    re.search(
-                        r"\b(?:no|not|never|without|don't|do not|denies)\b",
-                        prefix,
-                    )
-                    or "नहीं" in prefix
-                ):
-                    negative = True
-
-                else:
-                    negative = False
+                negative = self._is_negated(
+                    normalized,
+                    position,
+                    len(term),
+                )
 
                 break
 
@@ -1796,6 +2452,10 @@ class InterviewExtractor:
             "For drug history, combine medicines, allergies, and adverse reactions. "
             "For personal history, combine occupation, diet, sleep, activity, smoking, alcohol, and tobacco where appropriate. "
             "For review of systems, use a broad symptom screen rather than one symptom at a time. "
+            "For mixed Hindi-English answers, keep the meaning as stated and do not invent medical terminology. "
+            "For AYUSH, ask only for patient-reported or previously documented information. "
+            "Never infer Prakriti, Vikriti, or any other AYUSH assessment. "
+            "If the patient does not know an AYUSH term or has never had such an assessment, accept that answer and continue. "
             "Do not ask a section-closure question. "
             "Do not diagnose. "
             "Do not recommend treatment. "
@@ -1850,7 +2510,7 @@ class InterviewExtractor:
             dict.fromkeys(
                 item.strip().lower()
                 for item in re.split(
-                    r"[,|;/]+|\band\b",
+                    r"[,|;/]+|\band\b|और|तथा|aur",
                     raw_targets,
                     flags=re.IGNORECASE,
                 )
@@ -1975,6 +2635,21 @@ class InterviewExtractor:
         )
 
     @staticmethod
+    def _question_key(
+        question: str,
+    ) -> str:
+        value = question.strip().lower()
+        value = re.sub(
+            r"[^a-z0-9\u0900-\u097f]+",
+            " ",
+            value,
+            flags=re.IGNORECASE,
+        )
+        return " ".join(
+            value.split()
+        )
+
+    @staticmethod
     def _valid_question(
         question: str,
     ) -> bool:
@@ -2044,6 +2719,7 @@ class InterviewExtractor:
             "Never ask again for facts that are already explicitly present. "
             "Prefer one broad high-yield question over several narrow questions. "
             "Questions must be natural, short, respectful, and answerable by voice or text. "
+            "Patients may answer in English, Hindi, or mixed Hindi-English, including romanized Hindi. "
             "Do not diagnose, reassure, prescribe, or recommend treatment."
         )
 
@@ -2121,6 +2797,45 @@ class InterviewExtractor:
         )
 
     @staticmethod
+    def _is_negated(
+        text: str,
+        position: int,
+        term_length: int,
+    ) -> bool:
+        before = text[
+            max(
+                0,
+                position - 50,
+            ):position
+        ]
+        after = text[
+            position + term_length:
+            position + term_length + 50
+        ]
+
+        if re.search(
+            r"\b(?:no|not|never|without|don't|do not|denies|none|nahi|nahin)\b",
+            before,
+            flags=re.IGNORECASE,
+        ):
+            return True
+
+        if re.search(
+            r"^\s*(?:no|not|never|without|don't|do not|denies|none|nahi|nahin)\b",
+            after,
+            flags=re.IGNORECASE,
+        ):
+            return True
+
+        if re.match(
+            r"^\s*(?:नहीं|नही|बिना)\b",
+            after,
+        ):
+            return True
+
+        return False
+
+    @staticmethod
     def _complaint_from_topic(
         topic: str,
     ) -> str:
@@ -2138,6 +2853,135 @@ class InterviewExtractor:
             return "कृपया अपनी स्वास्थ्य समस्या के बारे में थोड़ा और बताइए?"
 
         return "Could you tell me a little more about your health problem?"
+
+    def _fallback_decision(
+        self,
+        state: InterviewState,
+        candidates: list[str],
+        language: str,
+    ) -> QuestionDecision:
+        seen_questions = {
+            self._question_key(item)
+            for item in state.question_history
+        }
+
+        for bundle in QUESTION_BUNDLES:
+            available = [
+                target
+                for target in bundle
+                if target in candidates
+                and not state.target_answered(
+                    target
+                )
+            ]
+
+            if len(available) < 2:
+                continue
+
+            targets = available[:4]
+            fallback_question = (
+                self._emergency_question_for_bundle(
+                    targets,
+                    language,
+                )
+            )
+
+            if (
+                fallback_question
+                and self._question_key(
+                    fallback_question
+                ) not in seen_questions
+            ):
+                return QuestionDecision(
+                    fallback_question,
+                    "bundle:" + ",".join(targets),
+                    False,
+                )
+
+        for target in candidates:
+            if state.target_answered(target):
+                continue
+
+            fallback_question = (
+                self._emergency_question_for_target(
+                    target,
+                    language,
+                )
+            )
+
+            if (
+                fallback_question
+                and self._question_key(
+                    fallback_question
+                ) not in seen_questions
+            ):
+                return QuestionDecision(
+                    fallback_question,
+                    target,
+                    False,
+                )
+
+        return QuestionDecision(
+            self._emergency_question(
+                state.current_section,
+                language,
+            ),
+            None,
+            False,
+        )
+
+    @staticmethod
+    def _emergency_question_for_bundle(
+        targets: list[str],
+        language: str,
+    ) -> str:
+        labels = [
+            TARGET_DESCRIPTIONS.get(
+                target,
+                {},
+            ).get(language)
+            or TARGET_DESCRIPTIONS.get(
+                target,
+                {},
+            ).get("en")
+            or target.replace(
+                "_",
+                " ",
+            )
+            for target in targets
+        ]
+
+        if not labels:
+            return ""
+
+        if language == "hi":
+            if len(labels) == 2:
+                return (
+                    f"कृपया {labels[0]} और {labels[1]} के बारे में बताइए?"
+                )
+
+            if len(labels) == 3:
+                return (
+                    f"कृपया {labels[0]}, {labels[1]} और {labels[2]} के बारे में बताइए?"
+                )
+
+            return (
+                f"कृपया {', '.join(labels[:-1])} और {labels[-1]} के बारे में बताइए?"
+            )
+
+        if len(labels) == 2:
+            return (
+                f"Could you tell me about {labels[0]} and {labels[1]}?"
+            )
+
+        if len(labels) == 3:
+            return (
+                f"Could you tell me about {labels[0]}, {labels[1]}, and {labels[2]}?"
+            )
+
+        return (
+            f"Could you tell me about {', '.join(labels[:-1])}, and {labels[-1]}?"
+        )
 
     @staticmethod
     def _emergency_question_for_target(

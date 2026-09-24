@@ -54,7 +54,9 @@ export async function prepareInterviewSession(
         verification_token: verificationToken,
         identity_method: identityMethod,
         identity_identifier: identityIdentifier,
-        department_id: "general-medicine",
+        department_id:
+          import.meta.env.VITE_INTERVIEW_DEPARTMENT_ID ||
+          "general-medicine",
       }),
     },
   );

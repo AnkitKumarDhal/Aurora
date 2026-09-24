@@ -90,7 +90,7 @@ class InterviewController:
             if turn.speaker == Speaker.PATIENT
         ]
 
-        response_language = (
+        response_language = self._normalise_language(
             language
             or next(
                 (
@@ -278,7 +278,7 @@ class InterviewController:
             )
         )
 
-        response_language = (
+        response_language = self._normalise_language(
             language
             or next(
                 (
@@ -358,10 +358,10 @@ class InterviewController:
             state.pending_target = None
 
         else:
-            should_advance = (
-                state.section_budget_reached()
-                or state.section_naturally_ready()
-            )
+            # Never close a section solely because its question budget
+            # was reached. Budgets help keep the interview efficient, while
+            # readiness is determined by the information actually collected.
+            should_advance = state.section_naturally_ready()
 
             if should_advance:
                 state.complete_current_section()
@@ -613,6 +613,22 @@ class InterviewController:
             "summary": summary,
             "triage": assessed,
         }
+
+    @staticmethod
+    def _normalise_language(
+        language: str | None,
+    ) -> str:
+        value = str(
+            language or "en"
+        ).strip().lower()
+
+        if value.startswith("hi") or value.startswith("hin"):
+            return "hi"
+
+        if value.startswith("en") or value.startswith("eng"):
+            return "en"
+
+        return "en"
 
     @staticmethod
     def _is_ayush_department(
@@ -1097,6 +1113,9 @@ class InterviewController:
     def _signal_type_for(
         field: str,
     ) -> ClinicalSignalType:
+        if field.startswith("ayush_"):
+            return ClinicalSignalType.HISTORY
+
         if field == "medications":
             return ClinicalSignalType.MEDICATION
 

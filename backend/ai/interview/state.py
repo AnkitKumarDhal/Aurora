@@ -465,6 +465,7 @@ PAST_REQUIRED = (
 DRUG_REQUIRED = (
     "medications",
     "allergies",
+    "adverse_drug_reactions",
 )
 
 PERSONAL_GROUPS = (
@@ -1051,10 +1052,27 @@ class InterviewState:
         if not value:
             return
 
+        def question_key(item: str) -> str:
+            normalized = re.sub(
+                r"[^a-z0-9\u0900-\u097f]+",
+                " ",
+                item.lower(),
+                flags=re.IGNORECASE,
+            )
+            return " ".join(
+                normalized.split()
+            )
+
+        current_key = question_key(
+            value
+        )
+
         if (
-            not self.question_history
-            or self.question_history[-1].lower()
-            != value.lower()
+            not any(
+                question_key(item)
+                == current_key
+                for item in self.question_history
+            )
         ):
             self.question_history.append(
                 value
@@ -1263,24 +1281,42 @@ class InterviewState:
         if value is None:
             return False
 
-        if target in DETAIL_REQUIRED:
-            if isinstance(
-                value,
-                bool,
-            ):
+        # False is a valid collected negative answer. Positive True on a
+        # detail-required history field still needs the requested details.
+        if isinstance(value, bool):
+            if target in DETAIL_REQUIRED:
                 return not value
+            return True
 
-            normalized = str(
-                value
-            ).strip().lower()
+        normalized = str(
+            value
+        ).strip().lower()
 
+        # A patient may genuinely not know an AYUSH or medical-history
+        # detail. Record that outcome once rather than looping on the question.
+        if normalized in {
+            "unknown",
+            "not known",
+            "not sure",
+            "not available",
+            "not reported",
+            "पता नहीं",
+            "मालूम नहीं",
+            "मुझे नहीं पता",
+            "नहीं पता",
+        }:
+            return True
+
+        if target in DETAIL_REQUIRED:
             if normalized in {
                 "yes",
                 "y",
                 "true",
                 "haan",
-                "हां",
+                "ha",
                 "हाँ",
+                "हां",
+                "haa",
             }:
                 return False
 
@@ -1411,12 +1447,53 @@ class InterviewState:
             )
         ]
 
+    @staticmethod
+    def _prioritize_pending(
+        targets: list[str],
+        pending: list[str],
+    ) -> list[str]:
+        if not pending:
+            return list(
+                dict.fromkeys(
+                    targets
+                )
+            )
+
+        ordered = [
+            *pending,
+            *targets,
+        ]
+
+        return list(
+            dict.fromkeys(
+                item
+                for item in ordered
+                if item in targets
+            )
+        )
+
     def candidate_targets(self) -> list[str]:
-        if self.section_budget_reached():
-            return []
+        # Budgets guide question breadth; they never close a section while
+        # required information is still missing.
+        pending = [
+            target
+            for target in self._split_targets(
+                self.pending_target
+            )
+            if not self.target_answered(target)
+            and (
+                FIELD_PRIMARY_SECTION.get(
+                    target
+                )
+                == self.current_section
+            )
+        ]
 
         if self.current_section == "hpi":
-            return self._hpi_candidates()
+            return self._prioritize_pending(
+                self._hpi_candidates(),
+                pending,
+            )
 
         if self.current_section == "past_history":
             targets = [
@@ -1429,10 +1506,13 @@ class InterviewState:
                     target
                 )
             ]
-            return list(
-                dict.fromkeys(
-                    targets
-                )
+            return self._prioritize_pending(
+                list(
+                    dict.fromkeys(
+                        targets
+                    )
+                ),
+                pending,
             )
 
         if self.current_section == "drug_allergy":
@@ -1459,14 +1539,17 @@ class InterviewState:
                     "adverse_drug_reactions"
                 )
 
-            return list(
-                dict.fromkeys(
-                    targets
-                )
+            return self._prioritize_pending(
+                list(
+                    dict.fromkeys(
+                        targets
+                    )
+                ),
+                pending,
             )
 
         if self.current_section == "family_history":
-            return (
+            targets = (
                 []
                 if self.target_answered(
                     "family_history"
@@ -1475,32 +1558,47 @@ class InterviewState:
                     "family_history"
                 ]
             )
+            return self._prioritize_pending(
+                targets,
+                pending,
+            )
 
         if self.current_section == "personal_history":
-            return [
+            targets = [
                 target
                 for target in PERSONAL_GROUPS
                 if not self.target_answered(
                     target
                 )
             ]
+            return self._prioritize_pending(
+                targets,
+                pending,
+            )
 
         if self.current_section == "review_of_systems":
-            return [
+            targets = [
                 target
                 for target in ROS_TARGETS
                 if not self.target_answered(
                     target
                 )
             ]
-
-        return [
-            target
-            for target in AYUSH_REQUIRED
-            if not self.target_answered(
-                target
+            return self._prioritize_pending(
+                targets,
+                pending,
             )
-        ]
+
+        return self._prioritize_pending(
+            [
+                target
+                for target in AYUSH_REQUIRED
+                if not self.target_answered(
+                    target
+                )
+            ],
+            pending,
+        )
 
     @staticmethod
     def _split_targets(
@@ -1518,7 +1616,7 @@ class InterviewState:
         return [
             item.strip()
             for item in re.split(
-                r"[,|;/]+|\band\b",
+                r"[,|;/]+|\band\b|और|तथा|aur",
                 raw,
                 flags=re.IGNORECASE,
             )
