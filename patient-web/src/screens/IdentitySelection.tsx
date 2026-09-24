@@ -184,51 +184,47 @@ export function IdentitySelection({
 
         <div className="mb-4 grid grid-cols-3 gap-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-            <motion.button
+            <Button
               key={num}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
+              type="button"
+              variant="outline"
+              className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.95]"
               disabled={isVerifying}
               onClick={() => handleOtpInput(num)}
-              type="button"
             >
               {num}
-            </motion.button>
+            </Button>
           ))}
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="h-14 w-20 rounded-xl border-2 border-danger bg-surface text-base font-semibold text-danger shadow-md transition-all hover:bg-danger hover:text-white"
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 w-20 rounded-xl border-2 border-danger bg-surface text-base font-semibold text-danger shadow-md transition-all hover:bg-danger hover:text-white active:scale-[0.95]"
             disabled={isVerifying}
             onClick={handleOtpDelete}
-            type="button"
           >
             <Delete className="mx-auto h-5 w-5" />
-          </motion.button>
+          </Button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.95]"
             disabled={isVerifying}
             onClick={() => handleOtpInput("0")}
-            type="button"
           >
             0
-          </motion.button>
+          </Button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-lg font-semibold text-text-secondary shadow-md transition-all hover:bg-warning hover:text-white"
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 w-20 rounded-xl border-2 border-border bg-surface text-lg font-semibold text-text-secondary shadow-md transition-all hover:bg-warning hover:text-white active:scale-[0.95]"
             disabled={isVerifying}
             onClick={() => setOtpNumber("")}
-            type="button"
           >
             Clear
-          </motion.button>
+          </Button>
         </div>
 
         {error && (
@@ -238,7 +234,8 @@ export function IdentitySelection({
         )}
 
         <Button
-          className="rounded-xl bg-primary-dark px-7 py-3 text-base text-white shadow-lg transition-all hover:bg-text-primary"
+          type="button"
+          className="rounded-xl bg-primary-dark px-7 py-3 text-base text-white shadow-lg transition-all hover:bg-text-primary active:scale-[0.98]"
           disabled={isVerifying || otpNumber.length !== 6}
           onClick={() => {
             void handleVerifyOtp();
@@ -298,51 +295,47 @@ export function IdentitySelection({
 
         <div className="mb-6 grid grid-cols-3 gap-3">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-            <motion.button
+            <Button
               key={num}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
+              type="button"
+              variant="outline"
+              className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.95]"
               disabled={isVerifying}
               onClick={() => handleNumberInput(num)}
-              type="button"
             >
               {num}
-            </motion.button>
+            </Button>
           ))}
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-danger bg-surface text-base font-semibold text-danger shadow-md transition-all hover:bg-danger hover:text-white"
+          <Button
+            type="button"
+            variant="outline"
+            className="h-16 w-24 rounded-xl border-2 border-danger bg-surface text-base font-semibold text-danger shadow-md transition-all hover:bg-danger hover:text-white active:scale-[0.95]"
             disabled={isVerifying}
             onClick={handleClear}
-            type="button"
           >
             Clear
-          </motion.button>
+          </Button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint"
+          <Button
+            type="button"
+            variant="outline"
+            className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-primary shadow-md transition-all hover:border-primary hover:bg-primary-tint active:scale-[0.95]"
             disabled={isVerifying}
             onClick={() => handleNumberInput("0")}
-            type="button"
           >
             0
-          </motion.button>
+          </Button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-secondary shadow-md transition-all hover:bg-warning hover:text-white"
+          <Button
+            type="button"
+            variant="outline"
+            className="h-16 w-24 rounded-xl border-2 border-border bg-surface text-2xl font-bold text-text-secondary shadow-md transition-all hover:bg-warning hover:text-white active:scale-[0.95]"
             disabled={isVerifying}
             onClick={handleDelete}
-            type="button"
           >
             ←
-          </motion.button>
+          </Button>
         </div>
 
         {error && (
@@ -352,7 +345,8 @@ export function IdentitySelection({
         )}
 
         <Button
-          className="rounded-xl bg-primary-dark px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-text-primary"
+          type="button"
+          className="rounded-xl bg-primary-dark px-8 py-4 text-lg text-white shadow-lg transition-all hover:bg-text-primary active:scale-[0.98]"
           disabled={isVerifying || idNumber.length !== maxLength}
           onClick={() => {
             void handleContinue();
@@ -392,16 +386,15 @@ export function IdentitySelection({
       </div>
 
       <div className="grid w-full max-w-4xl grid-cols-1 gap-8 px-4 md:grid-cols-2">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className={`flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 transition-all duration-200 ${
+        <Button
+          type="button"
+          variant="outline"
+          className={`flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 text-text-primary transition-all duration-200 active:scale-[0.98] ${
             selectedId === "abha"
               ? "border-primary bg-primary-tint shadow-lg"
-              : "border-border bg-surface hover:border-primary"
+              : "border-border bg-surface hover:border-primary hover:bg-primary-tint"
           }`}
           onClick={() => handleIdSelect("abha")}
-          type="button"
         >
           <User
             className={`h-16 w-16 ${
@@ -418,18 +411,17 @@ export function IdentitySelection({
           <div className="text-lg text-text-secondary">
             {isHi ? "14-अंकीय ABHA नंबर" : "14-digit ABHA Number"}
           </div>
-        </motion.button>
+        </Button>
 
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className={`flex h-64 flex-col items-center justify-center gap-6 rounded-2xl border-2 transition-all duration-200 ${
+        <Button
+          type="button"
+          variant="outline"
+          className={`flex h-64 w-full flex-col items-center justify-center gap-6 rounded-2xl border-2 text-text-primary transition-all duration-200 active:scale-[0.98] ${
             selectedId === "aadhaar"
               ? "border-primary bg-primary-tint shadow-lg"
-              : "border-border bg-surface hover:border-primary"
+              : "border-border bg-surface hover:border-primary hover:bg-primary-tint"
           }`}
           onClick={() => handleIdSelect("aadhaar")}
-          type="button"
         >
           <Fingerprint
             className={`h-16 w-16 ${
@@ -446,7 +438,7 @@ export function IdentitySelection({
           <div className="text-lg text-text-secondary">
             {isHi ? "12-अंकीय आधार" : "12-digit Aadhaar"}
           </div>
-        </motion.button>
+        </Button>
       </div>
     </div>
   );
