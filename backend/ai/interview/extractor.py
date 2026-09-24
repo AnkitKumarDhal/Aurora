@@ -863,6 +863,16 @@ class InterviewExtractor:
             "onset",
             "duration",
         }:
+            temporal = self._extract_temporal_answer(
+                normalized
+            )
+
+            if temporal:
+                return (
+                    temporal,
+                    False,
+                )
+
             match = re.search(
                 r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|a couple|a few)\s+"
                 r"(day|days|hour|hours|week|weeks|month|months|year|years)\b",
@@ -1491,6 +1501,35 @@ class InterviewExtractor:
             None,
             False,
         )
+
+    @staticmethod
+    def _extract_temporal_answer(
+        text: str,
+    ) -> str | None:
+        normalized = text.strip().lower()
+
+        patterns = (
+            r"\b(?:the\s+)?day\s+before\s+yesterday\b",
+            r"\b(?:yesterday|today|tonight|last\s+night|this\s+morning|this\s+afternoon|this\s+evening|yesterday\s+morning|yesterday\s+afternoon|yesterday\s+evening|last\s+week|this\s+week|last\s+month|this\s+month|last\s+year|this\s+year)\b",
+            r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a\s+couple(?:\s+of)?|a\s+few)\s+(?:second|seconds|minute|minutes|hour|hours|day|days|night|nights|week|weeks|month|months|year|years)\s+ago\b",
+            r"\b(?:since|from|starting\s+from)\s+(?:the\s+)?(?:day\s+before\s+yesterday|yesterday|today|tonight|last\s+night|this\s+morning|last\s+week|last\s+month|last\s+year)\b",
+            r"\b(?:since|from|starting\s+from)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a\s+couple(?:\s+of)?|a\s+few)\s+(?:second|seconds|minute|minutes|hour|hours|day|days|night|nights|week|weeks|month|months|year|years)\s+(?:ago|back)\b",
+            r"(?:आज\s+(?:सुबह|दोपहर|शाम)|आज|कल\s+(?:सुबह|दोपहर|शाम|रात)|कल|परसों|पिछले\s+(?:हफ्ते|सप्ताह|महीने|साल)|इस\s+(?:हफ्ते|सप्ताह|महीने|साल))",
+            r"(?:\d+|एक|दो|तीन|चार|पाँच|पांच|छह|छः|सात|आठ|नौ|दस|कुछ)\s+(?:से\s+)?(?:दिन|दिनों|हफ्ते|सप्ताह|महीने|साल)\s+(?:पहले|पूर्व)",
+            r"(?:एक|दो|तीन|चार|पाँच|पांच|छह|छः|सात|आठ|नौ|दस|कुछ)\s+(?:दिन|दिनों|हफ्ते|सप्ताह|महीने|साल)\s+से",
+        )
+
+        for pattern in patterns:
+            match = re.search(
+                pattern,
+                normalized,
+                flags=re.IGNORECASE,
+            )
+
+            if match:
+                return match.group(0).strip()
+
+        return None
 
     def _cross_section_facts(
         self,
